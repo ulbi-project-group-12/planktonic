@@ -5,6 +5,9 @@
 # Base: node:26.13.0-alpine3.24, digest built 2026-11-05 (amd64 19:25Z, arm64 20:10Z). It is
 # younger than 14 days until 2026-11-19 and kept under the Phase 1 D-29 exception until then
 # (no older Node 26 image exists; re-check recorded in STATE.md).
+# Prisma: the generated client is compiled into dist, and @prisma/client, @prisma/adapter-pg and
+# pg ship as production dependencies. The Prisma CLI stays a devDependency and is not in the
+# runtime image; the Phase 4 migrate service decides how migrations run in production.
 
 # --- build: install the api's workspace graph, compile, then deploy prod deps to /out ---
 FROM node:26.13.0-alpine3.24@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS build
@@ -18,6 +21,8 @@ COPY packages/ ./packages/
 # Every app, so the frozen lockfile finds all of its importers; only the api is deployed.
 COPY apps/ ./apps/
 RUN pnpm install --frozen-lockfile --ignore-pnpmfile --filter "@app/api..."
+# Outside Turbo the generate -> build order is explicit. No DATABASE_URL is needed for it.
+RUN pnpm --filter @app/api generate
 RUN pnpm --filter @app/api build
 # Copies the package `files` (dist), package.json and production node_modules only.
 RUN pnpm --filter @app/api deploy --prod /out
