@@ -15,10 +15,10 @@
 # (verified 2026-11-08). Settings are still applied; the script then reports the gap and
 # exits 3. Re-run it after the repository is made public (D-30) to enforce the rulesets.
 #
-# Bypass: the only bypass actor is OrganizationAdmin in pull_request mode (D-31). The
-# other org members have read access only, and read-only approvals do not count toward
-# required reviews (RESEARCH Pitfall 10), so the lead may merge his own PR without an
-# approval, but still only through a PR. Nobody can push directly to main.
+# Bypass: the only bypass actor is OrganizationAdmin in pull_request mode (D-31), so the
+# lead may merge his own PR without an approval, but still only through a PR. The other
+# developers get write access through the org team `devs` (read-only approvals would not
+# count toward required reviews, RESEARCH Pitfall 10). Nobody can push directly to main.
 # Two rulesets are the exception, because what they guard never goes through a PR, so
 # their OrganizationAdmin bypass is `always`:
 #   - tags.json: v* tags cannot be moved or deleted (the lead can delete a test tag);

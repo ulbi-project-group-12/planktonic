@@ -42,23 +42,20 @@ Commits inside your branch can be as small and informal as you like; they disapp
 - Everyone reviews everyone, juniors included.
 - Label comments with [Conventional Comments](https://conventionalcomments.org/): `praise:`,
   `nitpick:`, `suggestion:`, `issue:`, `question:`.
-- Paths listed in [.github/CODEOWNERS](.github/CODEOWNERS) need their owner's review. Until the
-  repository rules can be applied (see the README), this is a team rule, not enforced by GitHub, so
-  reviewers check changes to `scripts/` and `.github/` with extra care.
+- Any teammate's approval merges product code. Paths listed in [.github/CODEOWNERS](.github/CODEOWNERS)
+  (CI, repository rules, tooling, root configs, the lockfile) also need their owner's review, and
+  GitHub enforces it.
 
 ## Protecting `main`
 
-While the repository is private on the free plan, GitHub cannot protect `main`, so two guards stand
-in for the repository rules:
+GitHub protects `main` with the `main` ruleset: a pull request with green required checks and one
+approval is the only way in, and a direct push is rejected for everyone. Two local guards stay as a
+second line of defence:
 
-- **The pre-push hook** (`.husky/pre-push`) refuses `git push` to `main` from your machine. Push
-  your branch and open a PR instead. Only the lead uses the emergency bypass,
-  `ALLOW_PUSH_TO_MAIN=1 git push`.
+- **The pre-push hook** (`.husky/pre-push`) refuses `git push` to `main` from your machine before
+  GitHub does. Push your branch and open a PR instead.
 - **The `main-push-guard` workflow** checks every push to `main`. A push that did not come from a
   merged PR, or a forced push, turns the job red and opens an issue for the lead.
-
-Neither guard is a real lock: `--no-verify` skips the hook, and the workflow only reports. Treat
-"PR only" as a firm team rule.
 
 ## Local checks
 
