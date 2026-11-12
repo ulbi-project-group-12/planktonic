@@ -7,3 +7,4 @@ coverage
 *.tsbuildinfo
 .DS_Store
 .planning/research/.cache/
+apps/api/src/generated/

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { validateEnv } from './core/config/env.js';
+import { PrismaModule } from './core/prisma/prisma.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 
 @Module({
@@ -16,6 +17,7 @@ import { HealthModule } from './modules/health/health.module.js';
       // a developer's .env.
       ignoreEnvFile: process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test',
     }),
+    PrismaModule,
     HealthModule,
   ],
 })

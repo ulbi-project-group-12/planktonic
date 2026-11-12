@@ -13,7 +13,10 @@
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
     "start": "node dist/main.js",
-    "dev": "nest start --watch"
+    "dev": "prisma generate && nest start --watch",
+    "generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev"
   },
   "dependencies": {
     "@nestjs/common": "catalog:",
@@ -21,6 +24,9 @@
     "@nestjs/core": "catalog:",
     "@nestjs/platform-express": "catalog:",
     "@nestjs/terminus": "catalog:",
+    "@prisma/adapter-pg": "catalog:",
+    "@prisma/client": "catalog:",
+    "pg": "catalog:",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:",
     "zod": "catalog:"
@@ -32,6 +38,7 @@
     "@swc/core": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",
+    "prisma": "catalog:",
     "typescript": "catalog:",
     "unplugin-swc": "catalog:",
     "vite": "catalog:",

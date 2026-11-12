@@ -15,7 +15,9 @@ updateNotifier: false
 # Install-script approvals (D-06): true runs the package's build script, false skips it.
 # Anything unlisted fails the install with ERR_PNPM_IGNORED_BUILDS.
 allowBuilds:
+  '@prisma/engines': true
   '@swc/core': true
+  prisma: true
 
 # Top-level keys are allowlisted by scripts/check-pins.mjs (`pnpm check:pins`); a new key,
 # minimumReleaseAgeExclude included, needs a reviewed change to that guard first.
@@ -31,6 +33,8 @@ catalog:
   '@nestjs/terminus': 12.1.0
   '@nestjs/testing': 12.3.2
   '@next/eslint-plugin-next': 16.4.3
+  '@prisma/adapter-pg': 7.10.1
+  '@prisma/client': 7.10.1
   '@swc/core': 1.16.20
   '@types/node': 26.6.5
   eslint: 10.13.0
@@ -39,7 +43,9 @@ catalog:
   globals: 17.13.0
   husky: 9.1.7
   lint-staged: 17.6.0
+  pg: 8.23.1
   prettier: 3.9.10
+  prisma: 7.10.1
   reflect-metadata: 0.2.2
   rxjs: 7.8.2
   turbo: 2.11.10

@@ -12,6 +12,8 @@ export const envSchema = z.object({
     z.enum(['development', 'test', 'production']).default('development'),
   ),
   API_PORT: z.preprocess(emptyAsUnset, z.coerce.number().int().min(1).max(65535).default(3001)),
+  // Required: the app has no database default. Only postgres:// and postgresql:// URLs pass.
+  DATABASE_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^postgres(ql)?$/ })),
 });
 
 export type Env = z.output<typeof envSchema>;
