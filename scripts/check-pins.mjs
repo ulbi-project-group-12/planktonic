@@ -14,6 +14,14 @@
 // allowed only when every value is an exact `x.y.z`, which is the security-bump case.
 // Extend this guard in a reviewed PR if another setting is ever needed.
 //
+// Build scripts (D-06, phase 1.1): pnpm 12 runs a dependency's install scripts only when
+// `allowBuilds:` lists it `true`; an unlisted one fails the install with
+// ERR_PNPM_IGNORED_BUILDS (`strictDepBuilds` defaults to true). The guard accepts
+// `allowBuilds:` only as a block mapping of bare package names to `true` or `false`, so
+// every approval or denial is an explicit, reviewed line: no versions, ranges, wildcards,
+// URLs or pnpm's auto-written placeholders. `onlyBuiltDependencies` and friends are ignored
+// by pnpm 12, so they stay off the allowlist.
+//
 // The manifests checked are the root package.json plus every package.json matched by
 // the `packages:` globs, so a new workspace directory is covered without editing this
 // file. `!` exclusions are ignored: checking an excluded package too is merely stricter.
@@ -37,6 +45,7 @@ const ALLOWED_KEYS = new Set([
   'savePrefix',
   'catalogMode',
   'updateNotifier',
+  'allowBuilds',
 ]);
 // Named for a clearer message; the allowlist would reject them anyway. They change
 // resolution, load pnpmfile hooks, waive the release-age rule or allow every build script.
@@ -54,6 +63,8 @@ const DENIED_KEYS = new Set([
 // 14 days, in minutes (D-07).
 const MIN_RELEASE_AGE = 20160;
 const PNPMFILES = ['.pnpmfile.cjs', '.pnpmfile.mjs'];
+// A bare npm package name, optionally scoped; no version, range, wildcard or URL.
+const BARE_NAME = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/;
 
 /** @type {string[]} */
 const errors = [];
@@ -179,6 +190,35 @@ if (overrides !== undefined) {
     const entry = mappingEntry(text);
     if (entry) checkOverride(`${WORKSPACE}:${String(line)}`, entry.name, entry.value);
     else errors.push(`${WORKSPACE}:${String(line)}: unparseable overrides line "${text.trim()}"`);
+  }
+}
+
+const allowBuilds = blocks.get('allowBuilds');
+if (allowBuilds !== undefined) {
+  if (allowBuilds.inline !== '') {
+    errors.push(
+      `${WORKSPACE}:${String(allowBuilds.line)}: \`allowBuilds:\` must be a block mapping`,
+    );
+  }
+  /** @type {Set<string>} */
+  const seen = new Set();
+  for (const { line, text } of allowBuilds.body) {
+    const where = `${WORKSPACE}:${String(line)}`;
+    const entry = mappingEntry(text);
+    if (!entry) {
+      errors.push(`${where}: unparseable allowBuilds line "${text.trim()}"`);
+      continue;
+    }
+    if (!BARE_NAME.test(entry.name)) {
+      errors.push(`${where}: allowBuilds ${entry.name} is not a bare package name`);
+    }
+    if (seen.has(entry.name)) errors.push(`${where}: duplicate allowBuilds entry ${entry.name}`);
+    seen.add(entry.name);
+    if (entry.value !== 'true' && entry.value !== 'false') {
+      errors.push(
+        `${where}: allowBuilds ${entry.name} = "${entry.value}" (only true or false is allowed)`,
+      );
+    }
   }
 }
 
