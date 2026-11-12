@@ -5,9 +5,9 @@ current_phase: "1.1"
 current_phase_name: App skeletons (team)
 status: planning
 stopped_at: Phase 1 complete, ready to plan Phase 1.1
-last_updated: "2026-11-12T02:25:00.000Z"
-last_activity: 2026-11-11
-last_activity_desc: Completed quick task 261111-esl (ESLint presets base/next/nest, UL-5)
+last_updated: "2026-11-12T07:00:00.000Z"
+last_activity: 2026-11-12
+last_activity_desc: Phase 1 closed after republish (UL-9); re-verified, UAT 12/12
 state_head: 3d32df5959b5c1fb9026676e1cde9896a3a00adb
 progress:
   total_phases: 16
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-08)
 
 **Core value:** The connected work scenario (discuss → task from message → PR → review → notified) works end to end, reliably, with access checks on every path.
-**Current focus:** Phase 1 — Repo foundation and CI/CD (lead)
+**Current focus:** Phase 1.1 — App skeletons (team), paused by the lead
 
 ## Current Position
 
 Phase: 1.1 — App skeletons (team)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-11 - Completed quick task 261111-esl: ESLint presets base/next/nest (UL-5)
+Last activity: 2026-11-12 - Phase 1 closed after republish: rules enforced, re-verified, UAT 12/12 (UL-9)
 
 Progress: [█░░░░░░░░░] 6%
 
@@ -75,6 +75,8 @@ Recent decisions affecting current work:
 - [Phase 1]: 01-06: apps/web mirrors apps/api except name and Next.js / ticket 1.4 wording (Dockerfiles diff empty after api/web→APP); no UI deps until Phase 1.1 (D-02)
 - [Quick 261110-idz]: product renamed from the working name "ulbigram" to "planktonic" (repo `ulbi-project-group-12/planktonic`, images `planktonic-{web,api}`). Phase 1 artifacts under `.planning/phases/01-*` keep the old name on purpose, as historical record.
 - [Phase 1]: 01-09: README lists repo-level SHA pinning as a pending lead action (01-08 ran with SKIP_SHA_PINNING=1); no requirement ticked by 01-09, GitHub-proven IDs left to the orchestrator/verifier
+- [Phase 1 close, 2026-11-12]: repo republished as public `ulbi-project-group-12/planktonic` from one squashed commit; the private history lives in `planktonic-archive` (SHAs cited in Phase 1 SUMMARYs resolve there). `PROCESS.md` and `TZ-SPEC.md` are kept outside the repo; all repo text is English.
+- [Phase 1 close, 2026-11-12]: rulesets applied (`apply-repo-rules.sh` exit 0), SHA pinning required, secret scanning + push protection on; a direct push to `main` is rejected (GH013). Review is horizontal: org team `devs` (8) has write, any teammate's approval counts; CODEOWNERS keeps the lead on CI, rules, tooling, root configs, lockfile. Team-owned CODEOWNERS lines dropped (UL-9 scope change).
 
 ### Pending Todos
 
@@ -82,8 +84,6 @@ None yet.
 
 ### Blockers/Concerns
 
-- Repo is private on GitHub Free: rulesets/branch protection return 403, so `main` is NOT protected, CODEOWNERS is advisory, required checks don't block, environments and secret scanning are unavailable, Actions minutes are capped. Lead action: make the repo public → `scripts/apply-repo-rules.sh` (exit 0) → confirm a direct push to `main` is rejected (01-SECURITY AR-05).
-- Repo-level `sha_pinning_required` is still false (01-SECURITY AR-06): run `scripts/apply-repo-rules.sh` without `SKIP_SHA_PINNING`.
 - Phase 1.1 note: `check-pins` allowlists `pnpm-workspace.yaml` keys; Next/Nest deps with install scripts will need `onlyBuiltDependencies`/`allowBuilds` added to the allowlist in a reviewed PR.
 - 01-VALIDATION.md is still `draft` (Nyquist audit `/gsd-validate-phase 1` not run; optional).
 
@@ -102,6 +102,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-08T17:30:00.000Z
-Stopped at: Phase 1 complete, ready to plan Phase 1.1
+Last session: 2026-11-12T07:00:00.000Z
+Stopped at: Phase 1 closed (republished, rules enforced, UAT 12/12); Phase 1.1 paused by the lead
 Resume file: None
