@@ -3,18 +3,17 @@ gsd_state_version: "1.0"
 milestone: v0.1.0
 current_phase: "1.1"
 current_phase_name: App skeletons (team)
-status: planning
-stopped_at: Phase 1 complete, ready to plan Phase 1.1
-last_updated: "2026-11-12T07:00:00.000Z"
+status: executing
+stopped_at: Completed 01.1-01-PLAN.md
+last_updated: "2026-11-12T20:47:23.296Z"
 last_activity: 2026-11-12
-last_activity_desc: Phase 1 closed after republish (UL-9); re-verified, UAT 12/12
-state_head: 3d32df5959b5c1fb9026676e1cde9896a3a00adb
+last_activity_desc: Completed 01.1-01 (check-pins accepts allowBuilds)
+state_head: fe1bd71c146d0f6ee7798cbff3da15e7f47c8fc2
 progress:
   total_phases: 16
   completed_phases: 1
-  total_plans: 9
-  completed_plans: 9
-  percent: 6
+  total_plans: 20
+  completed_plans: 10
 ---
 
 # Project State
@@ -24,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-08)
 
 **Core value:** The connected work scenario (discuss → task from message → PR → review → notified) works end to end, reliably, with access checks on every path.
-**Current focus:** Phase 1.1 — App skeletons (team), paused by the lead
+**Current focus:** Phase 1.1 — App skeletons (team), executing
 
 ## Current Position
 
 Phase: 1.1 — App skeletons (team)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-12 - Phase 1 closed after republish: rules enforced, re-verified, UAT 12/12 (UL-9)
+Plan: 2 of 11
+Status: Executing Phase 1.1 (wave 1)
+Last activity: 2026-11-12 - Completed 01.1-01 (check-pins accepts allowBuilds)
 
 Progress: [█░░░░░░░░░] 6%
 
@@ -57,6 +56,7 @@ Progress: [█░░░░░░░░░] 6%
 | Phase 1 P05 | 2min | 2 tasks | 9 files |
 | Phase 1 P06 | 2min | 2 tasks | 8 files |
 | Phase 1 P09 | 6min | 3 tasks | 3 files |
+| Phase 1.1 P01 | 1min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -77,6 +77,7 @@ Recent decisions affecting current work:
 - [Phase 1]: 01-09: README lists repo-level SHA pinning as a pending lead action (01-08 ran with SKIP_SHA_PINNING=1); no requirement ticked by 01-09, GitHub-proven IDs left to the orchestrator/verifier
 - [Phase 1 close, 2026-11-12]: repo republished as public `ulbi-project-group-12/planktonic` from one squashed commit; the private history lives in `planktonic-archive` (SHAs cited in Phase 1 SUMMARYs resolve there). `PROCESS.md` and `TZ-SPEC.md` are kept outside the repo; all repo text is English.
 - [Phase 1 close, 2026-11-12]: rulesets applied (`apply-repo-rules.sh` exit 0), SHA pinning required, secret scanning + push protection on; a direct push to `main` is rejected (GH013). Review is horizontal: org team `devs` (8) has write, any teammate's approval counts; CODEOWNERS keeps the lead on CI, rules, tooling, root configs, lockfile. Team-owned CODEOWNERS lines dropped (UL-9 scope change).
+- [Phase 1.1]: 01.1-01: allowBuilds (bare name -> true/false, block mapping only) is the only build-approval key check-pins accepts; onlyBuiltDependencies stays rejected (pnpm 12 ignores it)
 
 ### Pending Todos
 
@@ -102,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T07:00:00.000Z
-Stopped at: Phase 1 closed (republished, rules enforced, UAT 12/12); Phase 1.1 paused by the lead
+Last session: 2026-11-12T20:47:23.230Z
+Stopped at: Completed 01.1-01-PLAN.md
 Resume file: None
