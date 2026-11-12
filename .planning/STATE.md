@@ -4,16 +4,16 @@ milestone: v0.1.0
 current_phase: "1.1"
 current_phase_name: App skeletons (team)
 status: executing
-stopped_at: Completed 01.1-08-PLAN.md
-last_updated: "2026-11-12T21:40:29.267Z"
+stopped_at: Completed 01.1-09-PLAN.md
+last_updated: "2026-11-12T21:45:35.637Z"
 last_activity: 2026-11-12
 last_activity_desc: Completed 01.1-08 (Steiger + required CI check, UL-6)
-state_head: ed7fec8437def3969d7a677f8d56a19cee124ed3
+state_head: c6ca17fa106de4932e18dc861801e6e362ad80d0
 progress:
   total_phases: 16
   completed_phases: 1
   total_plans: 20
-  completed_plans: 17
+  completed_plans: 18
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 ## Current Position
 
 Phase: 1.1 — App skeletons (team)
-Plan: 9 of 11
+Plan: 10 of 11
 Status: Ready to execute
 Last activity: 2026-11-12 - Completed 01.1-08 (Steiger + required CI check, UL-6)
 
@@ -64,6 +64,7 @@ Progress: [█░░░░░░░░░] 6%
 | Phase 1.1 P06 | 6min | 3 tasks | 24 files |
 | Phase 1.1 P07 | 8min | 2 tasks | 18 files |
 | Phase 1.1 P08 | 4min | 2 tasks | 9 files |
+| Phase 1.1 P09 | 9min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,8 @@ Recent decisions affecting current work:
 - [Phase 1.1]: 01.1-08: steiger + @feature-sliced/steiger-plugin pinned 0.8.1/0.8.1 (0.9.0/0.8.2 too young, D-05); lint:fsd = steiger ./src --fail-on-warnings; only fsd/typo-in-layer-name off for src/_app/** and src/_pages/**
 - [Phase 1.1]: 01.1-08: steiger is a required CI job and context in rulesets/main.json (applied by the lead after merge); check:all ends with lint:fsd; /apps/*/steiger.config.ts and turbo.json lead-owned
 - [Phase 1.1]: 01.1-08: steiger-plugin 0.8.1 ignores export-from re-exports, so D-19 was proven with a cross-feature import in a segment (fsd/forbidden-imports)
+- [Phase 1.1]: 01.1-09: storybook + @storybook/nextjs-vite pinned 10.6.5 (10.6.6 too young, D-05); allowBuilds esbuild true; stories colocated in src/shared/ui, no Steiger exception
+- [Phase 1.1]: 01.1-09: storybook is a required CI job and the 7th context in rulesets/main.json (applied by the lead after merge); check:all ends with build-storybook; storybook-static ignored by git and next()
 
 ### Pending Todos
 
@@ -118,9 +121,10 @@ None yet.
 - re-check the node base digest age on/after 2026-11-19 (node:26.13.0-alpine3.24@sha256:8996..., apps/api/Dockerfile and apps/web/Dockerfile, both stages; D-29 exception until then)
 - bump next (and @next/eslint-plugin-next) to >= 16.4.5 from 2026-11-17, before any deploy (01.1-06 pinned 16.4.3 under D-05; 16.4.5 is the security floor, T-01.1-22); optional tailwindcss/@tailwindcss/postcss 4.3.5 from 2026-11-20
 - bump steiger to 0.9.0 and @feature-sliced/steiger-plugin to 0.8.2 (D-19) on/after 2026-11-15, then re-run 01.1-08's original probe (a cross-slice `export … from` in a slice index.ts); 0.8.1 does not analyse re-exports
-- apply .github/rulesets/main.json after the phase PR merges so `steiger` becomes a required check (lead; 01.1-08)
+- apply .github/rulesets/main.json after the phase PR merges so `steiger` and `storybook` become required checks (lead; 01.1-08, 01.1-09)
 - pre-existing actionlint SC2034 in .github/workflows/main-push-guard.yml:36 (unused `attempt` loop var); repo-wide actionlint exits non-zero until fixed (lead; deferred-items.md)
 - optional bump: @nestjs/common/core/platform-express/testing 12.4.x, @nestjs/config 12.1.x, @nestjs/cli 12.0.12 eligible on/after 2026-11-20 (catalog; re-run pnpm install, all four core packages together)
+- optional bump: storybook + @storybook/nextjs-vite to 10.6.6 (D-21) on/after 2026-11-19, both together (01.1-09 pinned 10.6.5)
 
 ### Quick Tasks Completed
 
@@ -137,6 +141,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T21:40:29.195Z
-Stopped at: Completed 01.1-08-PLAN.md
+Last session: 2026-11-12T21:45:35.568Z
+Stopped at: Completed 01.1-09-PLAN.md
 Resume file: None

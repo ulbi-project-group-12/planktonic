@@ -88,7 +88,7 @@ Research tickets:
   3. `docker compose up` starts Postgres 18 + pgvector, Redis 8 and SeaweedFS with healthchecks, and an init script creates the bucket
   4. README «how to run» was followed by two members on different OSes in ≤ 30 min; CodeRabbit left a comment on a test PR; Storybook shows 3 UI-kit components and its build is green in CI
   5. Kickoff agreements (roles, call times, DoR/DoD, review and Friday-report rules) are recorded in Docs or `docs/adr/0000`
-**Plans**: 8/11 plans executed (lead decision D-01: all tickets done in full by agents; UL-3 kickoff stays organisational, D-02)
+**Plans**: 9/11 plans executed (lead decision D-01: all tickets done in full by agents; UL-3 kickoff stays organisational, D-02)
 
 Plans:
 **Wave 1**
@@ -112,7 +112,7 @@ Plans:
 - [x] 01.1-08-PLAN.md — UL-6 Steiger + required `steiger` CI job
 
 **Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 01.1-09-PLAN.md — UL-12 Storybook 10 stories + required `storybook` CI job
+- [x] 01.1-09-PLAN.md — UL-12 Storybook 10 stories + required `storybook` CI job
 
 **Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 01.1-10-PLAN.md — UL-11 `pnpm dev` through Turbo, `services:*`/`db:*` scripts, `.env.example` documented
@@ -440,7 +440,7 @@ Phases execute in numeric order: 1 → 1.1 → 2 → 3 → … → 15 (2 can run
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Repo foundation and CI/CD (lead) | 9/9 | Complete    | 2026-11-08 |
-| 1.1. App skeletons (team) | 8/11 | In Progress | - |
+| 1.1. App skeletons (team) | 9/11 | In Progress | - |
 | 2. Realtime prototype | 0/TBD | Not started | - |
 | 3. Access and workspaces | 0/TBD | Not started | - |
 | 4. Prod and observability | 0/TBD | Not started | - |
