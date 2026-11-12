@@ -92,13 +92,15 @@ services:
       S3_BUCKET: ${S3_BUCKET:-app-dev}
     entrypoint: ['/bin/sh', '-c']
     # `weed shell` exits 0 even when a command fails, so the job lists the buckets again
-    # afterwards and fails unless the bucket is there.
+    # afterwards and fails unless the bucket is there. The name is compared literally against the
+    # first field of each listed line (`  <name>\tsize:...`): a regex would read the `.` that S3
+    # bucket names allow as "any character", so `app.dev` would match an existing `appxdev`.
     command:
       - |
         set -eu
         has_bucket() {
           echo s3.bucket.list | weed shell -master=seaweedfs:9333 2>/dev/null |
-            grep -Eq "^[[:space:]]*$${S3_BUCKET}([[:space:]]|$$)"
+            awk '{ print $$1 }' | grep -Fxq -- "$${S3_BUCKET}"
         }
         if has_bucket; then
           echo "s3-init: bucket $${S3_BUCKET} already exists"
