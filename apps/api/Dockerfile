@@ -32,7 +32,8 @@ RUN pnpm --filter @app/api deploy --prod /out
 FROM node:26.13.0-alpine3.24@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS runtime
 ARG APP_VERSION=dev
 ARG PRODUCT_NAME
-ENV NODE_ENV=production APP_VERSION=$APP_VERSION PRODUCT_NAME=$PRODUCT_NAME
+# The api defaults to loopback (API_HOST); a container must listen on every interface.
+ENV NODE_ENV=production API_HOST=0.0.0.0 APP_VERSION=$APP_VERSION PRODUCT_NAME=$PRODUCT_NAME
 WORKDIR /app
 # Code stays root-owned: the runtime user can read it but not rewrite it. If the app ever
 # needs a writable directory, create that one explicitly and chown only it.

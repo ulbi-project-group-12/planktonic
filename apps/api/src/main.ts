@@ -11,8 +11,11 @@ async function bootstrap(): Promise<void> {
   // abortOnError: false makes a startup failure (an invalid environment included) reject here
   // instead of Nest calling process.exit, so the catch below sets the exit code.
   const app = configureApp(await NestFactory.create(AppModule, { abortOnError: false }));
-  const port = app.get<ConfigService<Env, true>>(ConfigService).get('API_PORT', { infer: true });
-  await app.listen(port);
+  const config = app.get<ConfigService<Env, true>>(ConfigService);
+  await app.listen(
+    config.get('API_PORT', { infer: true }),
+    config.get('API_HOST', { infer: true }),
+  );
   Logger.log(`Listening on ${await app.getUrl()}/api`, 'Bootstrap');
 }
 

@@ -90,6 +90,7 @@ uses the same values as its defaults, so the services also start without a `.env
 | `PRODUCT_NAME`         | Unread by the apps; they bake in `packages/config/product.ts` instead | empty                                                   | release images (env, no reader)  |
 | `PRODUCT_SLUG`         | Slug override (URLs, image names)                                     | empty                                                   | reserved (no local reader yet)   |
 | `API_PORT`             | Port the api listens on                                               | `3001`                                                  | `@app/api`                       |
+| `API_HOST`             | Interface the api binds to (the api image sets `0.0.0.0`)             | empty (`127.0.0.1`, loopback only)                      | `@app/api`                       |
 | `POSTGRES_DB`          | Database created on the first start                                   | `app`                                                   | compose `postgres`               |
 | `POSTGRES_USER`        | Database owner role created on the first start                        | `app`                                                   | compose `postgres`               |
 | `POSTGRES_PASSWORD`    | Dev-only password for `POSTGRES_USER`                                 | `app_dev_password`                                      | compose `postgres`               |

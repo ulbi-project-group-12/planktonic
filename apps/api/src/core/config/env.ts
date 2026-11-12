@@ -12,6 +12,9 @@ export const envSchema = z.object({
     z.enum(['development', 'test', 'production']).default('development'),
   ),
   API_PORT: z.preprocess(emptyAsUnset, z.coerce.number().int().min(1).max(65535).default(3001)),
+  // Interface the api binds to. Loopback by default, so `pnpm dev` is not reachable from the
+  // LAN; the image sets 0.0.0.0 because a container must listen on every interface.
+  API_HOST: z.preprocess(emptyAsUnset, z.string().trim().min(1).default('127.0.0.1')),
   // Required: the app has no database default. Only postgres:// and postgresql:// URLs pass.
   DATABASE_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^postgres(ql)?$/ })),
 });

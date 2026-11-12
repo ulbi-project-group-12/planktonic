@@ -10,7 +10,7 @@ Run it from the repo root with `pnpm dev` after `pnpm services:up` and `pnpm db:
 ## Layout
 
 ```
-src/main.ts               bootstrap: reads API_PORT, exits 1 on a startup failure
+src/main.ts               bootstrap: binds API_HOST:API_PORT, exits 1 on a startup failure
 src/app.module.ts         root module: ConfigModule, PrismaModule, feature modules
 src/app.setup.ts          configureApp(): global prefix `api`, shutdown hooks (also used by e2e)
 src/core/config/          env schema (zod) and validation
@@ -45,6 +45,7 @@ variable and the rule, never the value, and the process exits 1.
 | -------------- | ------------------------------------- | ------------- |
 | `NODE_ENV`     | `development`, `test` or `production` | `development` |
 | `API_PORT`     | integer 1–65535                       | `3001`        |
+| `API_HOST`     | interface to bind; image: `0.0.0.0`   | `127.0.0.1`   |
 | `DATABASE_URL` | `postgres://` or `postgresql://` URL  | required      |
 
 An empty value counts as unset. In development the api reads the root `.env` (and a `.env` in

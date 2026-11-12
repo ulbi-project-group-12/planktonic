@@ -15,20 +15,30 @@ function errorOf(raw: Record<string, unknown>): string {
 const DATABASE_URL = 'postgresql://u:p@localhost:5432/db';
 
 describe('validateEnv', () => {
-  it('defaults NODE_ENV to development and API_PORT to 3001', () => {
+  it('defaults NODE_ENV to development, API_PORT to 3001 and API_HOST to loopback', () => {
     expect(validateEnv({ DATABASE_URL })).toEqual({
       NODE_ENV: 'development',
       API_PORT: 3001,
+      API_HOST: '127.0.0.1',
       DATABASE_URL,
     });
   });
 
   it('treats empty values as unset, as .env.example documents', () => {
-    expect(validateEnv({ NODE_ENV: '', API_PORT: '', DATABASE_URL })).toEqual({
+    expect(validateEnv({ NODE_ENV: '', API_PORT: '', API_HOST: '', DATABASE_URL })).toEqual({
       NODE_ENV: 'development',
       API_PORT: 3001,
+      API_HOST: '127.0.0.1',
       DATABASE_URL,
     });
+  });
+
+  it('takes API_HOST from the environment (the image sets 0.0.0.0)', () => {
+    expect(validateEnv({ API_HOST: '0.0.0.0', DATABASE_URL }).API_HOST).toBe('0.0.0.0');
+  });
+
+  it('rejects a blank API_HOST, naming the variable', () => {
+    expect(errorOf({ API_HOST: '   ', DATABASE_URL })).toContain('API_HOST');
   });
 
   it('coerces API_PORT to a number', () => {
