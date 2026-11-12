@@ -4,16 +4,16 @@ milestone: v0.1.0
 current_phase: "1.1"
 current_phase_name: App skeletons (team)
 status: executing
-stopped_at: Completed 01.1-06-PLAN.md
-last_updated: "2026-11-12T21:26:51.296Z"
+stopped_at: Completed 01.1-07-PLAN.md
+last_updated: "2026-11-12T21:35:43.171Z"
 last_activity: 2026-11-12
-last_activity_desc: Completed 01.1-06 (Next.js 16 FSD skeleton + web image, UL-6)
-state_head: 910e81697539f97bfbb02d74254fd4aa3ec031c0
+last_activity_desc: Completed 01.1-07 (shadcn shared/ui + Vitest/RTL, UL-6)
+state_head: d5f8bc3abca16de5fd682afb72fcd821e5d55d7a
 progress:
   total_phases: 16
   completed_phases: 1
   total_plans: 20
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 ## Current Position
 
 Phase: 1.1 — App skeletons (team)
-Plan: 7 of 11
+Plan: 8 of 11
 Status: Ready to execute
-Last activity: 2026-11-12 - Completed 01.1-06 (Next.js 16 FSD skeleton + web image, UL-6)
+Last activity: 2026-11-12 - Completed 01.1-07 (shadcn shared/ui + Vitest/RTL, UL-6)
 
 Progress: [█░░░░░░░░░] 6%
 
@@ -62,6 +62,7 @@ Progress: [█░░░░░░░░░] 6%
 | Phase 1.1 P04 | 6min | 3 tasks | 20 files |
 | Phase 1.1 P05 | 5min | 3 tasks | 22 files |
 | Phase 1.1 P06 | 6min | 3 tasks | 24 files |
+| Phase 1.1 P07 | 8min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,9 @@ Recent decisions affecting current work:
 - [Phase 1.1]: 01.1-06: next pinned 16.4.3 and tailwindcss/@tailwindcss/postcss 4.3.3 (D-05 fallbacks; 16.4.5 2026-11-03, 4.3.5 2026-11-06); no build approvals needed (sharp/oxide prebuilt)
 - [Phase 1.1]: 01.1-06: apps/web turbo.json keeps strict JSON; ordering rationale in Turbo task description (typegen -> lint/typecheck -> build)
 - [Phase 1.1]: 01.1-06: web image = Next standalone at /app, CMD node apps/web/server.js, uid 1000, only .next/cache writable; same D-29 node base as the api
+- [Phase 1.1]: 01.1-07: shadcn components.json style radix-nova (neutral, Tailwind 4); Button/Input/Dialog copied from the registry over HTTPS, CLI never run or installed
+- [Phase 1.1]: 01.1-07: cn() stays clsx + tailwind-merge in shared/lib (registry's new npm 'cn' package not added); shadcn/tailwind.css custom variants inlined in globals.css
+- [Phase 1.1]: 01.1-07: web tests = Vitest 5 + jsdom 30.1.3 + RTL 16.3.3; jest-dom 7.0.1 (6.10.0 deprecated)
 
 ### Pending Todos
 
@@ -126,6 +130,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T21:26:51.210Z
-Stopped at: Completed 01.1-06-PLAN.md
+Last session: 2026-11-12T21:35:43.101Z
+Stopped at: Completed 01.1-07-PLAN.md
 Resume file: None
