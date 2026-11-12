@@ -92,7 +92,7 @@ overrides:
     accepted_at: "2026-11-08T00:00:00Z"
 human_verification:
   - test: "Open https://github.com/ulbi-project-group-12/ulbigram/compare/main...release/0.0?expand=1 (or any new branch) in the GitHub web UI and look at the PR description box before typing."
-    expected: "The body is pre-filled with .github/pull_request_template.md: the 'Ticket / UL-' line, the "Done when…" checklist, 'How to test' and 'Review rules'."
+    expected: "The body is pre-filled with .github/pull_request_template.md: the 'Ticket / UL-' line, the 'Done when…' checklist, 'How to test' and 'Review rules'."
     why_human: "Template pre-fill is GitHub web-UI behavior. The file is at the standard path on the default branch, but PR #1 was opened with an explicit body, so no API evidence shows the pre-fill happening."
   - test: "Review and sign off the 7 flagged prohibitions listed under 'Prohibitions' below (5 test-tier with no wired enforcing test, 2 judgment-tier). The verifier's deterministic evidence for each is in that table."
     expected: "Each must-NOT is confirmed not to have happened. Optionally, add a wired test for the test-tier items (e.g. check-pins rejects @nestjs/*, next, react in apps/*; a ruleset lint that fails on bypass_mode 'always' or 'exempt' in main.json; a workflow lint that fails on release/tag creation; a gitleaks-style CI scan)."
