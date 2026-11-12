@@ -32,9 +32,11 @@ Commits inside your branch can be as small and informal as you like; they disapp
 - Keep a PR at about 400 changed lines or fewer, excluding the lockfile and generated code. CI warns
   above 600. Ask for big PRs to be split.
 - One ticket = one PR.
-- Answer every AI review comment before asking for a human review. The AI reviewer arrives in
-  Phase 1.1.
-- CI must be green: `lint`, `typecheck`, `test`, `build` and `name-guard`.
+- CodeRabbit reviews every non-draft PR in Russian as the AI first pass. Answer or resolve each of
+  its comments before asking a teammate to review. To ask it something, mention the bot in a PR
+  comment. Its review never replaces the required human approval.
+- CI must be green. The required checks are `lint`, `typecheck`, `test`, `build`, `name-guard`,
+  `steiger` and `storybook`.
 
 ## Review
 
@@ -67,7 +69,8 @@ pnpm check:all
 ```
 
 It runs, in order: `pnpm format:check`, `pnpm check:pins`, `pnpm lint:root`,
-`pnpm turbo run lint typecheck test build`, `pnpm check:name` and `pnpm test:root`.
+`pnpm turbo run lint typecheck test build`, `pnpm check:name`, `pnpm test:root`,
+`pnpm --filter @app/web lint:fsd` and `pnpm --filter @app/web build-storybook`.
 
 ## Dependencies
 

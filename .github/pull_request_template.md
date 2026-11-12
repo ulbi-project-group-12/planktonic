@@ -31,4 +31,4 @@ UL-
 - CodeRabbit is the AI first-pass reviewer: it comments in Russian on every non-draft PR. Answer or
   resolve each of its comments before asking a teammate to review. Its review never replaces the
   required human approval.
-- CI must be green: lint, typecheck, test, build, name-guard.
+- CI must be green: lint, typecheck, test, build, name-guard, steiger, storybook.
