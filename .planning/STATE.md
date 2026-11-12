@@ -4,16 +4,16 @@ milestone: v0.1.0
 current_phase: "1.1"
 current_phase_name: App skeletons (team)
 status: executing
-stopped_at: Completed 01.1-02-PLAN.md
-last_updated: "2026-11-12T21:01:55.778Z"
+stopped_at: Completed 01.1-03-PLAN.md (wave 1 done)
+last_updated: "2026-11-12T21:03:30.072Z"
 last_activity: 2026-11-12
-last_activity_desc: Completed 01.1-02 (dev compose stack, UL-8)
-state_head: f0bca0e9e525f03cea9eb4a224924e9f7d0d031f
+last_activity_desc: Completed 01.1-03 (CodeRabbit config, UL-10); wave 1 done
+state_head: e8e4cc11860bbfdd38339f5497a93f54d1d79340
 progress:
   total_phases: 16
   completed_phases: 1
   total_plans: 20
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 ## Current Position
 
 Phase: 1.1 — App skeletons (team)
-Plan: 3 of 11
+Plan: 4 of 11
 Status: Ready to execute
-Last activity: 2026-11-12 - Completed 01.1-02 (dev compose stack, UL-8)
+Last activity: 2026-11-12 - Completed 01.1-03 (CodeRabbit config, UL-10); wave 1 done
 
 Progress: [█░░░░░░░░░] 6%
 
@@ -58,6 +58,7 @@ Progress: [█░░░░░░░░░] 6%
 | Phase 1 P09 | 6min | 3 tasks | 3 files |
 | Phase 1.1 P01 | 1min | 2 tasks | 3 files |
 | Phase 1.1 P02 | 13min | 2 tasks | 3 files |
+| Phase 1.1 P03 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,7 @@ Recent decisions affecting current work:
 - [Phase 1 close, 2026-11-12]: rulesets applied (`apply-repo-rules.sh` exit 0), SHA pinning required, secret scanning + push protection on; a direct push to `main` is rejected (GH013). Review is horizontal: org team `devs` (8) has write, any teammate's approval counts; CODEOWNERS keeps the lead on CI, rules, tooling, root configs, lockfile. Team-owned CODEOWNERS lines dropped (UL-9 scope change).
 - [Phase 1.1]: 01.1-01: allowBuilds (bare name -> true/false, block mapping only) is the only build-approval key check-pins accepts; onlyBuiltDependencies stays rejected (pnpm 12 ignores it)
 - [Phase 1.1]: 01.1-02: compose images = newest tag >= 14 days old, digest-pinned; on 2026-11-12 that is pgvector 0.8.6-pg18, redis 8.10.2, seaweedfs 4.51 (all D-08 tags too young); ready signal is 'up -d' + 'wait s3-init'
+- [Phase 1.1]: 01.1-03: CodeRabbit never approves (request_changes_workflow false + auto_approvals.enabled false); .coderabbit.yaml is lead-owned in CODEOWNERS
 
 ### Pending Todos
 
@@ -108,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T21:01:55.727Z
-Stopped at: Completed 01.1-02-PLAN.md
+Last session: 2026-11-12T21:03:30.000Z
+Stopped at: Completed 01.1-03-PLAN.md (wave 1 done)
 Resume file: None
