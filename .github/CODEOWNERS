@@ -28,6 +28,7 @@
 /.prettierignore        @soadap
 /.dockerignore          @soadap
 /eslint.config.js       @soadap
+/.coderabbit.yaml       @soadap
 
 # An app's ESLint config can replace a preset's rules (nest() layering), so it gets the same
 # owner as packages/config.
