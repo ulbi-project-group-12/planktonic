@@ -15,7 +15,7 @@ provides:
   - ".github/rulesets/main.json and release.json: rulesets as code, ready to apply once the repo is public"
   - "scripts/apply-repo-rules.sh: idempotent apply; exit 0 all applied / 3 plan gap / other error; env REPO, SKIP_SHA_PINNING"
   - ".github/CODEOWNERS: @soadap on .planning/, .github/, scripts/ and root configs; team placeholders"
-  - ".github/pull_request_template.md: UL- line, "Done when…" checklist, test notes, review rules"
+  - ".github/pull_request_template.md: UL- line, 'Done when…' checklist, test notes, review rules"
 affects: [01-09, phase-1-verify]
 
 actuals:
@@ -56,7 +56,7 @@ metrics:
 
 # Phase 1 Plan 08: Repo rules as code Summary
 
-**The repository now merges by squash only, deletes branches on merge, and uses the PR title as the squash commit title. These settings are applied live and read back as `[true,false,false,true,"PR_TITLE"]`. The `main` and `release/*` rulesets (PR with 1 approval, code-owner review, resolved threads, five required checks, no force-push or deletion, single OrganizationAdmin bypass in pull_request mode) are committed as code. `scripts/apply-repo-rules.sh` stops at GitHub's verified 403 "Upgrade to GitHub Pro or make this repository public" with exit 3. CODEOWNERS and the PR template with the "Done when…" checklist are in place.**
+**The repository now merges by squash only, deletes branches on merge, and uses the PR title as the squash commit title. These settings are applied live and read back as `[true,false,false,true,"PR_TITLE"]`. The `main` and `release/*` rulesets (PR with 1 approval, code-owner review, resolved threads, five required checks, no force-push or deletion, single OrganizationAdmin bypass in pull_request mode) are committed as code. `scripts/apply-repo-rules.sh` stops at GitHub's verified 403 "Upgrade to GitHub Pro or make this repository public" with exit 3. CODEOWNERS and the PR template with the 'Done when…' checklist are in place.**
 
 ## Performance
 

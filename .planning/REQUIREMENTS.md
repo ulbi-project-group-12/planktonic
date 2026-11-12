@@ -152,7 +152,7 @@ Source: the 191 spec items with stable IDs from `tz_requirements` in `.planning/
 - [ ] **TZ-FE-15**: Storybook for UI components _(spec l.210)_
 - [x] **TZ-FE-16**: pnpm _(spec l.211)_
 - [ ] **TZ-FE-17**: Mandatory linting + a linter for FSD rule compliance. _(spec l.215)_
-- [ ] **TZ-FE-18**: Mandatory code review of every task. _(spec l.216)_
+- [x] **TZ-FE-18**: Mandatory code review of every task. _(spec l.216)_
 - [ ] **TZ-FE-19**: Minimum of ad hoc custom styles; use the UI kit that was built. _(spec l.217)_
 - [x] **TZ-FE-20**: A CI pipeline is mandatory. _(spec l.218)_
 - [ ] **TZ-FE-21**: Watch the performance of long conversations. A channel with thousands of messages must not freeze when opened and scrolled. _(spec l.219)_
@@ -179,7 +179,7 @@ Source: the 191 spec items with stable IDs from `tz_requirements` in `.planning/
 - [ ] **TZ-BE-14**: Docker — mandatory for local development and production. _(spec l.247)_
 - [x] **TZ-BE-15**: pnpm _(spec l.248)_
 - [x] **TZ-BE-16**: Mandatory linting. _(spec l.264)_
-- [ ] **TZ-BE-17**: Mandatory code review of every task. _(spec l.265)_
+- [x] **TZ-BE-17**: Mandatory code review of every task. _(spec l.265)_
 - [ ] **TZ-BE-18**: Adherence to a modular architecture + a layered project structure. _(spec l.266)_
 - [x] **TZ-BE-19**: A CI pipeline is mandatory. _(spec l.267)_
 - [ ] **TZ-BE-20**: Access rights are checked not only in HTTP requests but also in websocket events, search, file downloads and AI requests. _(spec l.268)_
@@ -196,7 +196,7 @@ Source: the 191 spec items with stable IDs from `tz_requirements` in `.planning/
 - [ ] **TZ-CICD-01**: Be sure to write tests, at least for the core functionality. We are here to learn. _(spec l.176)_
 - [x] **TZ-CICD-02**: On every pull request, always run linters, tests, the project build and typecheck via ts. _(spec l.281)_
 - [x] **TZ-CICD-03**: Releases by cutting a branch + pressing the release button in GitHub. _(spec l.283)_
-- [ ] **TZ-CICD-04**: Pushing directly to dev/trunk/master is forbidden, only through a PR with code review. _(spec l.285)_
+- [x] **TZ-CICD-04**: Pushing directly to dev/trunk/master is forbidden, only through a PR with code review. _(spec l.285)_
 - [x] **TZ-CICD-05**: Working with git using the trunk-based approach. _(spec l.287)_
 - [ ] **TZ-CICD-06**: Containerization is mandatory when deploying. _(spec l.289)_
 - [ ] **TZ-CICD-07**: Cross code review is mandatory. Everyone looks at each other's code, not only the team lead. We learn from other people's code as from our own. _(spec l.348)_
@@ -392,7 +392,7 @@ Each requirement has exactly one primary phase: Phase 1 owns the 21 items the le
 | TZ-FE-15 | Phase 1.1 | — | Pending |
 | TZ-FE-16 | Phase 1 | — | Complete |
 | TZ-FE-17 | Phase 1.1 | 1 | Pending |
-| TZ-FE-18 | Phase 1 | — | Partial — built as code, enforcement blocked until the repo is public (rulesets 403 on Free) |
+| TZ-FE-18 | Phase 1 | — | Complete |
 | TZ-FE-19 | Phase 1.1 | — | Pending |
 | TZ-FE-20 | Phase 1 | — | Complete |
 | TZ-FE-21 | Phase 5 | 14 | Pending |
@@ -416,7 +416,7 @@ Each requirement has exactly one primary phase: Phase 1 owns the 21 items the le
 | TZ-BE-14 | Phase 1.1 | 4 | Pending |
 | TZ-BE-15 | Phase 1 | — | Complete |
 | TZ-BE-16 | Phase 1 | — | Complete |
-| TZ-BE-17 | Phase 1 | — | Partial — built as code, enforcement blocked until the repo is public (rulesets 403 on Free) |
+| TZ-BE-17 | Phase 1 | — | Complete |
 | TZ-BE-18 | Phase 1.1 | — | Pending |
 | TZ-BE-19 | Phase 1 | — | Complete |
 | TZ-BE-20 | Phase 3 | 5, 7, 12, 13, 14 | Pending |
@@ -443,7 +443,7 @@ Each requirement has exactly one primary phase: Phase 1 owns the 21 items the le
 | TZ-CICD-01 | Phase 1.1 | 1 | Pending |
 | TZ-CICD-02 | Phase 1 | — | Complete |
 | TZ-CICD-03 | Phase 1 | 4 | Complete |
-| TZ-CICD-04 | Phase 1 | — | Partial — built as code, enforcement blocked until the repo is public (rulesets 403 on Free) |
+| TZ-CICD-04 | Phase 1 | — | Complete |
 | TZ-CICD-05 | Phase 1 | — | Complete |
 | TZ-CICD-06 | Phase 4 | 1 | Pending |
 | TZ-CICD-07 | Phase 1.1 | 1 | Pending |

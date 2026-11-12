@@ -1,10 +1,9 @@
 # Flags every push to main that did not come from a merged pull request.
 #
-# Repository rules (.github/rulesets/main.json) cannot be applied while the repository is private
-# on the free plan, so main is not protected by GitHub. This workflow and the husky pre-push hook
-# stand in for the rules: a direct or forced push to main turns this job red and opens an issue
-# assigned to the lead. It detects; it does not block. Once the rules are applied
-# (scripts/apply-repo-rules.sh), this workflow can stay as a second line of defence.
+# The `main` ruleset (.github/rulesets/main.json, applied by scripts/apply-repo-rules.sh) blocks
+# direct pushes. This workflow stays as a second line of defence: a push to main that did not come
+# from a merged PR, or a forced push, turns this job red and opens an issue assigned to the lead.
+# It detects; it does not block.
 name: main-push-guard
 
 on:

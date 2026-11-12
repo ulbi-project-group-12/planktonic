@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Applies the repository rules kept as code (D-19, D-20, D-30, D-31):
-#   1. merge settings from .github/repo-settings.json (squash only, auto-delete branches,
-#      squash commit title = PR title, squash commit message = PR body);
+#   1. settings from .github/repo-settings.json: merge (squash only, auto-delete branches,
+#      squash commit title = PR title, squash commit message = PR body) and secret scanning
+#      with push protection (free on public repositories);
 #   2. Actions permissions with sha_pinning_required=true, so GitHub rejects any action
 #      that is not pinned to a full commit SHA (backs D-13). The current allowed_actions
 #      policy is kept. May be refused on Free: warns;
@@ -15,10 +16,10 @@
 # (verified 2026-11-08). Settings are still applied; the script then reports the gap and
 # exits 3. Re-run it after the repository is made public (D-30) to enforce the rulesets.
 #
-# Bypass: the only bypass actor is OrganizationAdmin in pull_request mode (D-31). The
-# other org members have read access only, and read-only approvals do not count toward
-# required reviews (RESEARCH Pitfall 10), so the lead may merge his own PR without an
-# approval, but still only through a PR. Nobody can push directly to main.
+# Bypass: the only bypass actor is OrganizationAdmin in pull_request mode (D-31), so the
+# lead may merge his own PR without an approval, but still only through a PR. The other
+# developers get write access through the org team `devs` (read-only approvals would not
+# count toward required reviews, RESEARCH Pitfall 10). Nobody can push directly to main.
 # Two rulesets are the exception, because what they guard never goes through a PR, so
 # their OrganizationAdmin bypass is `always`:
 #   - tags.json: v* tags cannot be moved or deleted (the lead can delete a test tag);
@@ -78,9 +79,9 @@ fi
 echo "Repository: $REPO"
 
 # Step 1: merge settings.
-echo "Step 1: applying merge settings from $SETTINGS"
+echo "Step 1: applying repository settings from $SETTINGS"
 gh api -X PATCH "repos/$REPO" --input "$SETTINGS" \
-  --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge, delete_branch_on_merge, squash_merge_commit_title}'
+  --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge, delete_branch_on_merge, squash_merge_commit_title, secret_scanning: .security_and_analysis.secret_scanning.status, push_protection: .security_and_analysis.secret_scanning_push_protection.status}'
 
 # Step 2: Actions SHA pinning. A refusal is a warning, not a failure. The current
 # allowed_actions policy is read and sent back unchanged, so a stricter `selected` or

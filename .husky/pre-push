@@ -1,5 +1,5 @@
-# Refuse pushes to main from this machine (repository rules are not available on the free plan
-# for a private repository, so this hook and the main-push-guard workflow stand in for them).
+# Refuse pushes to main from this machine before GitHub does (the `main` ruleset rejects them
+# anyway), so a mistaken push fails fast with a hint.
 # Lead-only escape hatch for emergencies: ALLOW_PUSH_TO_MAIN=1 git push ...
 # The main-push-guard workflow still flags any direct push.
 if [ "${ALLOW_PUSH_TO_MAIN:-0}" = "1" ]; then

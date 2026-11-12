@@ -162,46 +162,41 @@ older line would move it backwards, so deploys always name an explicit version (
   and a pull request cannot delete a branch.
 - **Test releases:** a pipeline test such as `v0.0.1-rc.1` from `release/0.0` is deleted together
   with its tag once the images are verified (`gh release delete v0.0.1-rc.1 --cleanup-tag --yes`;
-  after the rulesets are applied, only an org admin can delete a `v*` tag). The test branch
-  `release/0.0` may be deleted (`git push origin --delete release/0.0`) **only while the rulesets
-  are not applied yet**. After that, leave it in place. The rc images stay in GHCR: they are private
+  after the rulesets are applied, only an org admin can delete a `v*` tag). Once a `release/x.y`
+  branch exists, leave it in place: the `release` ruleset forbids deleting it. The rc images stay in GHCR: they are private
   and free, and deleting them needs a token with `delete:packages`.
 
-## Repository rules and the GitHub Free gap
+## Repository rules
 
 The rules live as code in `.github/repo-settings.json` and `.github/rulesets/`, applied by
-`scripts/apply-repo-rules.sh`.
+`scripts/apply-repo-rules.sh`. The repository is public, so GitHub enforces all of them (applied
+2026-11-12; the script exits 0):
 
-**Applied now:** merge settings. Squash is the only merge method, the PR title becomes the squash
-commit title, and branches are deleted on merge.
+- **Merge settings:** squash is the only merge method, the PR title becomes the squash commit
+  title, and branches are deleted on merge.
+- **SHA-pinned actions:** required at the repository level, so GitHub rejects any action that is
+  not pinned to a full commit SHA.
+- **`main`:** changes land only through a pull request with green required checks and one
+  approval, plus code-owner review on the paths in [CODEOWNERS](.github/CODEOWNERS). No force
+  pushes, no deletion, linear history. A direct push is rejected (`GH013`), for the lead too.
+- **Secret scanning and push protection:** on, so GitHub flags committed secrets and rejects a
+  push that contains a known token format.
+- **`release/*` and `v*` tags:** only an org admin creates a `release/*` branch; tags cannot be
+  moved or deleted except by an org admin.
 
-**Not applied yet (lead action):** requiring SHA-pinned actions at the repository level. The
-workflows already pin every action by SHA, but GitHub does not enforce it. To apply it, the lead
-runs `scripts/apply-repo-rules.sh` without `SKIP_SHA_PINNING`.
+**Who approves.** The team is horizontal: every developer has write access through the org team
+`devs`, so any teammate's approval counts. CODEOWNERS names the lead only on CI, repository rules,
+tooling, root configs and the lockfile. The only bypass is an org admin, and only through a pull
+request, except for `v*` tags and creating a `release/*` branch, which never go through a PR.
 
-**Blocked while the repository is private on GitHub Free.** The rulesets API answers HTTP 403:
-`Upgrade to GitHub Pro or make this repository public to enable this feature.` So, today:
+The pre-push hook and the `main-push-guard` workflow stay as a second line of defence (see
+[CONTRIBUTING.md](CONTRIBUTING.md#protecting-main)).
 
-- `main` is **not** protected: no ruleset and no branch protection, so GitHub does not block a
-  direct push.
-- Required reviews, CODEOWNERS review and required checks are **not enforced**. CODEOWNERS only
-  suggests reviewers. A PR could even weaken `scripts/check-product-name.mjs` and still pass
-  `name-guard`, so until rulesets apply, reviewers must check every change to `scripts/` and
-  `.github/` by hand.
-- Environments (needed for the Phase 4 deploy) are available only on public repositories on Free.
-- Secret scanning and push protection are unavailable.
-- Actions minutes are limited to the $12/month allowance, and every CI run bills the 5 required
-  jobs (plus `pr-hygiene` on PRs).
-
-**How to close the gap:** making the repository public (the lead's call) unlocks all of the above.
-Then run `scripts/apply-repo-rules.sh`, which must exit 0, and confirm that a direct push to `main`
-is rejected. Once applied, the only bypass is an org admin, and only through a pull request. The
-exceptions are `v*` tags and creating a `release/*` branch, which never go through a PR, so there
-the admin bypass always applies.
-Teammates need write access to the repository before their approvals count.
+The GitHub Free limit that still applies: Actions minutes come from the free allowance, and every
+CI run bills the 5 required jobs (plus `pr-hygiene` on PRs).
 
 ## Planning
 
 `.planning/` holds the GSD planning files (requirements, roadmap, phase plans). Only the lead
-changes it on `main`; CODEOWNERS names the lead as its owner, enforced once rulesets apply. GSD is
+changes it on `main`; CODEOWNERS names the lead as its owner, and the `main` ruleset enforces it. GSD is
 optional for everyone; see [CONTRIBUTING.md](CONTRIBUTING.md#gsd).
