@@ -212,6 +212,55 @@ describe('check-pins', () => {
     assert.match(stderr, /:13: `onlyBuiltDependencies:` is not on the allowlist/);
   });
 
+  // D-06 (phase 1.1): pnpm 12 runs install scripts only for packages listed `true` here.
+  it('accepts an allowBuilds block of bare names mapped to true or false', () => {
+    const dir = makeWorkspace({
+      'pnpm-workspace.yaml': `${WORKSPACE}allowBuilds:\n  esbuild: true\n  '@prisma/engines': false\n`,
+    });
+    const { status, stdout, stderr } = runGuard(dir);
+    assert.equal(status, 0, stderr);
+    assert.match(stdout, /^check-pins: 3 catalog entries OK$/m);
+    assert.match(stdout, /^check-pins: 2 manifests OK$/m);
+  });
+
+  it('rejects an allowBuilds value that is not true or false', () => {
+    const dir = makeWorkspace({
+      'pnpm-workspace.yaml': `${WORKSPACE}allowBuilds:\n  esbuild: maybe\n`,
+    });
+    const { status, stderr } = runGuard(dir);
+    assert.equal(status, 1);
+    assert.match(stderr, /allowBuilds esbuild = "maybe" \(only true or false is allowed\)/);
+  });
+
+  it('fails closed on a flow-style allowBuilds map', () => {
+    const dir = makeWorkspace({
+      'pnpm-workspace.yaml': `${WORKSPACE}allowBuilds: { esbuild: true }\n`,
+    });
+    const { status, stderr } = runGuard(dir);
+    assert.equal(status, 1);
+    assert.match(stderr, /`allowBuilds:` must be a block mapping/);
+  });
+
+  for (const matcher of ["'nx@21.6.4'", "'*'", "'foo@git+https://example.com/foo.git'"]) {
+    it(`rejects the allowBuilds matcher ${matcher}`, () => {
+      const dir = makeWorkspace({
+        'pnpm-workspace.yaml': `${WORKSPACE}allowBuilds:\n  ${matcher}: true\n`,
+      });
+      const { status, stderr } = runGuard(dir);
+      assert.equal(status, 1);
+      assert.match(stderr, /allowBuilds .+ is not a bare package name/);
+    });
+  }
+
+  it('rejects a duplicate allowBuilds entry', () => {
+    const dir = makeWorkspace({
+      'pnpm-workspace.yaml': `${WORKSPACE}allowBuilds:\n  esbuild: true\n  esbuild: false\n`,
+    });
+    const { status, stderr } = runGuard(dir);
+    assert.equal(status, 1);
+    assert.match(stderr, /duplicate allowBuilds entry esbuild/);
+  });
+
   for (const [label, value] of [
     ['0', 'minimumReleaseAge: 0'],
     ['one minute under 14 days', 'minimumReleaseAge: 20159'],
