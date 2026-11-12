@@ -65,14 +65,23 @@ Turbo cache (`FULL TURBO`). The install also enables the husky pre-commit hook.
 - `minimumReleaseAge` is 14 days (20160 minutes, never less): pnpm refuses any release younger
   than that, transitive ones included. `minimumReleaseAgeExclude` is not allowed. For an urgent
   security fix that cannot wait, the lead changes `scripts/check-pins.mjs` and the workspace file
-  together in a reviewed PR, and reverts both once the release ages out.
+  together in a reviewed PR, and reverts both once the release ages out. A pin that is too young
+  fails the install with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`; the fix is the newest version
+  older than 14 days, never an exclusion.
 - Overrides (`overrides:`, `pnpm.overrides`, `resolutions`) may only pin exact versions, for
   example to bump a vulnerable transitive dependency. `packageExtensions`, `patchedDependencies`,
   named `catalogs`, pnpmfile hooks, `configDependencies`, `include` and
   `dangerouslyAllowAllBuilds` are not allowed.
 - `pnpm-workspace.yaml` may hold only the top-level keys it has today (`packages`, `catalog`,
   `minimumReleaseAge`, `engineStrict`, `savePrefix`, `catalogMode`, `updateNotifier`) plus
-  `overrides`. Any other key fails until the guard's allowlist is extended in a reviewed PR.
+  `overrides` and `allowBuilds`. Any other key fails until the guard's allowlist is extended in a
+  reviewed PR.
+- Build scripts: pnpm 12 runs a dependency's install scripts only when `allowBuilds:` in
+  `pnpm-workspace.yaml` lists it `true`. A dependency with an install script that is not listed
+  fails `pnpm install` with `ERR_PNPM_IGNORED_BUILDS`. List it `true` only when a feature needs
+  the script (for example the Prisma engines download), otherwise `false`, and say why in the PR.
+  Entries are bare package names mapped to `true` or `false` (no versions, ranges or wildcards).
+  `onlyBuiltDependencies` is ignored since pnpm 11 and fails the guard.
 - `pnpm check:pins` enforces the rules above for the root and every package matched by the
   `packages:` globs. `pnpm-lock.yaml` is committed, and CI installs with
   `--frozen-lockfile --ignore-pnpmfile`, so no pnpmfile hook runs there even if one slips in.
