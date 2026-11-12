@@ -179,6 +179,8 @@ The rules live as code in `.github/repo-settings.json` and `.github/rulesets/`, 
 - **`main`:** changes land only through a pull request with green required checks and one
   approval, plus code-owner review on the paths in [CODEOWNERS](.github/CODEOWNERS). No force
   pushes, no deletion, linear history. A direct push is rejected (`GH013`), for the lead too.
+- **Secret scanning and push protection:** on, so GitHub flags committed secrets and rejects a
+  push that contains a known token format.
 - **`release/*` and `v*` tags:** only an org admin creates a `release/*` branch; tags cannot be
   moved or deleted except by an org admin.
 
@@ -190,7 +192,7 @@ request, except for `v*` tags and creating a `release/*` branch, which never go 
 The pre-push hook and the `main-push-guard` workflow stay as a second line of defence (see
 [CONTRIBUTING.md](CONTRIBUTING.md#protecting-main)).
 
-The GitHub Free limits that still apply: Actions minutes come from the free allowance, and every
+The GitHub Free limit that still applies: Actions minutes come from the free allowance, and every
 CI run bills the 5 required jobs (plus `pr-hygiene` on PRs).
 
 ## Planning

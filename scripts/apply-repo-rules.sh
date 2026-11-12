@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Applies the repository rules kept as code (D-19, D-20, D-30, D-31):
-#   1. merge settings from .github/repo-settings.json (squash only, auto-delete branches,
-#      squash commit title = PR title, squash commit message = PR body);
+#   1. settings from .github/repo-settings.json: merge (squash only, auto-delete branches,
+#      squash commit title = PR title, squash commit message = PR body) and secret scanning
+#      with push protection (free on public repositories);
 #   2. Actions permissions with sha_pinning_required=true, so GitHub rejects any action
 #      that is not pinned to a full commit SHA (backs D-13). The current allowed_actions
 #      policy is kept. May be refused on Free: warns;
@@ -78,9 +79,9 @@ fi
 echo "Repository: $REPO"
 
 # Step 1: merge settings.
-echo "Step 1: applying merge settings from $SETTINGS"
+echo "Step 1: applying repository settings from $SETTINGS"
 gh api -X PATCH "repos/$REPO" --input "$SETTINGS" \
-  --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge, delete_branch_on_merge, squash_merge_commit_title}'
+  --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge, delete_branch_on_merge, squash_merge_commit_title, secret_scanning: .security_and_analysis.secret_scanning.status, push_protection: .security_and_analysis.secret_scanning_push_protection.status}'
 
 # Step 2: Actions SHA pinning. A refusal is a warning, not a failure. The current
 # allowed_actions policy is read and sent back unchanged, so a stricter `selected` or
