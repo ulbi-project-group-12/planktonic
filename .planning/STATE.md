@@ -4,16 +4,16 @@ milestone: v0.1.0
 current_phase: "1.1"
 current_phase_name: App skeletons (team)
 status: executing
-stopped_at: Completed 01.1-05-PLAN.md
-last_updated: "2026-11-12T21:19:37.413Z"
+stopped_at: Completed 01.1-06-PLAN.md
+last_updated: "2026-11-12T21:26:51.296Z"
 last_activity: 2026-11-12
-last_activity_desc: Completed 01.1-05 (Prisma 7 + readiness, UL-7); waves 2-3 done
-state_head: 1eb91461d92efe7415dfc2c6ac2486f5564553ca
+last_activity_desc: Completed 01.1-06 (Next.js 16 FSD skeleton + web image, UL-6)
+state_head: 910e81697539f97bfbb02d74254fd4aa3ec031c0
 progress:
   total_phases: 16
   completed_phases: 1
   total_plans: 20
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 ## Current Position
 
 Phase: 1.1 — App skeletons (team)
-Plan: 6 of 11
+Plan: 7 of 11
 Status: Ready to execute
-Last activity: 2026-11-12 - Completed 01.1-05 (Prisma 7 + readiness, UL-7); waves 2-3 done
+Last activity: 2026-11-12 - Completed 01.1-06 (Next.js 16 FSD skeleton + web image, UL-6)
 
 Progress: [█░░░░░░░░░] 6%
 
@@ -61,6 +61,7 @@ Progress: [█░░░░░░░░░] 6%
 | Phase 1.1 P03 | 3min | 2 tasks | 3 files |
 | Phase 1.1 P04 | 6min | 3 tasks | 20 files |
 | Phase 1.1 P05 | 5min | 3 tasks | 22 files |
+| Phase 1.1 P06 | 6min | 3 tasks | 24 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase 1.1]: 01.1-05: init migration = CREATE EXTENSION IF NOT EXISTS vector only (no product tables until Phase 3+); prisma 7.10.1 + adapter-pg + pg 8.23.1, allowBuilds prisma and @prisma/engines true
 - [Phase 1.1]: 01.1-05: SC2 met under the dev reading (host-run api against compose Postgres: /api/health and /api/health/ready 200); compose.yaml has no api/web service
 - [Phase 1.1]: Phase 1.1 verify note: Turbo forces ANSI colour into task output, so verify greps of Vitest 'Tests N passed' need NO_COLOR=1 exported (01.1-07 too)
+- [Phase 1.1]: 01.1-06: next pinned 16.4.3 and tailwindcss/@tailwindcss/postcss 4.3.3 (D-05 fallbacks; 16.4.5 2026-11-03, 4.3.5 2026-11-06); no build approvals needed (sharp/oxide prebuilt)
+- [Phase 1.1]: 01.1-06: apps/web turbo.json keeps strict JSON; ordering rationale in Turbo task description (typegen -> lint/typecheck -> build)
+- [Phase 1.1]: 01.1-06: web image = Next standalone at /app, CMD node apps/web/server.js, uid 1000, only .next/cache writable; same D-29 node base as the api
 
 ### Pending Todos
 
@@ -103,7 +107,8 @@ None yet.
 - bump pgvector/pgvector to 0.8.7-pg18 (D-08) on/after 2026-11-14 (compose.yaml; re-check digest age)
 - bump chrislusf/seaweedfs to 4.52 (D-08) on/after 2026-11-16 (compose.yaml seaweedfs + s3-init; re-check digest age)
 - bump redis to 8.10.3 (D-08) on/after 2026-11-21 (compose.yaml; re-check digest age)
-- re-check the node base digest age on/after 2026-11-19 (node:26.13.0-alpine3.24@sha256:8996..., apps/api/Dockerfile both stages; D-29 exception until then)
+- re-check the node base digest age on/after 2026-11-19 (node:26.13.0-alpine3.24@sha256:8996..., apps/api/Dockerfile and apps/web/Dockerfile, both stages; D-29 exception until then)
+- bump next (and @next/eslint-plugin-next) to >= 16.4.5 from 2026-11-17, before any deploy (01.1-06 pinned 16.4.3 under D-05; 16.4.5 is the security floor, T-01.1-22); optional tailwindcss/@tailwindcss/postcss 4.3.5 from 2026-11-20
 - optional bump: @nestjs/common/core/platform-express/testing 12.4.x, @nestjs/config 12.1.x, @nestjs/cli 12.0.12 eligible on/after 2026-11-20 (catalog; re-run pnpm install, all four core packages together)
 
 ### Quick Tasks Completed
@@ -121,6 +126,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T21:19:37.333Z
-Stopped at: Completed 01.1-05-PLAN.md
+Last session: 2026-11-12T21:26:51.210Z
+Stopped at: Completed 01.1-06-PLAN.md
 Resume file: None

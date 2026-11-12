@@ -88,7 +88,7 @@ Research tickets:
   3. `docker compose up` starts Postgres 18 + pgvector, Redis 8 and SeaweedFS with healthchecks, and an init script creates the bucket
   4. README «how to run» was followed by two members on different OSes in ≤ 30 min; CodeRabbit left a comment on a test PR; Storybook shows 3 UI-kit components and its build is green in CI
   5. Kickoff agreements (roles, call times, DoR/DoD, review and Friday-report rules) are recorded in Docs or `docs/adr/0000`
-**Plans**: 5/11 plans executed (lead decision D-01: all tickets done in full by agents; UL-3 kickoff stays organisational, D-02)
+**Plans**: 6/11 plans executed (lead decision D-01: all tickets done in full by agents; UL-3 kickoff stays organisational, D-02)
 
 Plans:
 **Wave 1**
@@ -103,7 +103,7 @@ Plans:
 - [x] 01.1-05-PLAN.md — UL-7 Prisma 7 + adapter-pg, `init` migration, `/api/health/ready`, e2e without DB
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 01.1-06-PLAN.md — UL-6 Next.js 16 FSD skeleton, Tailwind 4, next() lint, standalone image
+- [x] 01.1-06-PLAN.md — UL-6 Next.js 16 FSD skeleton, Tailwind 4, next() lint, standalone image
 
 **Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 01.1-07-PLAN.md — UL-6 shadcn UI kit (Button, Input, Dialog) + Vitest/RTL
@@ -440,7 +440,7 @@ Phases execute in numeric order: 1 → 1.1 → 2 → 3 → … → 15 (2 can run
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Repo foundation and CI/CD (lead) | 9/9 | Complete    | 2026-11-08 |
-| 1.1. App skeletons (team) | 5/11 | In Progress | - |
+| 1.1. App skeletons (team) | 6/11 | In Progress | - |
 | 2. Realtime prototype | 0/TBD | Not started | - |
 | 3. Access and workspaces | 0/TBD | Not started | - |
 | 4. Prod and observability | 0/TBD | Not started | - |
