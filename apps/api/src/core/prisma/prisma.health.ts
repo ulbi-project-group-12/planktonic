@@ -70,8 +70,11 @@ export class PrismaHealthIndicator {
   private readonly logger = new Logger(PrismaHealthIndicator.name);
 
   /**
-   * The probe currently running, shared by concurrent checks. However often /api/health/ready is
-   * hit, and even when a probe outlives its timeout, at most one probe holds a pooled connection.
+   * The probe currently running, shared by concurrent checks, so however often /api/health/ready
+   * is hit only one probe runs at a time. A probe that outlives READINESS_TIMEOUT_MS (a network
+   * hang the server-side statement_timeout cannot reach) is abandoned, so the next check starts a
+   * fresh probe and readiness recovers with the network. The abandoned probe's socket is reaped by
+   * TCP keepalive (prisma.service.ts).
    */
   private inFlight: Promise<unknown> | undefined;
 
@@ -83,7 +86,13 @@ export class PrismaHealthIndicator {
   async isHealthy<const Key extends string>(key: Key) {
     const session = this.indicator.check(key);
     try {
-      await withTimeout(this.probe(), READINESS_TIMEOUT_MS);
+      const probe = this.probe();
+      try {
+        await withTimeout(probe, READINESS_TIMEOUT_MS);
+      } catch (error) {
+        if (this.inFlight === probe) this.inFlight = undefined;
+        throw error;
+      }
       return session.up();
     } catch (error) {
       // The cause goes to the server log as a value-free classification; the HTTP body keeps a
@@ -95,7 +104,8 @@ export class PrismaHealthIndicator {
 
   /** `SELECT 1` in a transaction with its own statement_timeout; concurrent checks share it. */
   private probe(): Promise<unknown> {
-    this.inFlight ??= this.prisma
+    if (this.inFlight) return this.inFlight;
+    const probe: Promise<unknown> = this.prisma
       .$transaction([
         // set_config(..., true) is SET LOCAL with a bind parameter (SET itself takes none).
         this.prisma
@@ -103,8 +113,10 @@ export class PrismaHealthIndicator {
         this.prisma.$queryRaw`SELECT 1`,
       ])
       .finally(() => {
-        this.inFlight = undefined;
+        // An abandoned probe settling late must not clear a newer one.
+        if (this.inFlight === probe) this.inFlight = undefined;
       });
-    return this.inFlight;
+    this.inFlight = probe;
+    return probe;
   }
 }

@@ -131,4 +131,24 @@ describe('PrismaHealthIndicator', () => {
     });
     expect(warn).toHaveBeenCalledExactlyOnceWith('database readiness failed: ReadinessTimeout');
   });
+
+  it('abandons a probe that hangs past the timeout, so readiness recovers with the network', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    let hang = true;
+    const { prisma, $transaction } = fakePrisma(() =>
+      hang ? new Promise<never>(() => undefined) : Promise.resolve([{ '?column?': 1 }]),
+    );
+    const indicator = new PrismaHealthIndicator(prisma, new HealthIndicatorService());
+    const stuck = indicator.isHealthy('database');
+    await vi.advanceTimersByTimeAsync(READINESS_TIMEOUT_MS);
+    await expect(stuck).resolves.toEqual({
+      database: { status: 'down', message: 'database unreachable' },
+    });
+    hang = false;
+    await expect(indicator.isHealthy('database')).resolves.toEqual({
+      database: { status: 'up' },
+    });
+    expect($transaction).toHaveBeenCalledTimes(2);
+  });
 });
