@@ -338,8 +338,9 @@ request, except for `v*` tags and creating a `release/*` branch, which never go 
 The pre-push hook and the `main-push-guard` workflow stay as a second line of defence (see
 [CONTRIBUTING.md](CONTRIBUTING.md#protecting-main)).
 
-The GitHub Free limit that still applies: Actions minutes come from the free allowance, and every
-CI run bills the 7 required jobs (plus `pr-hygiene` on PRs).
+Actions: because the repository is public, the 7 required jobs (plus `pr-hygiene` on PRs) run on
+standard GitHub-hosted runners at no cost and do not use the GitHub Free minutes allowance. If the
+repository goes private again, every CI run bills those jobs against that allowance.
 
 ## Planning
 
