@@ -19,7 +19,8 @@ COPY packages/ ./packages/
 # Every app, so the frozen lockfile finds all of its importers; only the web app is built.
 COPY apps/ ./apps/
 RUN pnpm install --frozen-lockfile --ignore-pnpmfile --filter "@app/web..."
-# Plain next build: lint and typecheck run in CI through Turbo, not in the image.
+# Plain next build. It type-checks on its own (Next runs tsc unless ignoreBuildErrors is set), so
+# a type error fails the image too; ESLint runs only in CI through Turbo, not in the image.
 RUN pnpm --filter @app/web build
 
 # --- runtime: the standalone server, its static assets and public files, non-root ---
