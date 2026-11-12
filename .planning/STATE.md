@@ -4,16 +4,16 @@ milestone: v0.1.0
 current_phase: "1.1"
 current_phase_name: App skeletons (team)
 status: executing
-stopped_at: Completed 01.1-04-PLAN.md
-last_updated: "2026-11-12T21:12:47.949Z"
+stopped_at: Completed 01.1-05-PLAN.md
+last_updated: "2026-11-12T21:19:37.413Z"
 last_activity: 2026-11-12
-last_activity_desc: Completed 01.1-03 (CodeRabbit config, UL-10); wave 1 done
-state_head: 724e3422ce54dbe3ad00b3af32b357a1f5406d76
+last_activity_desc: Completed 01.1-05 (Prisma 7 + readiness, UL-7); waves 2-3 done
+state_head: 1eb91461d92efe7415dfc2c6ac2486f5564553ca
 progress:
   total_phases: 16
   completed_phases: 1
   total_plans: 20
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 ## Current Position
 
 Phase: 1.1 — App skeletons (team)
-Plan: 5 of 11
+Plan: 6 of 11
 Status: Ready to execute
-Last activity: 2026-11-12 - Completed 01.1-03 (CodeRabbit config, UL-10); wave 1 done
+Last activity: 2026-11-12 - Completed 01.1-05 (Prisma 7 + readiness, UL-7); waves 2-3 done
 
 Progress: [█░░░░░░░░░] 6%
 
@@ -60,6 +60,7 @@ Progress: [█░░░░░░░░░] 6%
 | Phase 1.1 P02 | 13min | 2 tasks | 3 files |
 | Phase 1.1 P03 | 3min | 2 tasks | 3 files |
 | Phase 1.1 P04 | 6min | 3 tasks | 20 files |
+| Phase 1.1 P05 | 5min | 3 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,10 @@ Recent decisions affecting current work:
 - [Phase 1.1]: 01.1-04: NestJS pins fall back under D-05 to @nestjs/* 12.3.2, config 12.0.1, cli 12.0.11 (12.4.0/12.1.1/12.0.12 published 2026-11-06); terminus 12.1.0, unplugin-swc 2.0.0, @swc/core 1.16.20 (allowBuilds true)
 - [Phase 1.1]: 01.1-04: api env schema treats empty values as unset; env files skipped under NODE_ENV test/production; abortOnError false so startup failures exit 1 via bootstrap().catch
 - [Phase 1.1]: 01.1-04: api image base node:26.13.0-alpine3.24@sha256:8996... (built 2026-11-05) kept under D-29 until 2026-11-19
+- [Phase 1.1]: 01.1-05: readiness is GET /api/health/ready (Prisma SELECT 1, 503 'database unreachable'); GET /api/health stays liveness and is the Phase 4 smoke check
+- [Phase 1.1]: 01.1-05: init migration = CREATE EXTENSION IF NOT EXISTS vector only (no product tables until Phase 3+); prisma 7.10.1 + adapter-pg + pg 8.23.1, allowBuilds prisma and @prisma/engines true
+- [Phase 1.1]: 01.1-05: SC2 met under the dev reading (host-run api against compose Postgres: /api/health and /api/health/ready 200); compose.yaml has no api/web service
+- [Phase 1.1]: Phase 1.1 verify note: Turbo forces ANSI colour into task output, so verify greps of Vitest 'Tests N passed' need NO_COLOR=1 exported (01.1-07 too)
 
 ### Pending Todos
 
@@ -116,6 +121,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T21:12:41.350Z
-Stopped at: Completed 01.1-04-PLAN.md
+Last session: 2026-11-12T21:19:37.333Z
+Stopped at: Completed 01.1-05-PLAN.md
 Resume file: None
