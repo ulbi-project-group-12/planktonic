@@ -1,0 +1,168 @@
+# Release images (D-15, D-16, D-34). Runs only when a human publishes a GitHub Release
+# (stable or pre-release). Drafts never fire it, and a release created with GITHUB_TOKEN
+# would not fire it either, so there is no automatic path from a merge to a release.
+#
+# Image names derive from the repository context, never a literal:
+#   ghcr.io/<owner>/<vars.PRODUCT_SLUG or repo name>-{web,api}
+# Tags: <release tag>, <bare version> and sha-<short>. Never `latest`: metadata-action would
+# add it to every stable release without comparing versions, so a hotfix on an older line
+# (v0.1.1 after v0.2.0) would move it backwards. Deploys use an explicit tag (Phase 4).
+# The first push must come from this workflow so GHCR links the packages to the repo.
+#
+# The `verify` job gates the push: the tag must be vX.Y.Z or vX.Y.Z-<pre-release> (SemVer,
+# no leading zeros), and the tagged commit must be reachable from main or from exactly
+# release/X.Y, the line the tag names (v0.2.1 needs main or release/0.2). Only an org admin
+# can create a release/* branch once the rulesets apply (.github/rulesets/release-create.json).
+# The images job then builds exactly the verified commit (github.sha).
+name: release
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+# One group per tag: a re-run of the same tag waits for the previous one. A single global
+# group is deliberately not used: GitHub cancels a *pending* run when a newer one joins the
+# group, so a third release published quickly would silently cancel the second. With no
+# `latest`, runs for different tags write disjoint tags and cannot race each other.
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      # Full history and all branches, read-only token, not persisted.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: verify release source
+        shell: bash
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          # SemVer 2.0.0: numeric pre-release identifiers carry no leading zeros (rc.01 fails).
+          pre='(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
+          semver="^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-${pre}(\\.${pre})*)?$"
+          if ! [[ "$TAG" =~ $semver ]]; then
+            echo "::error::The release tag must be vX.Y.Z or vX.Y.Z-<pre-release>, e.g. v0.2.0 or v0.2.0-rc.1"
+            exit 1
+          fi
+          line="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+          # Belt and braces: actions/checkout already fails when the tag moved or was deleted.
+          tag_sha=$(git rev-parse --verify --quiet "refs/tags/${TAG}^{commit}" || true)
+          if [[ "$tag_sha" != "$GITHUB_SHA" ]]; then
+            echo "::error::The tag no longer points at the commit this run was started for"
+            exit 1
+          fi
+          branches=$(git for-each-ref --contains "$GITHUB_SHA" --format='%(refname:lstrip=3)' refs/remotes/origin \
+            | grep -Fx -e main -e "release/${line}" || true)
+          if [[ -z "$branches" ]]; then
+            echo "::error::The tagged commit is not on main or release/${line}. Cut release/${line} from main and tag that."
+            exit 1
+          fi
+          echo "Tagged commit $GITHUB_SHA is on:"
+          printf '%s\n' "$branches" | sed 's/^/  /'
+
+  images:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # The only place in any workflow that can write packages.
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        app: [web, api]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      # D-34: no product name in this file. Repo variables PRODUCT_SLUG / PRODUCT_NAME are an
+      # optional override (admin-only); by default both fall back to the repository name.
+      - id: names
+        shell: bash
+        env:
+          OWNER: ${{ github.repository_owner }}
+          SLUG: ${{ vars.PRODUCT_SLUG || github.event.repository.name }}
+          PRODUCT: ${{ vars.PRODUCT_NAME || github.event.repository.name }}
+          APP: ${{ matrix.app }}
+        run: |
+          owner=$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')
+          slug=$(printf '%s' "$SLUG" | tr '[:upper:]' '[:lower:]')
+          if ! [[ "$slug" =~ ^[a-z0-9-]+$ ]]; then
+            echo "::error::Image slug must be lowercase letters, digits and hyphens (check vars.PRODUCT_SLUG)"
+            exit 1
+          fi
+          if ! [[ "$owner" =~ ^[a-z0-9-]+$ ]]; then
+            echo "::error::Repository owner is not a valid image namespace"
+            exit 1
+          fi
+          if [[ "$PRODUCT" == *$'\n'* || "$PRODUCT" == *$'\r'* ]]; then
+            echo "::error::vars.PRODUCT_NAME must be a single line"
+            exit 1
+          fi
+          {
+            echo "image=ghcr.io/${owner}/${slug}-${APP}"
+            echo "product=${PRODUCT}"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # type=raw guarantees the release tag even if semver parsing misbehaves on release
+      # events (research A3). latest=false: see the header (WR-04).
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ steps.names.outputs.image }}
+          flavor: |
+            latest=false
+          tags: |
+            type=raw,value=${{ github.event.release.tag_name }}
+            type=semver,pattern={{version}}
+            type=sha
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ github.event.release.tag_name }}
+            PRODUCT_NAME=${{ steps.names.outputs.product }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  deploy:
+    needs: images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    # environment: production # TODO(Phase 4): GitHub Free cannot configure environments on private repos
+    steps:
+      # TODO(Phase 4): replace this stub with the real deploy once the server exists.
+      - run: |
+          echo "Deploy is a stub until Phase 4 (server). Planned steps:"
+          echo "  1. docker compose pull"
+          echo "  2. one-shot migrate service (prisma migrate deploy)"
+          echo "  3. docker compose up -d (api replicas: 2)"
+          echo "  4. smoke GET /health on each replica"

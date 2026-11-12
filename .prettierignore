@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+.planning/
+.claude/
+dist/
+coverage/
+.turbo/

@@ -1,0 +1,20 @@
+{
+  "name": "@app/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Placeholder. The Next.js 16 FSD skeleton arrives in Phase 1.1 (team ticket 1.4).",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "echo \"@app/web: no tests yet (Phase 1.1)\"",
+    "start": "node dist/main.js"
+  },
+  "devDependencies": {
+    "@app/config": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

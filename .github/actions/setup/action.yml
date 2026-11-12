@@ -1,0 +1,24 @@
+# Shared setup for every pnpm job in ci.yml. Run it after actions/checkout, since it lives in the repo.
+# pnpm comes from package.json "packageManager" and Node from .nvmrc, so neither is repeated here.
+name: setup
+description: pnpm + Node + frozen install + Turbo local cache
+runs:
+  using: composite
+  steps:
+    # No `version` input: the action reads packageManager (pnpm 12.15.0).
+    - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+    # Must come after pnpm is on PATH, or `cache: pnpm` cannot find the store.
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+    # --ignore-pnpmfile: no readPackage/afterAllResolved hook runs in CI, neither from a
+    # .pnpmfile.* nor from a config dependency (check-pins forbids both; defense in depth).
+    - run: pnpm install --frozen-lockfile --ignore-pnpmfile
+      shell: bash
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: .turbo/cache
+        key: turbo-${{ runner.os }}-${{ github.job }}-${{ github.sha }}
+        restore-keys: |
+          turbo-${{ runner.os }}-${{ github.job }}-

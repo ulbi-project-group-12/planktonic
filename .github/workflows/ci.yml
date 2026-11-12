@@ -1,0 +1,114 @@
+# CI on every pull request and every push to main (D-11, D-12, D-13).
+#
+# The job names lint, typecheck, test, build and name-guard are the required status
+# contexts in .github/rulesets/main.json. Renaming one means changing the ruleset in the
+# same PR, or merges block on a check that never reports. Keep them stable, never add a
+# matrix to them, and never add path filters to this workflow (a skipped workflow leaves
+# required checks pending forever).
+#
+# The root script `pnpm check:all` runs the same steps locally (CONTRIBUTING "Local checks").
+# When a step is added to or removed from a required job here, update that script too.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  HUSKY: '0'
+  TURBO_TELEMETRY_DISABLED: '1'
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm format:check
+      - run: pnpm check:pins
+      - run: node --test --test-reporter=tap scripts/check-pins.test.mjs
+      - run: pnpm lint:root
+      - run: pnpm turbo run lint
+
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm turbo run typecheck
+
+  test:
+    name: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm turbo run test
+
+  build:
+    name: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm turbo run build
+
+  # D-35: the product name may appear only in packages/config/product.ts (and the allowlist).
+  # Plain Node, no pnpm install: the guard has zero dependencies. setup-node is still needed
+  # because importing product.ts relies on Node 26 type stripping, not the runner default.
+  name-guard:
+    name: name-guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      # The same expression release.yml derives the image name from, so product.ts and the
+      # real image names cannot drift apart.
+      - run: node scripts/check-product-name.mjs --expect-image-prefix "$IMAGE_NAME"
+        env:
+          IMAGE_NAME: ${{ vars.PRODUCT_SLUG || github.event.repository.name }}
+      - run: node --test --test-reporter=tap scripts/check-product-name.test.mjs
+
+  # Non-blocking warnings (D-14, D-24). NOT a required check and never added to the ruleset.
+  # The PR title reaches the script only through step env, never through `run:` interpolation.
+  pr-hygiene:
+    name: pr-hygiene
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: bash scripts/pr-hygiene.sh
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          ADDITIONS: ${{ github.event.pull_request.additions }}
+          DELETIONS: ${{ github.event.pull_request.deletions }}

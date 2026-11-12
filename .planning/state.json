@@ -1,0 +1,93 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v0.1.0",
+  "phases": [
+    {
+      "number": "1",
+      "name": "Repo foundation and CI/CD (lead)",
+      "status": "complete"
+    },
+    {
+      "number": "1.1",
+      "name": "App skeletons (team)",
+      "status": "pending"
+    },
+    {
+      "number": "2",
+      "name": "Realtime prototype",
+      "status": "pending"
+    },
+    {
+      "number": "3",
+      "name": "Access and workspaces",
+      "status": "pending"
+    },
+    {
+      "number": "4",
+      "name": "Prod and observability",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "Channels and messages",
+      "status": "pending"
+    },
+    {
+      "number": "6",
+      "name": "Live chat",
+      "status": "pending"
+    },
+    {
+      "number": "7",
+      "name": "Files",
+      "status": "pending"
+    },
+    {
+      "number": "8",
+      "name": "Tasks from discussions",
+      "status": "pending"
+    },
+    {
+      "number": "9",
+      "name": "Kanban and My work",
+      "status": "pending"
+    },
+    {
+      "number": "10",
+      "name": "GitHub",
+      "status": "pending"
+    },
+    {
+      "number": "11",
+      "name": "Notifications",
+      "status": "pending"
+    },
+    {
+      "number": "12",
+      "name": "Search, standups and decisions",
+      "status": "pending"
+    },
+    {
+      "number": "13",
+      "name": "AI assistant",
+      "status": "pending"
+    },
+    {
+      "number": "14",
+      "name": "Final",
+      "status": "pending"
+    },
+    {
+      "number": "15",
+      "name": "Voice rooms ★ (optional)",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd-progress --next",
+    "label": "Advance to the next step (plan phase 1.1)",
+    "reason": "Phase 2 of 16 — needs a plan"
+  },
+  "updated_at": "2026-11-08T20:47:58.817Z"
+}

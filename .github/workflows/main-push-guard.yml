@@ -1,0 +1,65 @@
+# Flags every push to main that did not come from a merged pull request.
+#
+# Repository rules (.github/rulesets/main.json) cannot be applied while the repository is private
+# on the free plan, so main is not protected by GitHub. This workflow and the husky pre-push hook
+# stand in for the rules: a direct or forced push to main turns this job red and opens an issue
+# assigned to the lead. It detects; it does not block. Once the rules are applied
+# (scripts/apply-repo-rules.sh), this workflow can stay as a second line of defence.
+name: main-push-guard
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+concurrency:
+  group: main-push-guard-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  main-push-guard:
+    name: main-push-guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check that the push came from a merged PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          FORCED: ${{ github.event.forced }}
+          PUSHER: ${{ github.event.pusher.name }}
+          LEAD: soadap
+        run: |
+          set -euo pipefail
+          reason=""
+          if [ "$FORCED" = "true" ]; then
+            reason="forced push"
+          else
+            found=""
+            # The commit → PR association can lag a few seconds behind the merge.
+            for attempt in 1 2 3 4 5 6; do
+              found=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+                --jq "[.[] | select(.merged_at != null and .merge_commit_sha == \"$SHA\")] | .[0].number // empty")
+              [ -n "$found" ] && break
+              sleep 10
+            done
+            if [ -n "$found" ]; then
+              echo "OK: $SHA is the merge of PR #$found."
+              exit 0
+            fi
+            reason="direct push (no merged PR produced this commit)"
+          fi
+          echo "::error::$reason to main by $PUSHER at $SHA"
+          body="A $reason reached \`main\` at $SHA by @$PUSHER.
+
+          Pushes to \`main\` go through a PR (CONTRIBUTING.md). Check the change, then revert it or open a follow-up PR for review.
+
+          Run: ${{ github.server_url }}/$REPO/actions/runs/${{ github.run_id }}"
+          gh issue create --repo "$REPO" --assignee "$LEAD" \
+            --title "main-push-guard: $reason at ${SHA:0:7}" --body "$body" || true
+          exit 1

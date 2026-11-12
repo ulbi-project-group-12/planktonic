@@ -1,0 +1,43 @@
+# Code owners (D-22, PROCESS section 7).
+#
+# - The last matching pattern wins, so keep broad patterns above narrow ones.
+# - An owner must have write access to the repository, or GitHub ignores the line.
+# - Required code-owner review is enforced by the ruleset in .github/rulesets/main.json.
+#   Rulesets need a public repository or a paid plan; while this repository is private on
+#   GitHub Free they cannot be applied (reported gap, see scripts/apply-repo-rules.sh).
+
+# Lead-owned: planning, CI and repository tooling.
+/.planning/             @soadap
+/.github/               @soadap
+/.husky/                @soadap
+/.claude/               @soadap
+/scripts/               @soadap
+/packages/config/       @soadap
+
+# Lead-owned: root configuration.
+/package.json           @soadap
+/pnpm-workspace.yaml    @soadap
+/turbo.json             @soadap
+/.nvmrc                 @soadap
+/.editorconfig          @soadap
+/.gitattributes         @soadap
+/.gitignore             @soadap
+/.prettierignore        @soadap
+/.dockerignore          @soadap
+/eslint.config.js       @soadap
+
+# An app's ESLint config can replace a preset's rules (nest() layering), so it gets the same
+# owner as packages/config.
+/apps/*/eslint.config.js @soadap
+
+# The lockfile is what CI and the images actually install. A lockfile-only edit can change
+# a transitive dependency's resolved version or tarball with no catalog or manifest change,
+# so it gets the same owner as the catalog.
+/pnpm-lock.yaml         @soadap
+
+# Team-owned critical paths (PROCESS section 7). Uncomment when the GitHub teams exist and
+# their members have write access.
+# /packages/contracts/   @ulbi-project-group-12/contracts
+# /apps/api/src/core/    @ulbi-project-group-12/backend
+# /apps/api/prisma/      @ulbi-project-group-12/backend
+# /infra/                @ulbi-project-group-12/infra
