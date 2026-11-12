@@ -11,21 +11,34 @@
     "typegen": "next typegen",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "test": "echo \"@app/web: no tests yet (Phase 1.1)\""
+    "test": "vitest run"
   },
   "dependencies": {
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
     "next": "catalog:",
+    "radix-ui": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "tailwind-merge": "catalog:",
+    "tw-animate-css": "catalog:"
   },
   "devDependencies": {
     "@app/config": "workspace:*",
     "@tailwindcss/postcss": "catalog:",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
     "eslint": "catalog:",
+    "jsdom": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   }
 }
