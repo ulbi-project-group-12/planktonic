@@ -4,16 +4,16 @@ milestone: v0.1.0
 current_phase: "1.1"
 current_phase_name: App skeletons (team)
 status: executing
-stopped_at: Completed 01.1-07-PLAN.md
-last_updated: "2026-11-12T21:35:43.171Z"
+stopped_at: Completed 01.1-08-PLAN.md
+last_updated: "2026-11-12T21:40:29.267Z"
 last_activity: 2026-11-12
-last_activity_desc: Completed 01.1-07 (shadcn shared/ui + Vitest/RTL, UL-6)
-state_head: d5f8bc3abca16de5fd682afb72fcd821e5d55d7a
+last_activity_desc: Completed 01.1-08 (Steiger + required CI check, UL-6)
+state_head: ed7fec8437def3969d7a677f8d56a19cee124ed3
 progress:
   total_phases: 16
   completed_phases: 1
   total_plans: 20
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 ## Current Position
 
 Phase: 1.1 — App skeletons (team)
-Plan: 8 of 11
+Plan: 9 of 11
 Status: Ready to execute
-Last activity: 2026-11-12 - Completed 01.1-07 (shadcn shared/ui + Vitest/RTL, UL-6)
+Last activity: 2026-11-12 - Completed 01.1-08 (Steiger + required CI check, UL-6)
 
 Progress: [█░░░░░░░░░] 6%
 
@@ -63,6 +63,7 @@ Progress: [█░░░░░░░░░] 6%
 | Phase 1.1 P05 | 5min | 3 tasks | 22 files |
 | Phase 1.1 P06 | 6min | 3 tasks | 24 files |
 | Phase 1.1 P07 | 8min | 2 tasks | 18 files |
+| Phase 1.1 P08 | 4min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Recent decisions affecting current work:
 - [Phase 1.1]: 01.1-07: shadcn components.json style radix-nova (neutral, Tailwind 4); Button/Input/Dialog copied from the registry over HTTPS, CLI never run or installed
 - [Phase 1.1]: 01.1-07: cn() stays clsx + tailwind-merge in shared/lib (registry's new npm 'cn' package not added); shadcn/tailwind.css custom variants inlined in globals.css
 - [Phase 1.1]: 01.1-07: web tests = Vitest 5 + jsdom 30.1.3 + RTL 16.3.3; jest-dom 7.0.1 (6.10.0 deprecated)
+- [Phase 1.1]: 01.1-08: steiger + @feature-sliced/steiger-plugin pinned 0.8.1/0.8.1 (0.9.0/0.8.2 too young, D-05); lint:fsd = steiger ./src --fail-on-warnings; only fsd/typo-in-layer-name off for src/_app/** and src/_pages/**
+- [Phase 1.1]: 01.1-08: steiger is a required CI job and context in rulesets/main.json (applied by the lead after merge); check:all ends with lint:fsd; /apps/*/steiger.config.ts and turbo.json lead-owned
+- [Phase 1.1]: 01.1-08: steiger-plugin 0.8.1 ignores export-from re-exports, so D-19 was proven with a cross-feature import in a segment (fsd/forbidden-imports)
 
 ### Pending Todos
 
@@ -113,6 +117,9 @@ None yet.
 - bump redis to 8.10.3 (D-08) on/after 2026-11-21 (compose.yaml; re-check digest age)
 - re-check the node base digest age on/after 2026-11-19 (node:26.13.0-alpine3.24@sha256:8996..., apps/api/Dockerfile and apps/web/Dockerfile, both stages; D-29 exception until then)
 - bump next (and @next/eslint-plugin-next) to >= 16.4.5 from 2026-11-17, before any deploy (01.1-06 pinned 16.4.3 under D-05; 16.4.5 is the security floor, T-01.1-22); optional tailwindcss/@tailwindcss/postcss 4.3.5 from 2026-11-20
+- bump steiger to 0.9.0 and @feature-sliced/steiger-plugin to 0.8.2 (D-19) on/after 2026-11-15, then re-run 01.1-08's original probe (a cross-slice `export … from` in a slice index.ts); 0.8.1 does not analyse re-exports
+- apply .github/rulesets/main.json after the phase PR merges so `steiger` becomes a required check (lead; 01.1-08)
+- pre-existing actionlint SC2034 in .github/workflows/main-push-guard.yml:36 (unused `attempt` loop var); repo-wide actionlint exits non-zero until fixed (lead; deferred-items.md)
 - optional bump: @nestjs/common/core/platform-express/testing 12.4.x, @nestjs/config 12.1.x, @nestjs/cli 12.0.12 eligible on/after 2026-11-20 (catalog; re-run pnpm install, all four core packages together)
 
 ### Quick Tasks Completed
@@ -130,6 +137,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T21:35:43.101Z
-Stopped at: Completed 01.1-07-PLAN.md
+Last session: 2026-11-12T21:40:29.195Z
+Stopped at: Completed 01.1-08-PLAN.md
 Resume file: None
