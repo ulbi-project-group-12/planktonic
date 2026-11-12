@@ -1,10 +1,10 @@
 # CI on every pull request and every push to main (D-11, D-12, D-13).
 #
-# The job names lint, typecheck, test, build, steiger and name-guard are the required status
-# contexts in .github/rulesets/main.json. Renaming one means changing the ruleset in the
-# same PR, or merges block on a check that never reports. Keep them stable, never add a
-# matrix to them, and never add path filters to this workflow (a skipped workflow leaves
-# required checks pending forever).
+# The job names lint, typecheck, test, build, steiger, storybook and name-guard are the
+# required status contexts in .github/rulesets/main.json. Renaming one means changing the
+# ruleset in the same PR, or merges block on a check that never reports. Keep them stable,
+# never add a matrix to them, and never add path filters to this workflow (a skipped workflow
+# leaves required checks pending forever).
 #
 # The root script `pnpm check:all` runs the same steps locally (CONTRIBUTING "Local checks").
 # When a step is added to or removed from a required job here, update that script too.
@@ -87,6 +87,20 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup
       - run: pnpm --filter @app/web lint:fsd
+
+  # Required check: the Storybook build of the UI kit (D-21).
+  storybook:
+    name: storybook
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter @app/web build-storybook
+        env:
+          STORYBOOK_DISABLE_TELEMETRY: '1'
 
   # D-35: the product name may appear only in packages/config/product.ts (and the allowlist).
   # Plain Node, no pnpm install: the guard has zero dependencies. setup-node is still needed

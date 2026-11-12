@@ -41,7 +41,8 @@
           { "context": "test", "integration_id": 15368 },
           { "context": "build", "integration_id": 15368 },
           { "context": "name-guard", "integration_id": 15368 },
-          { "context": "steiger", "integration_id": 15368 }
+          { "context": "steiger", "integration_id": 15368 },
+          { "context": "storybook", "integration_id": 15368 }
         ]
       }
     }
