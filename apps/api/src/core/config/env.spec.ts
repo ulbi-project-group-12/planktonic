@@ -45,7 +45,9 @@ describe('validateEnv', () => {
     expect(validateEnv({ API_PORT: '4000', DATABASE_URL }).API_PORT).toBe(4000);
   });
 
-  it.each(['abc', '0', '70000'])(
+  // Each value is one no rule message can contain (no bare digit like '0'), so the leak check
+  // tests for a leak, not for zod's wording: not a number, below the minimum, above the maximum.
+  it.each(['99999x', '-12345', '99999'])(
     'rejects API_PORT %s, naming the variable but not the value',
     (value) => {
       const message = errorOf({ API_PORT: value, DATABASE_URL });
