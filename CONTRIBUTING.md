@@ -45,8 +45,8 @@ Commits inside your branch can be as small and informal as you like; they disapp
 - Label comments with [Conventional Comments](https://conventionalcomments.org/): `praise:`,
   `nitpick:`, `suggestion:`, `issue:`, `question:`.
 - Any teammate's approval merges product code. Paths listed in [.github/CODEOWNERS](.github/CODEOWNERS)
-  (CI, repository rules, tooling, root configs, the lockfile) also need their owner's review, and
-  GitHub enforces it.
+  (CI, repository rules, tooling, root configs, each app's check configs and `package.json`, the
+  lockfile) also need their owner's review, and GitHub enforces it.
 
 ## Protecting `main`
 
