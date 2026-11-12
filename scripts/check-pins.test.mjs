@@ -229,8 +229,23 @@ describe('check-pins', () => {
     });
     const { status, stderr } = runGuard(dir);
     assert.equal(status, 1);
-    assert.match(stderr, /allowBuilds esbuild = "maybe" \(only true or false is allowed\)/);
+    assert.match(stderr, /allowBuilds esbuild = maybe \(only unquoted true or false is allowed\)/);
   });
+
+  // A quoted 'false' is a YAML string, and a non-empty string is truthy.
+  for (const quoted of ["'false'", '"false"', "'true'", '"true"']) {
+    it(`rejects the quoted allowBuilds value ${quoted}`, () => {
+      const dir = makeWorkspace({
+        'pnpm-workspace.yaml': `${WORKSPACE}allowBuilds:\n  esbuild: ${quoted}\n`,
+      });
+      const { status, stderr } = runGuard(dir);
+      assert.equal(status, 1);
+      assert.ok(
+        stderr.includes(`allowBuilds esbuild = ${quoted} (only unquoted true or false is allowed)`),
+        stderr,
+      );
+    });
+  }
 
   it('fails closed on a flow-style allowBuilds map', () => {
     const dir = makeWorkspace({

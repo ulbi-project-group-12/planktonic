@@ -17,7 +17,7 @@
 // Build scripts (D-06, phase 1.1): pnpm 12 runs a dependency's install scripts only when
 // `allowBuilds:` lists it `true`; an unlisted one fails the install with
 // ERR_PNPM_IGNORED_BUILDS (`strictDepBuilds` defaults to true). The guard accepts
-// `allowBuilds:` only as a block mapping of bare package names to `true` or `false`, so
+// `allowBuilds:` only as a block mapping of bare package names to unquoted `true` or `false`, so
 // every approval or denial is an explicit, reviewed line: no versions, ranges, wildcards,
 // URLs or pnpm's auto-written placeholders. `onlyBuiltDependencies` and friends are ignored
 // by pnpm 12, so they stay off the allowlist.
@@ -127,7 +127,8 @@ function topLevelBlocks(source) {
 }
 
 /**
- * Parse an indented `name: value` line of a flat block mapping; quotes are removed.
+ * Parse an indented `name: value` line of a flat block mapping; quotes are removed from `name`
+ * and `value`, and `rawValue` keeps the value as written.
  *
  * @param {string} text
  */
@@ -137,7 +138,7 @@ function mappingEntry(text) {
       text,
     );
   if (!m) return undefined;
-  return { name: unquote(m[1] ?? ''), value: unquote(m[2] ?? '') };
+  return { name: unquote(m[1] ?? ''), value: unquote(m[2] ?? ''), rawValue: m[2] ?? '' };
 }
 
 const blocks = topLevelBlocks(readFileSync(WORKSPACE, 'utf8'));
@@ -214,9 +215,11 @@ if (allowBuilds !== undefined) {
     }
     if (seen.has(entry.name)) errors.push(`${where}: duplicate allowBuilds entry ${entry.name}`);
     seen.add(entry.name);
-    if (entry.value !== 'true' && entry.value !== 'false') {
+    // The raw value: a quoted 'false' is a YAML string, which is truthy, so what a reviewer
+    // reads and what pnpm receives would differ.
+    if (entry.rawValue !== 'true' && entry.rawValue !== 'false') {
       errors.push(
-        `${where}: allowBuilds ${entry.name} = "${entry.value}" (only true or false is allowed)`,
+        `${where}: allowBuilds ${entry.name} = ${entry.rawValue} (only unquoted true or false is allowed)`,
       );
     }
   }

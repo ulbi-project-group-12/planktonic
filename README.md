@@ -210,8 +210,9 @@ cache (`FULL TURBO`).
   `pnpm-workspace.yaml` lists it `true`. A dependency with an install script that is not listed
   fails `pnpm install` with `ERR_PNPM_IGNORED_BUILDS`. List it `true` only when a feature needs
   the script (for example the Prisma engines download), otherwise `false`, and say why in the PR.
-  Entries are bare package names mapped to `true` or `false` (no versions, ranges or wildcards).
-  `onlyBuiltDependencies` is ignored since pnpm 11 and fails the guard.
+  Entries are bare package names mapped to unquoted `true` or `false` (a quoted `'false'` is a
+  truthy string; no versions, ranges or wildcards). `onlyBuiltDependencies` is ignored since
+  pnpm 11 and fails the guard.
 - `pnpm check:pins` enforces the rules above for the root and every package matched by the
   `packages:` globs. `pnpm-lock.yaml` is committed, and CI installs with
   `--frozen-lockfile --ignore-pnpmfile`, so no pnpmfile hook runs there even if one slips in.
