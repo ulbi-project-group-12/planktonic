@@ -21,3 +21,5 @@ reviews:
     - '!.planning/**'
 chat:
   auto_reply: true
+  # Public repo: only org members can drive the bot from PR comments.
+  allow_non_org_members: false

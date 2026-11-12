@@ -67,7 +67,7 @@ files. Use kit components and utilities.
 | ----------------- | ----------------------------------------------------------------- |
 | `dev`             | `next dev` on port 3000                                           |
 | `build`           | `next build` (standalone output)                                  |
-| `start`           | `next start` for a local production build                         |
+| `start`           | `next start -H 127.0.0.1` for a local production build            |
 | `typegen`         | `next typegen` (route types; Turbo runs it before lint/typecheck) |
 | `typecheck`       | `tsc --noEmit`                                                    |
 | `lint`            | ESLint with the `next()` preset, `--max-warnings=0`               |

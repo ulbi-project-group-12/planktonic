@@ -26,6 +26,7 @@ describe('health endpoints without a database', () => {
     const response = await fetch(`${baseUrl}/api/health`);
     expect(response.status).toBe(200);
     expect(await response.text()).toContain('"status":"ok"');
+    expect(response.headers.get('x-powered-by')).toBeNull();
   });
 
   it('GET /api/health/ready returns 503 and leaks neither credentials nor host:port', async () => {

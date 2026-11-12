@@ -44,6 +44,13 @@
 /apps/*/tsconfig*.json @soadap
 /apps/*/.storybook/ @soadap
 
+# Files that hold security mitigations: the non-root USER in the images, the loopback-only
+# port binds of the dev services, and the web app's response headers.
+/apps/*/Dockerfile @soadap
+/compose.yaml @soadap
+/apps/web/next.config.ts @soadap
+/apps/*/vitest.setup.ts @soadap
+
 # The lockfile is what CI and the images actually install. A lockfile-only edit can change
 # a transitive dependency's resolved version or tarball with no catalog or manifest change,
 # so it gets the same owner as the catalog.
