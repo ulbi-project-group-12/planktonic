@@ -83,5 +83,6 @@ Run them as `pnpm --filter @app/web <script>`, or through Turbo from the root (`
 
 `Dockerfile` builds from the repo root: a frozen pnpm install of `@app/web` and its workspace
 dependencies, then `next build`. The runtime stage holds only the standalone server, `.next/static`
-and `public`, runs as uid 1000, and keeps only `.next/cache` writable. The product name reaches the
-image only through the `PRODUCT_NAME` build-arg.
+and `public`, runs as uid 1000, and keeps only `.next/cache` writable. The product name comes from
+`@app/config/product`, and `next build` bakes it into the HTML and metadata; the `PRODUCT_NAME`
+build-arg is exported as an env var for future runtime use and does not change the UI.

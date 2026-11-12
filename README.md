@@ -87,7 +87,7 @@ uses the same values as its defaults, so the services also start without a `.env
 | ---------------------- | --------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------- |
 | `NODE_ENV`             | Node environment (`development`, `test` or `production`)              | empty (each tool's default)                             | `@app/api` env schema            |
 | `APP_VERSION`          | Version string of a release image                                     | empty                                                   | release images (build-arg)       |
-| `PRODUCT_NAME`         | Display-name override; the default is in `packages/config/product.ts` | empty                                                   | release images (build-arg)       |
+| `PRODUCT_NAME`         | Unread by the apps; they bake in `packages/config/product.ts` instead | empty                                                   | release images (env, no reader)  |
 | `PRODUCT_SLUG`         | Slug override (URLs, image names)                                     | empty                                                   | reserved (no local reader yet)   |
 | `API_PORT`             | Port the api listens on                                               | `3001`                                                  | `@app/api`                       |
 | `POSTGRES_DB`          | Database created on the first start                                   | `app`                                                   | compose `postgres`               |
@@ -216,8 +216,10 @@ cache (`FULL TURBO`).
 ## Product name
 
 - The single source of the name is `packages/config/product.ts`, imported as `@app/config/product`
-  (display name, slug, image name prefix). Apps read the `PRODUCT_NAME` / `PRODUCT_SLUG` env vars,
-  which only override those defaults (see `.env.example`).
+  (display name, slug, image name prefix). The apps import it at build time: `next build` bakes the
+  display name into the web app's HTML and metadata. `release.yml` passes `PRODUCT_NAME` to the
+  images as a build-arg and env var, but no app code reads it yet, so it does not change the UI;
+  `PRODUCT_SLUG` is reserved locally (CI uses the repo variable for image names).
 - The image name prefix holds no registry or owner: images are
   `ghcr.io/<repository owner>/<prefix>-{web,api}`. The `name-guard` CI check fails when the prefix
   differs from the repo variable `PRODUCT_SLUG` or, if that is unset, the repository name.
@@ -235,9 +237,9 @@ The product name lives in `packages/config/product.ts`. To rename the product, f
 checklist:
 
 1. Rename the GitHub repository (Settings → General).
-2. Update `packages/config/product.ts` and the `PRODUCT_*` env values (and the `PRODUCT_*` repo
-   variables, if they are set). Until this lands, `name-guard` fails, because the image prefix no
-   longer matches the repository name.
+2. Update `packages/config/product.ts`; the apps bake the name in from it at build time. Update the
+   `PRODUCT_*` repo variables too, if they are set (they name the images, not the UI). Until this
+   lands, `name-guard` fails, because the image prefix no longer matches the repository name.
 3. In each clone, run `git remote set-url origin <new-url>`.
 4. Run `pnpm check:name` and fix every hit.
 5. Publish a test release and check that the images appear in GHCR under the new name.

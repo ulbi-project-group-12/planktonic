@@ -1,6 +1,7 @@
 # apps/web image: multi-stage pnpm build of the Next.js standalone output (D-20).
 # Build from the repo root: docker build -f apps/web/Dockerfile .
-# The product name comes only from the PRODUCT_NAME build-arg, so this file stays rename-proof (D-34).
+# No product name in this file, so it stays rename-proof (D-34). The apps take the name from
+# @app/config/product at build time; the PRODUCT_NAME build-arg is exported for future runtime use.
 # OCI labels come from docker/metadata-action in release.yml, not from this file.
 # Base: node:26.13.0-alpine3.24, digest built 2026-11-05 (amd64 19:25Z, arm64 20:10Z). It is
 # younger than 14 days until 2026-11-19 and kept under the Phase 1 D-29 exception until then

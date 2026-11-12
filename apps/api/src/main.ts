@@ -1,5 +1,5 @@
-// NestJS 12 (ESM) entry point of @app/api. The product name is never spelled here (D-07):
-// it reaches the process only through PRODUCT_NAME.
+// NestJS 12 (ESM) entry point of @app/api. The product name is never spelled here (D-07): code
+// that needs it imports @app/config/product. The image exports PRODUCT_NAME, but no code reads it.
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
