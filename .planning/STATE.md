@@ -4,16 +4,16 @@ milestone: v0.1.0
 current_phase: "1.1"
 current_phase_name: App skeletons (team)
 status: executing
-stopped_at: Completed 01.1-03-PLAN.md (wave 1 done)
-last_updated: "2026-11-12T21:03:30.072Z"
+stopped_at: Completed 01.1-04-PLAN.md
+last_updated: "2026-11-12T21:12:47.949Z"
 last_activity: 2026-11-12
 last_activity_desc: Completed 01.1-03 (CodeRabbit config, UL-10); wave 1 done
-state_head: e8e4cc11860bbfdd38339f5497a93f54d1d79340
+state_head: 724e3422ce54dbe3ad00b3af32b357a1f5406d76
 progress:
   total_phases: 16
   completed_phases: 1
   total_plans: 20
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 ## Current Position
 
 Phase: 1.1 — App skeletons (team)
-Plan: 4 of 11
+Plan: 5 of 11
 Status: Ready to execute
 Last activity: 2026-11-12 - Completed 01.1-03 (CodeRabbit config, UL-10); wave 1 done
 
@@ -59,6 +59,7 @@ Progress: [█░░░░░░░░░] 6%
 | Phase 1.1 P01 | 1min | 2 tasks | 3 files |
 | Phase 1.1 P02 | 13min | 2 tasks | 3 files |
 | Phase 1.1 P03 | 3min | 2 tasks | 3 files |
+| Phase 1.1 P04 | 6min | 3 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,9 @@ Recent decisions affecting current work:
 - [Phase 1.1]: 01.1-01: allowBuilds (bare name -> true/false, block mapping only) is the only build-approval key check-pins accepts; onlyBuiltDependencies stays rejected (pnpm 12 ignores it)
 - [Phase 1.1]: 01.1-02: compose images = newest tag >= 14 days old, digest-pinned; on 2026-11-12 that is pgvector 0.8.6-pg18, redis 8.10.2, seaweedfs 4.51 (all D-08 tags too young); ready signal is 'up -d' + 'wait s3-init'
 - [Phase 1.1]: 01.1-03: CodeRabbit never approves (request_changes_workflow false + auto_approvals.enabled false); .coderabbit.yaml is lead-owned in CODEOWNERS
+- [Phase 1.1]: 01.1-04: NestJS pins fall back under D-05 to @nestjs/* 12.3.2, config 12.0.1, cli 12.0.11 (12.4.0/12.1.1/12.0.12 published 2026-11-06); terminus 12.1.0, unplugin-swc 2.0.0, @swc/core 1.16.20 (allowBuilds true)
+- [Phase 1.1]: 01.1-04: api env schema treats empty values as unset; env files skipped under NODE_ENV test/production; abortOnError false so startup failures exit 1 via bootstrap().catch
+- [Phase 1.1]: 01.1-04: api image base node:26.13.0-alpine3.24@sha256:8996... (built 2026-11-05) kept under D-29 until 2026-11-19
 
 ### Pending Todos
 
@@ -94,6 +98,8 @@ None yet.
 - bump pgvector/pgvector to 0.8.7-pg18 (D-08) on/after 2026-11-14 (compose.yaml; re-check digest age)
 - bump chrislusf/seaweedfs to 4.52 (D-08) on/after 2026-11-16 (compose.yaml seaweedfs + s3-init; re-check digest age)
 - bump redis to 8.10.3 (D-08) on/after 2026-11-21 (compose.yaml; re-check digest age)
+- re-check the node base digest age on/after 2026-11-19 (node:26.13.0-alpine3.24@sha256:8996..., apps/api/Dockerfile both stages; D-29 exception until then)
+- optional bump: @nestjs/common/core/platform-express/testing 12.4.x, @nestjs/config 12.1.x, @nestjs/cli 12.0.12 eligible on/after 2026-11-20 (catalog; re-run pnpm install, all four core packages together)
 
 ### Quick Tasks Completed
 
@@ -110,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T21:03:30.000Z
-Stopped at: Completed 01.1-03-PLAN.md (wave 1 done)
+Last session: 2026-11-12T21:12:41.350Z
+Stopped at: Completed 01.1-04-PLAN.md
 Resume file: None
