@@ -1,8 +1,8 @@
 # planktonic
 
 Welcome to planktonic, a Slack-like work messenger for development teams, built by
-ulbi-project-group-12. Status: Phase 1 foundation (monorepo, CI, release pipeline).
-`apps/web` and `apps/api` are placeholders until the team skeletons land in Phase 1.1.
+ulbi-project-group-12. Status: Phase 1.1, app skeletons (a Next.js web app, a NestJS api and the
+dev services in Docker) on top of the Phase 1 foundation (monorepo, CI, release pipeline).
 
 ## Prerequisites
 
@@ -17,19 +17,43 @@ ulbi-project-group-12. Status: Phase 1 foundation (monorepo, CI, release pipelin
   The alternative is the official standalone installer with `PNPM_VERSION=12.15.0` set. Any pnpm 12
   switches itself to the `packageManager` version in `package.json`.
 
-- **Docker** is optional. You only need it to build the app images locally.
+- **Docker** with **Compose v2.24 or newer** (Docker Desktop, or Docker Engine with the compose
+  plugin). It runs Postgres, Redis and the S3 store for local development, so it is required.
+- **Git.**
+
+On Windows, run the commands in WSL2 or PowerShell; `cp` works in both. nvm-windows does not read
+`.nvmrc`, so run `nvm use 26.13.0` there.
 
 ## Quick start
+
+From zero to a running stack:
 
 ```sh
 git clone https://github.com/ulbi-project-group-12/planktonic.git
 cd planktonic
+nvm use                          # or: fnm use
 pnpm install --frozen-lockfile
-pnpm turbo run lint typecheck test build
+cp .env.example .env
+pnpm services:up
+pnpm db:migrate
+pnpm dev
 ```
 
-The last command should end with `Tasks: 15 successful, 15 total`. A second run is served from the
-Turbo cache (`FULL TURBO`). The install also enables the husky pre-commit hook.
+- `pnpm services:up` starts Postgres, Redis and SeaweedFS (S3) in the background. It returns once
+  all three are healthy and the one-shot `s3-init` job has created the dev bucket.
+- `pnpm db:migrate` applies the committed database migrations.
+- `pnpm dev` starts the web app and the api together and keeps running.
+
+Then open:
+
+- the web app: http://localhost:3000
+- the api health check: http://localhost:3001/api/health (and http://localhost:3001/api/health/ready
+  for the database check)
+
+To stop, press `Ctrl+C` in the `pnpm dev` terminal, then run `pnpm services:down`. The data stays
+in Docker volumes; `pnpm services:reset` deletes it (database, Redis and bucket).
+
+The install also enables the husky pre-commit hook.
 
 ## Scripts
 
@@ -46,6 +70,14 @@ Turbo cache (`FULL TURBO`). The install also enables the husky pre-commit hook.
 | `pnpm test:root`                           | Tests for the name and pin guards (`node --test`)              |
 | `pnpm turbo run lint typecheck test build` | The full pipeline, the same tasks CI runs                      |
 | `pnpm check:all`                           | Every check the required CI jobs run; use it before pushing    |
+
+## Checks
+
+Before pushing, run `pnpm check:all`: every check the required CI jobs run (see
+[CONTRIBUTING.md](CONTRIBUTING.md#local-checks) for the order). To run only the Turbo pipeline that
+CI's `lint`, `typecheck`, `test` and `build` jobs share, use
+`pnpm turbo run lint typecheck test build`; a second run with no changes is served from the Turbo
+cache (`FULL TURBO`).
 
 ## Repository layout
 
