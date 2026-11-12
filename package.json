@@ -19,7 +19,7 @@
     "check:name": "node scripts/check-product-name.mjs",
     "lint:root": "eslint eslint.config.js scripts --max-warnings=0",
     "test:root": "node --test --test-reporter=tap scripts/check-product-name.test.mjs scripts/check-pins.test.mjs",
-    "check:all": "pnpm format:check && pnpm check:pins && pnpm lint:root && turbo run lint typecheck test build && pnpm check:name && pnpm test:root"
+    "check:all": "pnpm format:check && pnpm check:pins && pnpm lint:root && turbo run lint typecheck test build && pnpm check:name && pnpm test:root && pnpm --filter @app/web lint:fsd"
   },
   "prettier": "@app/config/prettier",
   "lint-staged": {

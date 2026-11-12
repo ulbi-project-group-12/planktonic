@@ -30,9 +30,12 @@
 /eslint.config.js       @soadap
 /.coderabbit.yaml       @soadap
 
-# An app's ESLint config can replace a preset's rules (nest() layering), so it gets the same
-# owner as packages/config.
+# An app's ESLint config can replace a preset's rules (nest() layering), its Steiger config can
+# switch off FSD rules, and its turbo.json can skip a task's dependencies, so they all get the
+# same owner as packages/config.
 /apps/*/eslint.config.js @soadap
+/apps/*/steiger.config.ts @soadap
+/apps/*/turbo.json @soadap
 
 # The lockfile is what CI and the images actually install. A lockfile-only edit can change
 # a transitive dependency's resolved version or tarball with no catalog or manifest change,
