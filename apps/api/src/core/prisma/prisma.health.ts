@@ -37,6 +37,13 @@ export function classifyDatabaseError(error: unknown): string {
  */
 export const READINESS_TIMEOUT_MS = 5000;
 
+/**
+ * Server-side bound for the probe query, below READINESS_TIMEOUT_MS: Postgres cancels `SELECT 1`
+ * itself, so a slow database frees the pooled connection instead of holding it after the HTTP
+ * check has already answered 503. Transaction-local, so product queries keep no limit.
+ */
+export const PROBE_STATEMENT_TIMEOUT_MS = 4000;
+
 /** Rejects with a `ReadinessTimeout` error when `promise` has not settled within `ms`. */
 async function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   let timer: NodeJS.Timeout | undefined;
@@ -54,10 +61,19 @@ async function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
   }
 }
 
-/** Database readiness for terminus: `SELECT 1` through Prisma, bounded by READINESS_TIMEOUT_MS. */
+/**
+ * Database readiness for terminus: `SELECT 1` through Prisma, bounded by READINESS_TIMEOUT_MS on
+ * the client and PROBE_STATEMENT_TIMEOUT_MS on the server.
+ */
 @Injectable()
 export class PrismaHealthIndicator {
   private readonly logger = new Logger(PrismaHealthIndicator.name);
+
+  /**
+   * The probe currently running, shared by concurrent checks. However often /api/health/ready is
+   * hit, and even when a probe outlives its timeout, at most one probe holds a pooled connection.
+   */
+  private inFlight: Promise<unknown> | undefined;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -67,7 +83,7 @@ export class PrismaHealthIndicator {
   async isHealthy<const Key extends string>(key: Key) {
     const session = this.indicator.check(key);
     try {
-      await withTimeout(this.prisma.$queryRaw`SELECT 1`, READINESS_TIMEOUT_MS);
+      await withTimeout(this.probe(), READINESS_TIMEOUT_MS);
       return session.up();
     } catch (error) {
       // The cause goes to the server log as a value-free classification; the HTTP body keeps a
@@ -75,5 +91,20 @@ export class PrismaHealthIndicator {
       this.logger.warn(`database readiness failed: ${classifyDatabaseError(error)}`);
       return session.down({ message: 'database unreachable' });
     }
+  }
+
+  /** `SELECT 1` in a transaction with its own statement_timeout; concurrent checks share it. */
+  private probe(): Promise<unknown> {
+    this.inFlight ??= this.prisma
+      .$transaction([
+        // set_config(..., true) is SET LOCAL with a bind parameter (SET itself takes none).
+        this.prisma
+          .$queryRaw`SELECT set_config('statement_timeout', ${String(PROBE_STATEMENT_TIMEOUT_MS)}, true)`,
+        this.prisma.$queryRaw`SELECT 1`,
+      ])
+      .finally(() => {
+        this.inFlight = undefined;
+      });
+    return this.inFlight;
   }
 }

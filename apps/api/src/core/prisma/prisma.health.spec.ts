@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   classifyDatabaseError,
   PrismaHealthIndicator,
+  PROBE_STATEMENT_TIMEOUT_MS,
   READINESS_TIMEOUT_MS,
 } from './prisma.health.js';
 import type { PrismaService } from './prisma.service.js';
@@ -24,8 +25,19 @@ const authFailed = adapterError({
   user: 'app',
 });
 
+/** A PrismaService stand-in whose raw queries all return `query()`; batch $transaction runs them. */
+function fakePrisma(query: () => Promise<unknown>) {
+  const $transaction = vi.fn((operations: Promise<unknown>[]) => Promise.all(operations));
+  const $queryRaw = vi.fn<(...template: unknown[]) => Promise<unknown>>(() => query());
+  return {
+    prisma: { $queryRaw, $transaction } as unknown as PrismaService,
+    $queryRaw,
+    $transaction,
+  };
+}
+
 function indicatorFailingWith(error: Error) {
-  const prisma = { $queryRaw: () => Promise.reject(error) } as unknown as PrismaService;
+  const { prisma } = fakePrisma(() => Promise.reject(error));
   return new PrismaHealthIndicator(prisma, new HealthIndicatorService());
 }
 
@@ -62,14 +74,35 @@ describe('classifyDatabaseError', () => {
 
 describe('PrismaHealthIndicator', () => {
   it('reports up when SELECT 1 succeeds', async () => {
-    const prisma = { $queryRaw: () => Promise.resolve([{ '?column?': 1 }]) };
-    const indicator = new PrismaHealthIndicator(
-      prisma as unknown as PrismaService,
-      new HealthIndicatorService(),
-    );
+    const { prisma, $queryRaw } = fakePrisma(() => Promise.resolve([{ '?column?': 1 }]));
+    const indicator = new PrismaHealthIndicator(prisma, new HealthIndicatorService());
     await expect(indicator.isHealthy('database')).resolves.toEqual({
       database: { status: 'up' },
     });
+    // statement_timeout is set inside the same transaction, as a bind parameter.
+    const [setConfig] = $queryRaw.mock.calls[0] as unknown as [TemplateStringsArray, string];
+    expect(setConfig.join('?')).toContain("set_config('statement_timeout', ?, true)");
+    expect($queryRaw.mock.calls[0]?.[1]).toBe(String(PROBE_STATEMENT_TIMEOUT_MS));
+    expect(PROBE_STATEMENT_TIMEOUT_MS).toBeLessThan(READINESS_TIMEOUT_MS);
+  });
+
+  it('shares one in-flight probe between concurrent checks, then probes afresh', async () => {
+    let answer: (rows: unknown) => void = () => undefined;
+    const pending = new Promise((resolve) => {
+      answer = resolve;
+    });
+    const { prisma, $transaction } = fakePrisma(() => pending);
+    const indicator = new PrismaHealthIndicator(prisma, new HealthIndicatorService());
+    const first = indicator.isHealthy('database');
+    const second = indicator.isHealthy('database');
+    expect($transaction).toHaveBeenCalledOnce();
+    answer([{ '?column?': 1 }]);
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { database: { status: 'up' } },
+      { database: { status: 'up' } },
+    ]);
+    await indicator.isHealthy('database');
+    expect($transaction).toHaveBeenCalledTimes(2);
   });
 
   it('logs a value-free cause and keeps the response message fixed', async () => {
@@ -89,11 +122,8 @@ describe('PrismaHealthIndicator', () => {
   it('fails readiness when the database connects but never answers', async () => {
     vi.useFakeTimers();
     const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-    const prisma = { $queryRaw: () => new Promise<never>(() => undefined) };
-    const indicator = new PrismaHealthIndicator(
-      prisma as unknown as PrismaService,
-      new HealthIndicatorService(),
-    );
+    const { prisma } = fakePrisma(() => new Promise<never>(() => undefined));
+    const indicator = new PrismaHealthIndicator(prisma, new HealthIndicatorService());
     const result = indicator.isHealthy('database');
     await vi.advanceTimersByTimeAsync(READINESS_TIMEOUT_MS);
     await expect(result).resolves.toEqual({
