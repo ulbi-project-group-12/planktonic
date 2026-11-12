@@ -36,18 +36,25 @@ catalog:
   '@prisma/adapter-pg': 7.10.1
   '@prisma/client': 7.10.1
   '@swc/core': 1.16.20
+  '@tailwindcss/postcss': 4.3.3
   '@types/node': 26.6.5
+  '@types/react': 19.3.0
+  '@types/react-dom': 19.3.0
   eslint: 10.13.0
   eslint-config-prettier: 10.1.8
   eslint-plugin-jsx-a11y-x: 0.2.0
   globals: 17.13.0
   husky: 9.1.7
   lint-staged: 17.6.0
+  next: 16.4.3
   pg: 8.23.1
   prettier: 3.9.10
   prisma: 7.10.1
+  react: 19.3.1
+  react-dom: 19.3.1
   reflect-metadata: 0.2.2
   rxjs: 7.8.2
+  tailwindcss: 4.3.3
   turbo: 2.11.10
   typescript: 6.0.3
   typescript-eslint: 8.72.0

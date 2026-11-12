@@ -1,9 +1,23 @@
 {
   "extends": "@app/config/tsconfig/base.json",
   "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "es2024"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
     "noEmit": true,
+    "incremental": true,
     "types": ["node"],
-    "erasableSyntaxOnly": true
+    "erasableSyntaxOnly": true,
+    "plugins": [{ "name": "next" }],
+    "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
 }

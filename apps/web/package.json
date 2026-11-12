@@ -3,18 +3,29 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Placeholder. The Next.js 16 FSD skeleton arrives in Phase 1.1 (team ticket 1.4).",
+  "description": "Next.js 16 App Router web app (FSD)",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typegen": "next typegen",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "test": "echo \"@app/web: no tests yet (Phase 1.1)\"",
-    "start": "node dist/main.js"
+    "test": "echo \"@app/web: no tests yet (Phase 1.1)\""
+  },
+  "dependencies": {
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
   },
   "devDependencies": {
     "@app/config": "workspace:*",
+    "@tailwindcss/postcss": "catalog:",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "eslint": "catalog:",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:"
   }
 }
