@@ -12,13 +12,26 @@ savePrefix: ''
 catalogMode: strict
 updateNotifier: false
 
+# Install-script approvals (D-06): true runs the package's build script, false skips it.
+# Anything unlisted fails the install with ERR_PNPM_IGNORED_BUILDS.
+allowBuilds:
+  '@swc/core': true
+
 # Top-level keys are allowlisted by scripts/check-pins.mjs (`pnpm check:pins`); a new key,
 # minimumReleaseAgeExclude included, needs a reviewed change to that guard first.
 
 catalog:
   '@eslint-react/eslint-plugin': 5.28.8
   '@eslint/js': 10.0.1
+  '@nestjs/cli': 12.0.11
+  '@nestjs/common': 12.3.2
+  '@nestjs/config': 12.0.1
+  '@nestjs/core': 12.3.2
+  '@nestjs/platform-express': 12.3.2
+  '@nestjs/terminus': 12.1.0
+  '@nestjs/testing': 12.3.2
   '@next/eslint-plugin-next': 16.4.3
+  '@swc/core': 1.16.20
   '@types/node': 26.6.5
   eslint: 10.13.0
   eslint-config-prettier: 10.1.8
@@ -27,9 +40,12 @@ catalog:
   husky: 9.1.7
   lint-staged: 17.6.0
   prettier: 3.9.10
+  reflect-metadata: 0.2.2
+  rxjs: 7.8.2
   turbo: 2.11.10
   typescript: 6.0.3
   typescript-eslint: 8.72.0
+  unplugin-swc: 2.0.0
   vite: 8.3.5
   vitest: 5.0.5
   zod: 4.6.7
