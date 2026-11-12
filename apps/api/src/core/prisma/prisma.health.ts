@@ -31,7 +31,30 @@ export function classifyDatabaseError(error: unknown): string {
   return safe.length > 0 ? safe.join(' ') : 'unknown';
 }
 
-/** Database readiness for terminus: `SELECT 1` through Prisma. */
+/**
+ * Upper bound for the whole probe. The pool's connect timeout (prisma.service.ts) does not cover a
+ * database that accepts the connection and then never answers, so the probe races a timer.
+ */
+export const READINESS_TIMEOUT_MS = 5000;
+
+/** Rejects with a `ReadinessTimeout` error when `promise` has not settled within `ms`. */
+async function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(
+        Object.assign(new Error(`no answer within ${String(ms)} ms`), { name: 'ReadinessTimeout' }),
+      );
+    }, ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Database readiness for terminus: `SELECT 1` through Prisma, bounded by READINESS_TIMEOUT_MS. */
 @Injectable()
 export class PrismaHealthIndicator {
   private readonly logger = new Logger(PrismaHealthIndicator.name);
@@ -44,7 +67,7 @@ export class PrismaHealthIndicator {
   async isHealthy<const Key extends string>(key: Key) {
     const session = this.indicator.check(key);
     try {
-      await this.prisma.$queryRaw`SELECT 1`;
+      await withTimeout(this.prisma.$queryRaw`SELECT 1`, READINESS_TIMEOUT_MS);
       return session.up();
     } catch (error) {
       // The cause goes to the server log as a value-free classification; the HTTP body keeps a

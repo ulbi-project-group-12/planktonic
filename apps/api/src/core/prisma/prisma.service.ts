@@ -17,7 +17,9 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
     super({
       adapter: new PrismaPg({
         connectionString: config.get('DATABASE_URL', { infer: true }),
-        // A dead database fails readiness in seconds instead of hanging the probe.
+        // A dead database, or a full pool, fails a query in seconds instead of hanging it. A
+        // database that connects but never answers is bounded by the readiness probe's own
+        // timeout (prisma.health.ts), not here, so slow product queries are not cut off.
         connectionTimeoutMillis: 5000,
       }),
     });

@@ -1,7 +1,11 @@
 import { Logger } from '@nestjs/common';
 import { HealthIndicatorService } from '@nestjs/terminus';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { classifyDatabaseError, PrismaHealthIndicator } from './prisma.health.js';
+import {
+  classifyDatabaseError,
+  PrismaHealthIndicator,
+  READINESS_TIMEOUT_MS,
+} from './prisma.health.js';
 import type { PrismaService } from './prisma.service.js';
 
 /** The shape Prisma 7 + @prisma/adapter-pg throws for a failed connect (observed, trimmed). */
@@ -26,6 +30,7 @@ function indicatorFailingWith(error: Error) {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -79,5 +84,21 @@ describe('PrismaHealthIndicator', () => {
     for (const secret of ['secret', 'db.internal', '5432', 'password', '"app"']) {
       expect(logged).not.toContain(secret);
     }
+  });
+
+  it('fails readiness when the database connects but never answers', async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const prisma = { $queryRaw: () => new Promise<never>(() => undefined) };
+    const indicator = new PrismaHealthIndicator(
+      prisma as unknown as PrismaService,
+      new HealthIndicatorService(),
+    );
+    const result = indicator.isHealthy('database');
+    await vi.advanceTimersByTimeAsync(READINESS_TIMEOUT_MS);
+    await expect(result).resolves.toEqual({
+      database: { status: 'down', message: 'database unreachable' },
+    });
+    expect(warn).toHaveBeenCalledExactlyOnceWith('database readiness failed: ReadinessTimeout');
   });
 });
