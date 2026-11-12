@@ -48,9 +48,11 @@ variable and the rule, never the value, and the process exits 1.
 | `API_HOST`     | interface to bind; image: `0.0.0.0`   | `127.0.0.1`   |
 | `DATABASE_URL` | `postgres://` or `postgresql://` URL  | required      |
 
-An empty value counts as unset. In development the api reads the root `.env` (and a `.env` in
-this package, if you add one); under `NODE_ENV` `test` or `production` it reads no env file, only
-the process environment. The root README lists every variable.
+An empty value counts as unset. In development the api reads the repo-root `.env` only, found from
+the module's location rather than the current directory, so it works however the api is started.
+There is no per-package `.env`: the api and the Prisma CLI always read the same file. Under
+`NODE_ENV` `test` or `production` it reads no env file, only the process environment. The root
+README lists every variable.
 
 ## Prisma 7
 
