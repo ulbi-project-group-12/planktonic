@@ -28,5 +28,7 @@ UL-
 
 - Keep the PR at about 400 changed lines or fewer (lockfile and generated code excluded). CI warns above 600.
 - One ticket = one PR.
-- Answer every AI review comment before asking for a human review.
+- CodeRabbit is the AI first-pass reviewer: it comments in Russian on every non-draft PR. Answer or
+  resolve each of its comments before asking a teammate to review. Its review never replaces the
+  required human approval.
 - CI must be green: lint, typecheck, test, build, name-guard.
