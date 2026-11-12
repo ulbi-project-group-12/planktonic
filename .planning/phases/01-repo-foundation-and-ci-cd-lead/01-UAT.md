@@ -1,14 +1,16 @@
 ---
-status: complete
+status: testing
 phase: 01-repo-foundation-and-ci-cd-lead
 source: [01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md, 01-06-SUMMARY.md, 01-07-SUMMARY.md, 01-08-SUMMARY.md, 01-09-SUMMARY.md]
 started: 2026-11-08T18:40:00Z
-updated: 2026-11-08T20:47:24.348Z
+updated: 2026-11-12T06:24:35Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 11
+name: Release to GHCR from the republished repo
+awaiting: user response
 
 ## Tests
 
@@ -70,12 +72,20 @@ expected: The lead agrees that none of these happened in Phase 1 (the verifier f
 result: pass
 source: human (lead)
 
+### 11. Release to GHCR from the republished repo
+expected: Publishing a test pre-release `v0.0.1-rc.1` on `main` runs `release.yml`; `ghcr.io/ulbi-project-group-12/planktonic-web` and `planktonic-api` appear tagged `v0.0.1-rc.1`, `0.0.1-rc.1` and `sha-<short>`, with no `latest`. The test release and tag are deleted afterwards.
+result: [pending]
+
+### 12. Lead re-confirms the 7 flagged prohibitions after the republish
+expected: Same 7 items as test 10, re-checked on the public repo. Making the repo public and giving the `devs` team write access were the lead's own decisions (allowed by the 01-08 rule); the verifier found no violation on 2026-11-12.
+result: [pending]
+
 ## Summary
 
-total: 10
+total: 12
 passed: 10
 issues: 0
-pending: 0
+pending: 2
 skipped: 0
 blocked: 0
 

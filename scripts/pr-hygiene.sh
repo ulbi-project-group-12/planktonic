@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Non-blocking PR hygiene for the ci.yml job `pr-hygiene` (D-14, D-24, PROCESS section 7).
+# Non-blocking PR hygiene for the ci.yml job `pr-hygiene` (D-14, D-24, team review rules).
 #
 # Inputs come only from env vars, set by the workflow step env (never interpolated into
 # the shell, so a PR title cannot inject commands):
@@ -25,7 +25,7 @@ fi
 
 changed=$((10#$additions + 10#$deletions))
 if [ "$changed" -gt 600 ]; then
-  echo "::warning title=PR size::This PR changes ${changed} lines (more than 600). Consider splitting it; aim for about 400 (PROCESS section 7)"
+  echo "::warning title=PR size::This PR changes ${changed} lines (more than 600). Consider splitting it; aim for about 400 (see CONTRIBUTING.md)"
 fi
 
 exit 0
