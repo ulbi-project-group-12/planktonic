@@ -10,3 +10,5 @@ coverage
 apps/api/src/generated/
 .next/
 next-env.d.ts
+storybook-static/
+*storybook.log

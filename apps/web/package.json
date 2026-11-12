@@ -12,7 +12,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
-    "lint:fsd": "steiger ./src --fail-on-warnings"
+    "lint:fsd": "steiger ./src --fail-on-warnings",
+    "storybook": "storybook dev -p 6006 --ci",
+    "build-storybook": "storybook build --quiet"
   },
   "dependencies": {
     "class-variance-authority": "catalog:",
@@ -28,6 +30,7 @@
   "devDependencies": {
     "@app/config": "workspace:*",
     "@feature-sliced/steiger-plugin": "catalog:",
+    "@storybook/nextjs-vite": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@testing-library/dom": "catalog:",
     "@testing-library/jest-dom": "catalog:",
@@ -40,6 +43,7 @@
     "eslint": "catalog:",
     "jsdom": "catalog:",
     "steiger": "catalog:",
+    "storybook": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
