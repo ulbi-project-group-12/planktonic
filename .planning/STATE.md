@@ -4,16 +4,16 @@ milestone: v0.1.0
 current_phase: "1.1"
 current_phase_name: App skeletons (team)
 status: executing
-stopped_at: Completed 01.1-01-PLAN.md
-last_updated: "2026-11-12T20:47:23.296Z"
+stopped_at: Completed 01.1-02-PLAN.md
+last_updated: "2026-11-12T21:01:55.778Z"
 last_activity: 2026-11-12
-last_activity_desc: Completed 01.1-01 (check-pins accepts allowBuilds)
-state_head: fe1bd71c146d0f6ee7798cbff3da15e7f47c8fc2
+last_activity_desc: Completed 01.1-02 (dev compose stack, UL-8)
+state_head: f0bca0e9e525f03cea9eb4a224924e9f7d0d031f
 progress:
   total_phases: 16
   completed_phases: 1
   total_plans: 20
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 ## Current Position
 
 Phase: 1.1 — App skeletons (team)
-Plan: 2 of 11
-Status: Executing Phase 1.1 (wave 1)
-Last activity: 2026-11-12 - Completed 01.1-01 (check-pins accepts allowBuilds)
+Plan: 3 of 11
+Status: Ready to execute
+Last activity: 2026-11-12 - Completed 01.1-02 (dev compose stack, UL-8)
 
 Progress: [█░░░░░░░░░] 6%
 
@@ -57,6 +57,7 @@ Progress: [█░░░░░░░░░] 6%
 | Phase 1 P06 | 2min | 2 tasks | 8 files |
 | Phase 1 P09 | 6min | 3 tasks | 3 files |
 | Phase 1.1 P01 | 1min | 2 tasks | 3 files |
+| Phase 1.1 P02 | 13min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,7 @@ Recent decisions affecting current work:
 - [Phase 1 close, 2026-11-12]: repo republished as public `ulbi-project-group-12/planktonic` from one squashed commit; the private history lives in `planktonic-archive` (SHAs cited in Phase 1 SUMMARYs resolve there). `PROCESS.md` and `TZ-SPEC.md` are kept outside the repo; all repo text is English.
 - [Phase 1 close, 2026-11-12]: rulesets applied (`apply-repo-rules.sh` exit 0), SHA pinning required, secret scanning + push protection on; a direct push to `main` is rejected (GH013). Review is horizontal: org team `devs` (8) has write, any teammate's approval counts; CODEOWNERS keeps the lead on CI, rules, tooling, root configs, lockfile. Team-owned CODEOWNERS lines dropped (UL-9 scope change).
 - [Phase 1.1]: 01.1-01: allowBuilds (bare name -> true/false, block mapping only) is the only build-approval key check-pins accepts; onlyBuiltDependencies stays rejected (pnpm 12 ignores it)
+- [Phase 1.1]: 01.1-02: compose images = newest tag >= 14 days old, digest-pinned; on 2026-11-12 that is pgvector 0.8.6-pg18, redis 8.10.2, seaweedfs 4.51 (all D-08 tags too young); ready signal is 'up -d' + 'wait s3-init'
 
 ### Pending Todos
 
@@ -85,8 +87,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 1.1 note: `check-pins` allowlists `pnpm-workspace.yaml` keys; Next/Nest deps with install scripts will need `onlyBuiltDependencies`/`allowBuilds` added to the allowlist in a reviewed PR.
+- ~~Phase 1.1 note: check-pins needs `allowBuilds` on its allowlist~~ resolved by 01.1-01 (`allowBuilds` accepted; `onlyBuiltDependencies` stays rejected).
 - 01-VALIDATION.md is still `draft` (Nyquist audit `/gsd-validate-phase 1` not run; optional).
+- bump pgvector/pgvector to 0.8.7-pg18 (D-08) on/after 2026-11-14 (compose.yaml; re-check digest age)
+- bump chrislusf/seaweedfs to 4.52 (D-08) on/after 2026-11-16 (compose.yaml seaweedfs + s3-init; re-check digest age)
+- bump redis to 8.10.3 (D-08) on/after 2026-11-21 (compose.yaml; re-check digest age)
 
 ### Quick Tasks Completed
 
@@ -103,6 +108,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T20:47:23.230Z
-Stopped at: Completed 01.1-01-PLAN.md
+Last session: 2026-11-12T21:01:55.727Z
+Stopped at: Completed 01.1-02-PLAN.md
 Resume file: None
