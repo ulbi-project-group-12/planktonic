@@ -12,3 +12,5 @@ apps/api/src/generated/
 next-env.d.ts
 storybook-static/
 *storybook.log
+# Written by `next dev` when it detects an AI coding agent (Next 16.4); runtime output, not source.
+apps/web/AGENTS.md
