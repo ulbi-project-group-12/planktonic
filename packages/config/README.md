@@ -96,7 +96,8 @@ Included: Next's `core-web-vitals` rules, `@eslint-react` `recommended-type-chec
 the rules of hooks, exhaustive deps and the compiler-style rules), the six a11y rules Next's own
 preset enables (`jsx-a11y-x/alt-text`, `aria-props`, `aria-proptypes`, `aria-unsupported-elements`,
 `role-has-required-aria-props`, `role-supports-aria-props`), browser globals, async JSX event
-handlers, and the Next ignores (`.next/`, `out/`, `build/`, `next-env.d.ts`).
+handlers, and the Next ignores (`.next/`, `out/`, `build/`, `next-env.d.ts`) plus the Storybook
+build output (`storybook-static/`).
 
 Not included, on purpose:
 
