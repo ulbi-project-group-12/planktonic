@@ -1,5 +1,13 @@
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
-import { Button } from '@/shared/ui';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/shared/ui';
 
 export function HomePage() {
   return (
@@ -8,9 +16,22 @@ export function HomePage() {
       <p className="text-base text-muted-foreground">
         The web skeleton is running. The code lives in FSD layers under <code>src/</code>.
       </p>
-      <div>
-        <Button type="button">About this skeleton</Button>
-      </div>
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button type="button" className="self-start">
+            About this skeleton
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>About this skeleton</DialogTitle>
+            <DialogDescription>
+              The web skeleton is running. FSD layers live in <code>src/</code>, and the UI kit
+              lives in <code>src/shared/ui</code>.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
