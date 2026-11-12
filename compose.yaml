@@ -1,0 +1,38 @@
+# Local development services only. The production compose arrives in Phase 4.
+#
+#   docker compose up -d          # start (first run pulls the images)
+#   docker compose wait s3-init   # exits 0 once the whole stack is ready
+#   docker compose down -v        # stop and reset every volume
+#
+# Every value comes from env with defaults equal to .env.example, so the stack starts with no
+# .env at all. Ports bind to 127.0.0.1 only and default to non-standard numbers to avoid clashes
+# with services already on the machine.
+#
+# Images are the newest tag of their line that is at least 14 days old, pinned by the multi-arch
+# index digest. Bumping one means re-checking its age (push date on Docker Hub and the build date
+# from `docker buildx imagetools inspect`) and updating the digest.
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a # pushed 2026-08-13
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app_dev_password}
+    ports:
+      - 127.0.0.1:${POSTGRES_PORT:-55432}:5432
+    volumes:
+      # Postgres 18 images keep PGDATA under /var/lib/postgresql/18/docker and declare the
+      # volume at /var/lib/postgresql, so the named volume goes there, not at .../data.
+      - pgdata:/var/lib/postgresql
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  pgdata:
