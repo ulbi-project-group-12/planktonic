@@ -1,0 +1,21 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "typegen": {
+      "description": "next typegen writes next-env.d.ts and .next/types without a build.",
+      "outputs": ["next-env.d.ts", ".next/types/**"]
+    },
+    "lint": {
+      "dependsOn": ["$TURBO_EXTENDS$", "typegen"]
+    },
+    "typecheck": {
+      "dependsOn": ["$TURBO_EXTENDS$", "typegen"]
+    },
+    "build": {
+      "description": "next build cleans .next first, so it runs after lint and typecheck, which read .next/types.",
+      "dependsOn": ["$TURBO_EXTENDS$", "lint", "typecheck"],
+      "outputs": ["$TURBO_EXTENDS$", ".next/**", "!.next/cache/**", "!.next/dev/**"]
+    }
+  }
+}

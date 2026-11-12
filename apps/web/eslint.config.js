@@ -1,2 +1,2 @@
-import { base } from '@app/config/eslint';
-export default base({ tsconfigRootDir: import.meta.dirname });
+import { next } from '@app/config/eslint';
+export default next({ tsconfigRootDir: import.meta.dirname });
