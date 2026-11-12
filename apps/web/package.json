@@ -11,7 +11,8 @@
     "typegen": "next typegen",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint:fsd": "steiger ./src --fail-on-warnings"
   },
   "dependencies": {
     "class-variance-authority": "catalog:",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@app/config": "workspace:*",
+    "@feature-sliced/steiger-plugin": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@testing-library/dom": "catalog:",
     "@testing-library/jest-dom": "catalog:",
@@ -37,6 +39,7 @@
     "@vitejs/plugin-react": "catalog:",
     "eslint": "catalog:",
     "jsdom": "catalog:",
+    "steiger": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
