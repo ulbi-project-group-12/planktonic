@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 milestone: v0.1.0
 current_phase: "1.1"
 current_phase_name: App skeletons (team)
-status: executing
-stopped_at: Completed 01.1-10-PLAN.md
-last_updated: "2026-11-12T21:49:37.383Z"
+status: verifying
+stopped_at: Completed 01.1-11-PLAN.md
+last_updated: "2026-11-12T21:54:59.343Z"
 last_activity: 2026-11-12
 last_activity_desc: Completed 01.1-08 (Steiger + required CI check, UL-6)
-state_head: cac7dcf1ccb31a8f84c6225b1b5bfdfcd82027bc
+state_head: 969f061487f45bef49912bdd412be9701e041768
 progress:
   total_phases: 16
   completed_phases: 1
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 
 Phase: 1.1 — App skeletons (team)
 Plan: 11 of 11
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-12 - Completed 01.1-08 (Steiger + required CI check, UL-6)
 
 Progress: [█░░░░░░░░░] 6%
@@ -66,6 +66,7 @@ Progress: [█░░░░░░░░░] 6%
 | Phase 1.1 P08 | 4min | 2 tasks | 9 files |
 | Phase 1.1 P09 | 9min | 3 tasks | 16 files |
 | Phase 1.1 P10 | 6min | 2 tasks | 4 files |
+| Phase 1.1 P11 | 8min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,8 @@ Recent decisions affecting current work:
 - [Phase 1.1]: 01.1-09: storybook is a required CI job and the 7th context in rulesets/main.json (applied by the lead after merge); check:all ends with build-storybook; storybook-static ignored by git and next()
 - [Phase 1.1]: 01.1-10: pnpm dev = turbo run dev --env-mode=loose (dev task cache false, persistent; loose only on this uncached run); services:up/down/reset and db:migrate(:dev) root scripts; telemetry opt-outs in globalPassThroughEnv
 - [Phase 1.1]: 01.1-10: apps/web/AGENTS.md (written by next dev under an AI agent) is git-ignored; commit-or-disable left to the lead
+- [Phase 1.1]: 01.1-11: README quick start = clone, nvm use, pnpm install --frozen-lockfile, cp .env.example .env, pnpm services:up, pnpm db:migrate, pnpm dev; replayed verbatim in a fresh clone (app-replay) to web :3000 + api ready :3001
+- [Phase 1.1]: 01.1-11: Docker with Compose v2.24+ is a hard prerequisite; CONTRIBUTING/PR template/README list the seven required checks and CodeRabbit; release stub smoke = GET /api/health per replica
 
 ### Pending Todos
 
@@ -129,6 +132,7 @@ None yet.
 - optional bump: @nestjs/common/core/platform-express/testing 12.4.x, @nestjs/config 12.1.x, @nestjs/cli 12.0.12 eligible on/after 2026-11-20 (catalog; re-run pnpm install, all four core packages together)
 - optional bump: storybook + @storybook/nextjs-vite to 10.6.6 (D-21) on/after 2026-11-19, both together (01.1-09 pinned 10.6.5)
 - decide apps/web/AGENTS.md: keep git-ignored (01.1-10), commit it, or set agentRules: false in next.config.ts (lead)
+- SC4 human check: two members on two OSes follow the README Quick start from a fresh clone in <= 30 min; record in the phase UAT (01.1-11)
 
 ### Quick Tasks Completed
 
@@ -145,6 +149,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T21:49:37.299Z
-Stopped at: Completed 01.1-10-PLAN.md
+Last session: 2026-11-12T21:54:59.266Z
+Stopped at: Completed 01.1-11-PLAN.md
 Resume file: None
