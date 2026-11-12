@@ -27,7 +27,10 @@ services:
       - pgdata:/var/lib/postgresql
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      # Over TCP, not the unix socket: on a fresh volume the entrypoint first runs initdb on a
+      # temporary socket-only server, and a socket probe would pass before the real server is up.
+      test:
+        ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 5432 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
       timeout: 5s
       retries: 20
