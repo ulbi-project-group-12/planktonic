@@ -4,16 +4,16 @@ milestone: v0.1.0
 current_phase: "1.1"
 current_phase_name: App skeletons (team)
 status: executing
-stopped_at: Completed 01.1-09-PLAN.md
-last_updated: "2026-11-12T21:45:35.637Z"
+stopped_at: Completed 01.1-10-PLAN.md
+last_updated: "2026-11-12T21:49:37.383Z"
 last_activity: 2026-11-12
 last_activity_desc: Completed 01.1-08 (Steiger + required CI check, UL-6)
-state_head: c6ca17fa106de4932e18dc861801e6e362ad80d0
+state_head: cac7dcf1ccb31a8f84c6225b1b5bfdfcd82027bc
 progress:
   total_phases: 16
   completed_phases: 1
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 19
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-08)
 ## Current Position
 
 Phase: 1.1 — App skeletons (team)
-Plan: 10 of 11
+Plan: 11 of 11
 Status: Ready to execute
 Last activity: 2026-11-12 - Completed 01.1-08 (Steiger + required CI check, UL-6)
 
@@ -65,6 +65,7 @@ Progress: [█░░░░░░░░░] 6%
 | Phase 1.1 P07 | 8min | 2 tasks | 18 files |
 | Phase 1.1 P08 | 4min | 2 tasks | 9 files |
 | Phase 1.1 P09 | 9min | 3 tasks | 16 files |
+| Phase 1.1 P10 | 6min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ Recent decisions affecting current work:
 - [Phase 1.1]: 01.1-08: steiger-plugin 0.8.1 ignores export-from re-exports, so D-19 was proven with a cross-feature import in a segment (fsd/forbidden-imports)
 - [Phase 1.1]: 01.1-09: storybook + @storybook/nextjs-vite pinned 10.6.5 (10.6.6 too young, D-05); allowBuilds esbuild true; stories colocated in src/shared/ui, no Steiger exception
 - [Phase 1.1]: 01.1-09: storybook is a required CI job and the 7th context in rulesets/main.json (applied by the lead after merge); check:all ends with build-storybook; storybook-static ignored by git and next()
+- [Phase 1.1]: 01.1-10: pnpm dev = turbo run dev --env-mode=loose (dev task cache false, persistent; loose only on this uncached run); services:up/down/reset and db:migrate(:dev) root scripts; telemetry opt-outs in globalPassThroughEnv
+- [Phase 1.1]: 01.1-10: apps/web/AGENTS.md (written by next dev under an AI agent) is git-ignored; commit-or-disable left to the lead
 
 ### Pending Todos
 
@@ -125,6 +128,7 @@ None yet.
 - pre-existing actionlint SC2034 in .github/workflows/main-push-guard.yml:36 (unused `attempt` loop var); repo-wide actionlint exits non-zero until fixed (lead; deferred-items.md)
 - optional bump: @nestjs/common/core/platform-express/testing 12.4.x, @nestjs/config 12.1.x, @nestjs/cli 12.0.12 eligible on/after 2026-11-20 (catalog; re-run pnpm install, all four core packages together)
 - optional bump: storybook + @storybook/nextjs-vite to 10.6.6 (D-21) on/after 2026-11-19, both together (01.1-09 pinned 10.6.5)
+- decide apps/web/AGENTS.md: keep git-ignored (01.1-10), commit it, or set agentRules: false in next.config.ts (lead)
 
 ### Quick Tasks Completed
 
@@ -141,6 +145,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-11-12T21:45:35.568Z
-Stopped at: Completed 01.1-09-PLAN.md
+Last session: 2026-11-12T21:49:37.299Z
+Stopped at: Completed 01.1-10-PLAN.md
 Resume file: None
