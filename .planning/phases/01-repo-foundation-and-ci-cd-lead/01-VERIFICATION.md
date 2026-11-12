@@ -1,9 +1,10 @@
 ---
 phase: 01-repo-foundation-and-ci-cd-lead
-verified: 2026-11-08T20:41:17Z
-status: passed
-score: 42/42 must-haves verified (1 by override: platform gap)
+verified: 2026-11-12T06:21:03Z
+status: human_needed
+score: 41/42 must-haves verified (1 present, behavior-unverified in the republished repo)
 covered_files:
+  - ".claude/CLAUDE.md"
   - ".dockerignore"
   - ".editorconfig"
   - ".env.example"
@@ -17,9 +18,11 @@ covered_files:
   - ".github/rulesets/release.json"
   - ".github/rulesets/tags.json"
   - ".github/workflows/ci.yml"
+  - ".github/workflows/main-push-guard.yml"
   - ".github/workflows/release.yml"
   - ".gitignore"
   - ".husky/pre-commit"
+  - ".husky/pre-push"
   - ".nvmrc"
   - ".planning/phases/01-repo-foundation-and-ci-cd-lead/01-01-PLAN.md"
   - ".planning/phases/01-repo-foundation-and-ci-cd-lead/01-01-SUMMARY.md"
@@ -58,13 +61,19 @@ covered_files:
   - "apps/web/tsconfig.json"
   - "eslint.config.js"
   - "package.json"
+  - "packages/config/README.md"
   - "packages/config/eslint.config.js"
+  - "packages/config/eslint/base.js"
   - "packages/config/eslint/index.js"
+  - "packages/config/eslint/nest.js"
+  - "packages/config/eslint/next.js"
   - "packages/config/package.json"
   - "packages/config/prettier/index.js"
   - "packages/config/product.ts"
+  - "packages/config/test/eslint-presets.test.js"
   - "packages/config/tsconfig.json"
   - "packages/config/tsconfig/base.json"
+  - "packages/config/turbo.json"
   - "packages/contracts/eslint.config.js"
   - "packages/contracts/package.json"
   - "packages/contracts/src/index.ts"
@@ -82,46 +91,59 @@ covered_files:
   - "scripts/check-product-name.test.mjs"
   - "scripts/pr-hygiene.sh"
   - "turbo.json"
-covered_digest: "v4:sha256:81d21893c34ca92b825ecacb4d9653f009face885263687aa04618b1d5340267"
-behavior_unverified: 0
-overrides_applied: 1
-overrides:
-  - must_have: "main accepts changes only through a PR with green checks (goal clause; enforced by the main ruleset)"
-    reason: "GitHub platform gap, not a code gap. The org is on GitHub Free and the repo is private, so GET /repos/{repo}/rulesets and /branches/main/protection both return HTTP 403 'Upgrade to GitHub Pro or make this repository public to enable this feature.' (re-checked by the verifier on 2026-11-08). The ruleset is committed as code (.github/rulesets/main.json: PR required, 1 approval, code-owner review, squash only, the 5 required checks, no deletion, no force-push, linear history, OrganizationAdmin bypass only in pull_request mode). scripts/apply-repo-rules.sh applies it and exits 3 with the exact GAP message while the 403 persists. The gap is documented in README, CONTRIBUTING, CODEOWNERS and SECURITY AR-05. The lead's brief allowed 'set what is possible and report exactly what's missing' (D-20, D-30). Closing action: (1) the lead makes the repo public, (2) runs scripts/apply-repo-rules.sh and confirms exit 0, (3) confirms a direct `git push origin main` is rejected."
-    accepted_by: "soadap (lead) via the Phase 1 brief, D-20 and D-30, SECURITY AR-05"
-    accepted_at: "2026-11-08T00:00:00Z"
+covered_digest: "v4:sha256:2e57f13d82b03d1fdf0e8ffe418d8cc645157ddeba993f487e94018af1bcb05c"
+behavior_unverified: 1
+overrides_applied: 0
+re_verification:
+  previous_status: passed
+  previous_score: "42/42 (1 by override: platform gap)"
+  gaps_closed:
+    - "G1: main accepts changes only through a PR with green checks. The 2026-11-08 override (GitHub Free + private, HTTP 403) is retired: the repo is public, the 4 rulesets are active, and a direct push by the lead to main was rejected (rule suite 5063143425)."
+  gaps_remaining: []
+  regressions: []
+behavior_unverified_items:
+  - truth: "SC5: publishing a GitHub Release runs release.yml, which builds the web and api images and pushes them to ghcr.io/ulbi-project-group-12/planktonic-{web,api}:<tag>"
+    test: "In ulbi-project-group-12/planktonic, publish a test pre-release (e.g. tag v0.0.1-rc.1 targeting main, or a release/0.0 branch cut by the org admin), then watch the release workflow run."
+    expected: "Jobs verify, images (web), images (api) and deploy all succeed. GHCR packages planktonic-web and planktonic-api appear under the org, linked to ulbi-project-group-12/planktonic, tagged v0.0.1-rc.1, 0.0.1-rc.1 and sha-<short>, with no latest tag. Clean up the test release and tag afterwards per README Test releases."
+    why_human: "The republished repository has never run release.yml and no planktonic-* package exists (GET packages/container/planktonic-web returns 404). The only live proof is archive run 42520726408, which pushed ulbigram-{web,api} from the old repo. release.yml, both Dockerfiles, .dockerignore and both src/main.ts are byte-identical to that run's commit, but the new repo differs in name, visibility, active release rulesets and sha_pinning_required, so presence and identity cannot prove the push. Triggering it is a GitHub write that is the lead's call."
 human_verification:
-  - test: "Open https://github.com/ulbi-project-group-12/ulbigram/compare/main...release/0.0?expand=1 (or any new branch) in the GitHub web UI and look at the PR description box before typing."
-    expected: "The body is pre-filled with .github/pull_request_template.md: the 'Ticket / UL-' line, the 'Done when…' checklist, 'How to test' and 'Review rules'."
-    why_human: "Template pre-fill is GitHub web-UI behavior. The file is at the standard path on the default branch, but PR #1 was opened with an explicit body, so no API evidence shows the pre-fill happening."
-  - test: "Review and sign off the 7 flagged prohibitions listed under 'Prohibitions' below (5 test-tier with no wired enforcing test, 2 judgment-tier). The verifier's deterministic evidence for each is in that table."
-    expected: "Each must-NOT is confirmed not to have happened. Optionally, add a wired test for the test-tier items (e.g. check-pins rejects @nestjs/*, next, react in apps/*; a ruleset lint that fails on bypass_mode 'always' or 'exempt' in main.json; a workflow lint that fails on release/tag creation; a gitleaks-style CI scan)."
-    why_human: "Per ADR-550 D4, a test-tier prohibition with no wired enforcement fails closed to 'unverified, flagged'. Judgment-tier items in an orchestrated run get only a non-authoritative LLM verdict. Neither may be silently absorbed into 'passed'."
+  - test: "Publish a test pre-release in ulbi-project-group-12/planktonic and watch release.yml (see behavior_unverified_items, SC5)."
+    expected: "verify, images (web), images (api), deploy = success; ghcr.io/ulbi-project-group-12/planktonic-web and planktonic-api exist with the release tag, the bare version and sha-<short>, no latest."
+    why_human: "No release has run in the republished repo; the GHCR push for the planktonic-* names has never happened. It needs a human-published release, which the verifier must not create."
+  - test: "Re-confirm the 7 flagged prohibitions (table Prohibitions below) against the republished repository. The lead signed them off in 01-UAT.md test 10 on 2026-11-08, before the squash republish, the rename and the ESLint preset work."
+    expected: "Each must-NOT still holds. The verifier re-ran the deterministic evidence today and found no violation. The visibility change and the devs team grant were made by the lead after execution, which the 01-08 prohibition reserves to the lead."
+    why_human: "5 are test-tier with no wired enforcing test and 2 are judgment-tier, so under ADR-550 D4 they stay flagged and cannot be absorbed into passed automatically."
 ---
 
 # Phase 1: Repo foundation and CI/CD (lead) Verification Report
 
 **Phase Goal:** Anyone clones the repo and `pnpm install --frozen-lockfile && pnpm turbo run lint typecheck test build` passes. Every PR and push to `main` runs the same checks in CI, `main` accepts changes only through a PR with green checks, and publishing a GitHub Release builds the images and pushes them to GHCR. `apps/web` and `apps/api` are placeholders; the framework skeletons are Phase 1.1.
-**Verified:** 2026-11-08T20:41:17Z
+**Verified:** 2026-11-12T06:21:03Z
 **Status:** human_needed
-**Re-verification:** No, initial verification
+**Re-verification:** Yes. The 2026-11-08 report is superseded because the repository was republished on 2026-11-12. Its frontmatter said `passed` while its body said `human_needed`; this report fixes that inconsistency.
 
-## Process discrepancy: MVP mode without a user-story goal
+## What was verified, and where
 
-ROADMAP marks Phase 1 `**Mode:** mvp`, but `user-story.validate` returns `valid: false`: the goal is not in "As a …, I want to …, so that …." form. The MVP rules say to refuse verification and run `/gsd-mvp-phase 1`. The orchestrator asked explicitly for goal-backward verification of this infrastructure phase, so this report verifies the goal as written. The developer-flow table below stands in for the "User Flow Coverage" section. **Recommendation (warning, non-blocking):** drop `mode: mvp` from Phase 1 in ROADMAP.md (an infra phase has no end-user story), or reformat the goal.
+- **Local tree:** branch `docs/UL-9-complete-phase-1` at `9b1c369`. HEAD moved from `3945ee7` to `9b1c369` while this verification ran: a lead commit changed README, CONTRIBUTING, CODEOWNERS, `.husky/pre-push`, the `main-push-guard.yml` header and the `apply-repo-rules.sh` header. The full gate was re-run on a fresh clone of `9b1c369`, and so was the apply-script probe. The hook, engine and release-age probes ran on a clone of `3945ee7`; none of the 6 changed files affects them.
+- **Live GitHub:** `ulbi-project-group-12/planktonic` is public, created 2026-11-12T05:49:13Z, and `main` = `6d63f36`, the single squashed commit, authored by `2744130+soadap@users.noreply.github.com`. The local docs branch (`3945ee7`, `9b1c369`) has **not** been pushed.
+- **Archive:** `ulbi-project-group-12/planktonic-archive` (private) holds PRs #1 to #5, `release/0.0`, release run 42520726408 and GHCR `ulbigram-web` / `ulbigram-api`.
+
+## Process note: MVP mode without a user-story goal (warning, carried over)
+
+ROADMAP still marks Phase 1 `**Mode:** mvp`, and `user-story.validate` returns `false`. This is an infrastructure phase with no end-user story, so it is verified goal-backward as written. The developer-flow table below stands in for the User Flow Coverage section. Recommendation: drop `mode: mvp` from Phase 1 in ROADMAP.md.
 
 ## Developer Flow Coverage (derived from the goal)
 
 | Step | Expected | Evidence | Status |
 |------|----------|----------|--------|
-| Clone | Public instructions work from a fresh checkout | Verifier `git clone` of HEAD 2277304 into scratch | ✓ |
-| Install | `pnpm install --frozen-lockfile` passes | exit 0, pnpm v12.15.0, Node v26.13.0 | ✓ |
-| Pipeline | `pnpm turbo run lint typecheck test build` passes | `--force` run: `Tasks: 14 successful, 14 total`, 0 cached; Vitest 13/13 | ✓ |
-| Open a PR | CI runs the same checks | PR #1: lint, typecheck, test, build, name-guard, pr-hygiene = success on each pushed head (d820129, 888b0f5, 548864e, 6e916c9) | ✓ |
-| Merge | Only via PR with green checks | Squash-merged as 2277304. Enforcement blocked by platform (403), so PASSED via override | ✓ (override) |
-| Push to main | CI green on main | Run 42520627484 (push, main @2277304): 5 required jobs success, pr-hygiene skipped | ✓ |
-| Release | Publish → images in GHCR | Run 42520726408 (release, v0.0.1-rc.1 @2277304): verify, images (web), images (api), deploy = success. GHCR `ulbigram-web` and `ulbigram-api` (private, linked to the repo) carry tags `v0.0.1-rc.1`, `0.0.1-rc.1`, `sha-2277304` | ✓ |
-| Outcome | Placeholders only, skeletons in 1.1 | No @nestjs/next/react/express/fastify in any manifest or the lockfile (0 hits); both READMEs point to Phase 1.1 tickets 1.4 and 1.5 | ✓ |
+| Clone | Fresh checkout works | `git clone` of `9b1c369` into scratch | VERIFIED |
+| Install | `pnpm install --frozen-lockfile` passes | exit 0 (Node v26.13.0, pnpm 12.15.0) | VERIFIED |
+| Pipeline | `pnpm turbo run lint typecheck test build` passes | `--force`: `Tasks: 15 successful, 15 total`, `0 cached`; Vitest 13/13; config preset tests 5/5 | VERIFIED |
+| Push to main | CI runs and is green | Run 43163922742 (push, main @6d63f36): lint, typecheck, test, build, name-guard success; pr-hygiene skipped (PR-only) | VERIFIED |
+| Merge | Only via a PR with green checks | Rulesets active; the lead's direct push `6d63f36 -> 5d6757f` was rejected by the `pull_request` and `required_status_checks` rules (rule suite 5063143425); main is still `6d63f36` | VERIFIED (live) |
+| Open a PR | CI runs the same checks on the PR | `on: pull_request` with no filters; no PR exists yet in the new repo, so the live PR evidence comes from archive PR #1 | VERIFIED (config + archive) |
+| Release | Publish, then images in GHCR | release.yml unchanged and proven in the archive (ulbigram-*); never run in the new repo, no planktonic-* package | PRESENT_BEHAVIOR_UNVERIFIED |
+| Outcome | Placeholders only | 0 framework deps in apps manifests or the lockfile; both apps print the Phase 1.1 note | VERIFIED |
 
 ## Goal Achievement
 
@@ -131,177 +153,180 @@ ROADMAP marks Phase 1 `**Mode:** mvp`, but `user-story.validate` returns `valid:
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| SC1 | Clean clone with Node 26.13.0 + pnpm 12.15.0: frozen install and the pipeline pass; every dependency exact-pinned, ≥ ~14 days old, lockfile committed | ✓ VERIFIED | Verifier clean clone: install exit 0; `turbo run … --force` 14/14. `check:pins` "5 manifests OK". All 14 catalog pins are bare x.y.z. `npm view` dates: newest catalog pin vite 8.3.5 on 2026-10-21. **All 184 lockfile packages** dated ≤ 2026-10-23 (ignore@7.0.14), cutoff 2026-10-25, 0 lookup errors. `pnpm-lock.yaml` tracked |
-| SC2 | `ci.yml` runs on every PR and push to main (frozen install, then lint/typecheck/test/build via Turbo with caching) and is green on main | ✓ VERIFIED | `on: pull_request` + `push: branches [main]`, no path filters. Composite setup: `pnpm install --frozen-lockfile --ignore-pnpmfile`, then `actions/cache` on `.turbo/cache`. Run 42520627484 on main green |
-| SC3 | `main` protected by a ruleset … **or the exact plan-level gap is reported**; CODEOWNERS puts @soadap on `.planning/`, `.github/`, root configs | ✓ VERIFIED (via the SC's own "or gap reported" branch) | `main.json` holds every listed rule. Live `GET rulesets` and `branches/main/protection` both return 403 with the exact text quoted in README. CODEOWNERS owns `/.planning/`, `/.github/`, `/scripts/`, `/packages/config/`, root configs and the lockfile. `GET codeowners/errors` → 0 |
-| SC4 | New PR pre-filled with the template (UL-n, "Done when…", test notes); branch naming and UL-n rules in README and CONTRIBUTING | ✓ VERIFIED (code); UI pre-fill → human item 1 | `.github/pull_request_template.md` holds `UL-`, `## Done when…`, `## How to test` and the review rules. README "Branches, PRs and tickets" and CONTRIBUTING "Workflow" document `feat/UL-n-…`, `fix/UL-n-…`, `[no-ticket]` |
-| SC5 | Publishing a Release runs `release.yml` → web + api images to `ghcr.io/ulbi-project-group-12/ulbigram-{web,api}:<tag>`; deploy is a marked stub; release process documented | ✓ VERIFIED | Trigger `release: types [published]` only. Live run 42520726408 pushed both images (log: `pushing manifest for ghcr.io/ulbi-project-group-12/ulbigram-web:v0.0.1-rc.1@sha256:795ffa…`). Deploy job is `# TODO(Phase 4)` with echo-only steps, confirmed in the run log. README "Releases" documents cut `release/x.y`, Publish, hotfix, rollback and test-release cleanup |
-| G1 | Goal clause: `main` accepts changes **only** through a PR with green checks | PASSED (override) | Not enforced: GitHub Free + private returns 403 for rulesets and branch protection, so a direct push is possible today. Override: platform gap accepted under D-20/D-30/AR-05. Closing action: make the repo public → run `scripts/apply-repo-rules.sh` (exit 0) → confirm a direct push to `main` is rejected |
+| SC1 | Clean clone with Node 26.13.0 + pnpm 12.15.0: frozen install and pipeline pass; every dep exact-pinned, at least ~14 days old; lockfile committed | VERIFIED | Clone of `9b1c369`: install exit 0, turbo 15/15, 0 cached. `check:pins`: "17 catalog entries OK", "5 manifests OK". Registry scan of **all 226 lockfile packages** (both lockfile documents): newest is ignore@7.0.14 at 2026-10-23T23:24Z, 0 lookup errors. The new catalog pins `@eslint-react/eslint-plugin` 5.28.8 and `@next/eslint-plugin-next` 16.4.3 (2026-10-23) and `eslint-plugin-jsx-a11y-x` 0.2.0 (2026-05-10) are all older than 14 days. `pnpm-lock.yaml` is tracked |
+| SC2 | `ci.yml` runs on every PR and push to main (frozen install, then lint/typecheck/test/build via Turbo with caching) and is green on main | VERIFIED | `on: pull_request` + `push: branches [main]`, no path filters; composite setup does a frozen install and caches `.turbo/cache`. Run 43163922742 on main @6d63f36: 5 required jobs success. (The separate `main-push-guard` workflow is red on that commit by design, see Warnings) |
+| SC3 | `main` protected by a ruleset (PR required, CI checks required, squash, no force-push, no deletion) or the exact gap reported; CODEOWNERS puts @soadap on `.planning/`, `.github/`, root configs | VERIFIED (live, via the primary branch of the SC) | `GET rulesets`: main, release, release-create, release-tags, all `enforcement: active`. `GET rules/branches/main`: deletion, non_fast_forward, required_linear_history, pull_request (1 approval, code-owner review, thread resolution, `allowed_merge_methods: [squash]`), required_status_checks (lint, typecheck, test, build, name-guard, integration 15368). Committed JSON equals live for all 4 rulesets, except fields the server adds with default values (`dismissal_restriction`, `required_reviewers: []`, `require_extra_approval_for_unattributed_changes`). CODEOWNERS owns `/.planning/`, `/.github/`, `/.husky/`, `/.claude/`, `/scripts/`, `/packages/config/`, root configs, `apps/*/eslint.config.js` and the lockfile; `GET codeowners/errors` returns 0 |
+| SC4 | New PR pre-filled with the template (UL-n, "Done when…", test notes); branch naming and UL-n rules in README and CONTRIBUTING | VERIFIED | `.github/pull_request_template.md` is on the new default branch (contents API) with `UL-`, `## Done when…`, `## How to test`, `## Review rules`. The pre-fill mechanism (standard path on the default branch) was confirmed by the lead in 01-UAT test 9. README "Branches, PRs and tickets" and CONTRIBUTING "Workflow" / "Commits and PR titles" document `feat/UL-n-…`, `fix/UL-n-…`, `[no-ticket]` |
+| SC5 | Publishing a Release runs `release.yml` and pushes web + api to `ghcr.io/ulbi-project-group-12/planktonic-{web,api}:<tag>`; deploy is a marked stub; release process documented | PRESENT_BEHAVIOR_UNVERIFIED | Present and wired: trigger `release: types [published]` only; names come from `github.repository_owner` + `vars.PRODUCT_SLUG \|\| github.event.repository.name`. No repo variables are set, so the name resolves to `planktonic`, and name-guard (green on main) proves `PRODUCT_IMAGE_PREFIX` equals that repo-derived slug. The deploy job is `TODO(Phase 4)`, echo only. README "Releases" documents cut `release/x.y`, Publish, hotfix, rollback and cleanup. **Behavior:** archive run 42520726408 (verify, images web/api, deploy = success) pushed `ulbigram-{web,api}` tagged `sha-2277304,v0.0.1-rc.1,0.0.1-rc.1` (re-read today). `release.yml`, both Dockerfiles, `.dockerignore`, both `src/main.ts` and the setup action are byte-identical to that run's commit `2277304`. In the new repo: 0 release runs, and `GET packages/container/planktonic-web` returns 404. See human item 1 |
+| G1 | Goal clause: `main` accepts changes **only** through a PR with green checks | VERIFIED (live; previously PASSED by override) | Rule suite 5063143425, 2026-11-11T23:49:52-06:00: actor soadap pushed refs/heads/main `6d63f36 -> 5d6757f`, result `fail`. `pull_request`: "Changes must be made through a pull request." `required_status_checks`: "5 of 5 required status checks are expected." The ref did not move. The only bypass is `OrganizationAdmin` / `pull_request` (`current_user_can_bypass: pull_requests_only`), and the org has 1 admin (soadap). Residual: that admin can merge his own PR without approval or green checks; this was accepted in D-31, see Warnings |
 
 **Plan must-haves (merged; 01-06 T3 and 01-09 T1 deduplicated into SC1)**
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 01-01.1 | Frozen install succeeds against the committed lockfile | ✓ VERIFIED | Clean-clone install exit 0 |
-| 01-01.2 | Every version defined once, bare, in the catalog; pnpm refuses releases < 14 days with ERR_PNPM_NO_MATURE_MATCHING_VERSION | ✓ VERIFIED | `minimumReleaseAge: 20160`, `catalogMode: strict`. **Probe:** in the clone, changing typescript-eslint to 8.72.1 (2026-10-26) → `ERR_PNPM_NO_MATURE_MATCHING_VERSION`, exit 1 |
-| 01-01.3 | Node outside `>=26.13.0 <27` fails with ERR_PNPM_UNSUPPORTED_ENGINE | ✓ VERIFIED | **Probe:** `pnpm install --frozen-lockfile --config.node-version=25.9.0` → `ERR_PNPM_UNSUPPORTED_ENGINE`, exit 1 |
-| 01-01.4 | lint + typecheck use shared TS 6.0.3 / ESLint 10 flat config and pass | ✓ VERIFIED | `base.json` (nodenext, strict); `eslint/index.js` `base()` with strictTypeChecked; every package `eslint.config.js` consumes it; tasks pass |
-| 01-02.1 | `format:check` passes using the one shared Prettier config | ✓ VERIFIED | Root `"prettier": "@app/config/prettier"`; clone run: "All matched files use Prettier code style!" |
-| 01-02.2 | Pre-commit hook blocks a staged lint error; staged files only | ✓ VERIFIED | **Probe:** staged `export const x: any = 1;` → commit exit 1, "✖ eslint --fix … Reverting to original state"; HEAD unchanged |
-| 01-02.3 | A range or off-catalog dependency fails `check:pins` | ✓ VERIFIED | `check-pins.test.mjs` 22 cases (part of test:root, 51/51 pass), run in the required `lint` job |
-| 01-02.4 | `.env`/`.env.*` ignored, `.env.example` tracked with names only incl. PRODUCT_NAME/PRODUCT_SLUG | ✓ VERIFIED | `.gitignore` has `.env*` and `!.env.example`; `.env.example` holds `NODE_ENV=`, `APP_VERSION=`, `PRODUCT_NAME=`, `PRODUCT_SLUG=` and no values; it is the only tracked env file |
-| 01-03.1 | Name, slug, prefix defined once in `packages/config/product.ts`, exported as `@app/config/product` | ✓ VERIFIED | File exports the 3 constants; `exports["./product"] = "./product.ts"` |
-| 01-03.2 | `check:name` passes the real tree, fails with file:line on any-case name outside the allowlist | ✓ VERIFIED | Clone: "57 tracked files clean"; test suite covers lowercase, case-insensitive and file:line cases (pass) |
-| 01-03.3 | Allowlist exact; nested docs/README.md not exempt | ✓ VERIFIED | Test "does not exempt a nested README.md" passes; verifier grep finds no literal outside the allowlist |
-| 01-03.4 | Guard fails closed (exit 2) on missing or invalid source | ✓ VERIFIED | 3 fail-closed tests (missing source, bad slug, missing export) pass |
-| 01-04.1 | Real TicketKey zod schema, Vitest valid + invalid cases | ✓ VERIFIED | `/^UL-[1-9]\d*$/` branded schema; 3 valid + 8 invalid + message + brand tests; 13/13 pass |
-| 01-04.2 | Builds to dist; built module validates at runtime in plain Node | ✓ VERIFIED | **Spot-check:** `import { TicketKey } from dist/index.js` → `UL-12` true, `UL-01` false |
-| 01-04.3 | Plain string not assignable to TicketKey at compile time | ✓ VERIFIED | `@ts-expect-error` in the test; typecheck passes (TS2578 would fire if the brand were gone) |
-| 01-04.4 | Typed ESLint fires on explicit any in src | ✓ VERIFIED | The husky probe above hit exactly this rule on a contracts src file |
-| 01-05.1 | api placeholder runs 4 tasks, prints name/version/PRODUCT_NAME (fallback) + Phase 1.1 note | ✓ VERIFIED | `main.ts` `fromEnv` fallbacks; 4 scripts; image run printed "@app/api v9.9.9 for Acme: placeholder, the NestJS skeleton arrives in Phase 1.1" |
-| 01-05.2 | api image: root context, build-args only, uid 1000, only package.json + src | ✓ VERIFIED | **Spot-check:** local `docker build` + run: `id -u` → 1000; `/app` has only `package.json` and `src/main.ts`; `touch /app/src/x` → Permission denied (root-owned code). Digest-pinned base |
-| 01-05.3 | No NestJS in apps/api; no name literal; check:name green | ✓ VERIFIED | Manifest deps are only @app/config, @types/node, eslint, typescript; name guard green |
-| 01-06.1 | web placeholder runs 4 tasks, prints the same with the Next.js note | ✓ VERIFIED | `node apps/web/dist/main.js` → "@app/web dev for this project: placeholder, the Next.js skeleton arrives in Phase 1.1"; with env → "1.2.3 for Acme" |
-| 01-06.2 | web image: same structure as api | ✓ VERIFIED | `sed s/web/APP/` vs `sed s/api/APP/` Dockerfile diff empty; release run built it |
-| 01-07.1 | PR + push to main run 5 separately named checks, no path filters, no matrix | ✓ VERIFIED | `ci.yml` jobs `name: lint/typecheck/test/build/name-guard`, no `paths:`, no matrix; check-run names on PR #1 match |
-| 01-07.2 | Frozen install (pnpm from packageManager, Node from .nvmrc), pnpm store + Turbo cache; lint job runs format:check, check:pins, lint:root | ✓ VERIFIED | `action.yml` (no `version` input; `node-version-file: .nvmrc`; `cache: pnpm`; turbo cache); lint job steps present |
-| 01-07.3 | Every third-party action SHA-pinned with version comment; contents: read; PR concurrency cancel; per-job timeouts | ✓ VERIFIED | 9 distinct external `uses:`, 0 without `@<40-hex> # v…`; `permissions: contents: read`; `cancel-in-progress: pull_request`; timeouts on 6/6 CI jobs and 3/3 release jobs |
-| 01-07.4 | Missing UL-n / [no-ticket] or > 600 lines → non-blocking warning only | ✓ VERIFIED | **Live:** PR #1 (10811 lines, `[no-ticket]` title) got the annotation "warning: PR size: This PR changes 10811 lines (more than 600)…", no title warning, job success |
-| 01-07.5 | Release (stable or pre) pushes web + api to `ghcr.io/<owner>/<repo-or-PRODUCT_SLUG>-{app}` tagged tag/version/sha, names from repo context | ✓ VERIFIED | `names` step derives from `github.repository_owner` + `vars.PRODUCT_SLUG \|\| github.event.repository.name`; metadata-action `type=raw` tag, `type=semver`, `type=sha`; live tags `v0.0.1-rc.1`, `0.0.1-rc.1`, `sha-2277304` |
-| 01-07.6 | Only the images job can write packages; deploy is a TODO(Phase 4) stub | ✓ VERIFIED | Top level `permissions: {}`; `packages: write` only in `images`; deploy `permissions: {}` |
-| 01-08.1 | Squash only, auto-delete, PR_TITLE, applied and read back | ✓ VERIFIED | **Live** `GET repos`: allow_squash_merge true, merge_commit false, rebase false, delete_branch_on_merge true, squash title PR_TITLE (matches `repo-settings.json`) |
-| 01-08.2 | main ruleset as code with PR (1 approval, code-owner review, resolved threads, squash only), 5 checks, no force-push or deletion, linear history | ✓ VERIFIED | `.github/rulesets/main.json` holds every listed rule; check contexts equal the CI job names |
-| 01-08.3 | One idempotent apply script; on Free + private reports the exact 403 gap and exits 3 | ✓ VERIFIED | **Probe** with a stub `gh` on PATH (no real API calls): Step 1 PATCH, Step 3 list → 403 → "GAP: rulesets are unavailable…", exit 3. Preflight validates every JSON first; upsert by name |
-| 01-08.4 | Only bypass is OrganizationAdmin in pull_request mode on main | ✓ VERIFIED | `main.json` and `release.json`: `OrganizationAdmin/pull_request`. `always` appears only on the tags and release-create rulesets, as documented in D-31 and the script header |
-| 01-08.5 | CODEOWNERS @soadap on .planning/.github/scripts/root configs; PR template prefilled content | ✓ VERIFIED (UI pre-fill → human item 1) | See SC3 and SC4 |
-| 01-09.2 | README "this project (working name ulbigram)", points at product.ts, has a Renaming checklist (5 steps) | ✓ VERIFIED | README intro, "Product name", "Renaming the project" with the 5 D-36 steps |
-| 01-09.3 | README documents the release process, the Node 26.13.0 exception and the exact 403 text | ✓ VERIFIED | "Prerequisites" (D-29 exception), "Releases", "Repository rules and the GitHub Free gap" quotes `Upgrade to GitHub Pro or make this repository public to enable this feature.` |
-| 01-09.4 | README + CONTRIBUTING: branch naming, UL-n + [no-ticket], squash, review SLA, GSD optional, one-driver rule | ✓ VERIFIED | CONTRIBUTING "Workflow", "Commits and PR titles", "Review" (24 h / 48 h), "GSD" (one-driver rule) |
-| 01-09.5 | Phase branch pushed with the gate green, no secrets, CODEOWNERS 0 errors | ✓ VERIFIED | Clone `check:all` components all exit 0; history-wide token/PEM regex scan → 0 hits; codeowners/errors → 0 |
+| 01-01.1 | Frozen install succeeds against the committed lockfile | VERIFIED | Clean-clone install exit 0 |
+| 01-01.2 | Every version defined once, bare, in the catalog; pnpm refuses releases younger than 14 days (ERR_PNPM_NO_MATURE_MATCHING_VERSION) | VERIFIED | `minimumReleaseAge: 20160`, `catalogMode: strict`, 17 bare x.y.z pins. **Probe:** `globals: 17.14.0` (published 2026-11-01), then `pnpm install` gives `ERR_PNPM_NO_MATURE_MATCHING_VERSION`, exit 1. (A first probe with typescript-eslint 8.72.2 also exited 1, with `ERR_PNPM_NO_MATCHING_VERSION`: its young transitive deps were filtered out) |
+| 01-01.3 | Node outside `>=26.13.0 <27` fails with ERR_PNPM_UNSUPPORTED_ENGINE | VERIFIED | **Probe:** `--config.node-version=25.9.0` gives `ERR_PNPM_UNSUPPORTED_ENGINE`, exit 1 |
+| 01-01.4 | lint + typecheck use the shared TS 6.0.3 / ESLint 10 flat config and pass | VERIFIED | `base.json` nodenext/strict; every package's `eslint.config.js` consumes `@app/config/eslint`; tasks pass |
+| 01-02.1 | `format:check` passes with the one shared Prettier config | VERIFIED | Clone run: "All matched files use Prettier code style!" |
+| 01-02.2 | Pre-commit hook blocks a staged lint error; staged files only | VERIFIED | **Probe:** staged `export const x: any = 1;` in contracts src, then commit exit 1 ("Unexpected any … @typescript-eslint/no-explicit-any", "Reverting to original state"); HEAD unchanged |
+| 01-02.3 | A range or off-catalog dependency fails `check:pins` | VERIFIED | `check-pins.test.mjs` is part of test:root (51/51 pass) and runs in the required `lint` job |
+| 01-02.4 | `.env`/`.env.*` ignored; `.env.example` tracked, names only, incl. PRODUCT_NAME/PRODUCT_SLUG | VERIFIED | `.gitignore` has `.env*` and `!.env.example`; `.env.example` is the only env file tracked and holds 4 empty names |
+| 01-03.1 | Name, slug, prefix defined once in `packages/config/product.ts`, exported as `@app/config/product` | VERIFIED | `PRODUCT_DISPLAY_NAME = 'planktonic'`, `PRODUCT_SLUG`, `PRODUCT_IMAGE_PREFIX = PRODUCT_SLUG` |
+| 01-03.2 | `check:name` passes the real tree and fails with file:line on an any-case literal | VERIFIED | Clone: "101 tracked files clean"; guard test suite passes |
+| 01-03.3 | Allowlist exact; nested docs/README.md not exempt | VERIFIED | Test passes; 0 hits for the name in `apps/`, `.github/workflows`, `.github/actions` |
+| 01-03.4 | Guard fails closed (exit 2) on a missing or invalid source | VERIFIED | Fail-closed tests pass (51/51) |
+| 01-04.1 | Real TicketKey zod schema, Vitest valid + invalid cases | VERIFIED | 13/13 pass |
+| 01-04.2 | Builds to dist; validates at runtime in plain Node | VERIFIED | **Spot-check:** `dist/index.js`: `UL-12` true, `UL-01` false |
+| 01-04.3 | Plain string not assignable to TicketKey | VERIFIED | `@ts-expect-error` in the test; typecheck passes |
+| 01-04.4 | Typed ESLint fires on explicit any in src | VERIFIED | The hook probe hit exactly this rule on contracts src |
+| 01-05.1 | api placeholder runs 4 tasks, prints name/version/PRODUCT_NAME (fallback) + NestJS Phase 1.1 note | VERIFIED | `PRODUCT_NAME=Acme APP_VERSION=1.2.3 node apps/api/dist/main.js` prints "@app/api 1.2.3 for Acme: placeholder, the NestJS skeleton arrives in Phase 1.1" |
+| 01-05.2 | api image: root context, build-args only, uid 1000, only package.json + src | VERIFIED | The Dockerfile is byte-identical to the archive commit that the 11-08 verifier built and ran (uid 1000, 2 files, code read-only), and its structure equals the web Dockerfile rebuilt today (row 01-06.2) |
+| 01-05.3 | No NestJS in apps/api; no name literal; check:name green | VERIFIED | 0 framework deps; guard green |
+| 01-06.1 | web placeholder runs 4 tasks and prints the Next.js note | VERIFIED | `node apps/web/dist/main.js` prints "@app/web dev for this project: placeholder, the Next.js skeleton arrives in Phase 1.1" |
+| 01-06.2 | web image: same structure as api | VERIFIED | **Spot-check today:** `docker build` (root context, build-args) and `run` print "@app/web 9.9.9 for Acme…"; `id -u` gives 1000; `/app` holds only `package.json` and `src/main.ts`; `touch /app/src/x` gives Permission denied. The image was removed afterwards |
+| 01-07.1 | PR + push run 5 separately named checks, no path filters, no matrix | VERIFIED | `ci.yml`; check names on main run 43163922742 match |
+| 01-07.2 | Frozen install (pnpm from packageManager, Node from .nvmrc), store + Turbo cache; lint job runs format:check, check:pins, lint:root | VERIFIED | `action.yml` unchanged from the archive run commit; lint job steps present |
+| 01-07.3 | Third-party actions SHA-pinned with version comment; contents: read; PR concurrency cancel; per-job timeouts | VERIFIED | 8 distinct external actions, 0 without `@<40-hex> # v…`; `sha_pinning_required: true` live; `timeout-minutes` on all 10 jobs across 3 workflows |
+| 01-07.4 | Missing UL-n / [no-ticket] or more than 600 lines gives a non-blocking warning only | VERIFIED | `pr-hygiene.sh` is byte-identical to the archive run commit (where PR #1 got the live size warning). Local run: both `::warning` lines, exit 0 |
+| 01-07.5 | Release pushes web + api to `ghcr.io/<owner>/<repo-or-PRODUCT_SLUG>-{app}` tagged tag/version/sha, names from the repo context | VERIFIED (generic mechanism, archive run) | The archive run proved the repo-name-derived naming and all 3 tag types with today's identical workflow. The concrete planktonic-* push is SC5 (human item 1) |
+| 01-07.6 | Only the images job can write packages; deploy is a TODO(Phase 4) stub | VERIFIED | Top-level `permissions: {}`; `packages: write` only in `images` |
+| 01-08.1 | Squash only, auto-delete, PR_TITLE, applied and read back | VERIFIED (live, new repo) | `GET repos`: squash true, merge commit false, rebase false, delete_branch_on_merge true, title PR_TITLE, message PR_BODY, allow_update_branch true, which equals `repo-settings.json` |
+| 01-08.2 | main ruleset as code: PR (1 approval, code-owner review, resolved threads, squash only), 5 checks, no force-push or deletion, linear history | VERIFIED (live) | See SC3; committed equals live |
+| 01-08.3 | One idempotent apply script; on Free + private it reports the exact 403 gap and exits 3 | VERIFIED | **Probe** on `9b1c369` with a stub `gh` (no network): gap mode prints "GAP: … HTTP 403: Upgrade to GitHub Pro or make this repository public …", exit 3, 0 ruleset writes. OK mode: upsert by name (1 PUT, 3 POST), "Done", exit 0. The live result (4 active rulesets, sha pinning on) matches the lead's reported exit 0 |
+| 01-08.4 | Only bypass: OrganizationAdmin in pull_request mode on main | VERIFIED (live) | main and release: `OrganizationAdmin/pull_request`; `always` appears only on release-create and release-tags (D-31) |
+| 01-08.5 | CODEOWNERS @soadap on .planning/.github/scripts/root configs; PR template pre-filled | VERIFIED | See SC3 and SC4. The team-owned commented lines were dropped by the lead (scope change, not a Phase 1 requirement) |
+| 01-09.2 | README names the product, points at product.ts, has a 5-step Renaming checklist | VERIFIED (wording superseded) | The "working name ulbigram" wording was superseded by the rename to planktonic (archive PR #4). README title and intro say planktonic; "Product name" points at `packages/config/product.ts`; "Renaming the project" has the 5 D-36 steps |
+| 01-09.3 | README documents the release process, the Node 26.13.0 exception and the plan gap | VERIFIED (gap clause superseded) | "Prerequisites" (D-29), "Releases" (cut, Publish, hotfix, rollback, test-release cleanup). The 403 gap is closed, so on `9b1c369` README "Repository rules" correctly states the rules are enforced (applied 2026-11-12, `GH013`). Repeating the 403 text now would be false |
+| 01-09.4 | README + CONTRIBUTING: branch naming, UL-n + [no-ticket], squash, review SLA, GSD optional, one-driver rule | VERIFIED | CONTRIBUTING "Workflow", "Commits and PR titles", "Review" (24 h / 48 h), "GSD" (one-driver rule) |
+| 01-09.5 | Phase pushed with the gate green, no secrets, CODEOWNERS 0 errors | VERIFIED | New main has CI green; `git log -p --all` token/PEM/AWS/Slack/sk- regex finds 0 hits over all 3 commits; `codeowners/errors` returns 0 |
 
-**Score:** 42/42 truths verified (41 VERIFIED + 1 PASSED by override; 0 present-but-behavior-unverified)
+**Score:** 41/42 truths verified (0 by override; 1 present, behavior-unverified: SC5)
 
 ### Prohibitions (ADR-550)
 
-| Plan | Prohibition (must-NOT) | Tier | Enforcement | Verifier evidence | Disposition |
-|------|------------------------|------|-------------|-------------------|-------------|
-| 01-05 | No NestJS or framework code/deps in apps/api | test | none wired | 0 framework deps in manifests and lockfile | **unverified-prohibition, human review recommended** |
-| 01-05 | No product name in apps/api or its Dockerfile | test | `name-guard` required check + 21 tests | guard clean | ✓ verified (wired) |
-| 01-06 | No Next.js/React/UI framework in apps/web | test | none wired | 0 hits (as above) | **unverified-prohibition, human review recommended** |
-| 01-07 | No automatic release/deploy path; release.yml only on human-published release | test | none wired | only trigger `release: [published]`; no `gh release`, `git tag` or `git push` in any workflow | **unverified-prohibition, human review recommended** |
-| 01-07 | No product name in any workflow or composite action | test | `name-guard` covers all tracked files | guard clean | ✓ verified (wired) |
-| 01-08 | No visibility change, collaborators, teams, GitHub Apps or webhooks | judgment | n/a | repo still private; 0 direct and 0 outside collaborators (the read users are org members via org default `read`); 0 hooks; 0 org app installations | LLM verdict: honored (non-authoritative), **flagged** |
-| 01-08 | No ruleset bypass permitting direct push to main (`always`/`exempt`) | test | none wired | `main.json` bypass = `OrganizationAdmin/pull_request` only | **unverified-prohibition, human review recommended** |
-| 01-09 | Docs must not claim main is protected while 403 persists | judgment | n/a | README: "`main` is **not** protected…"; CODEOWNERS and CONTRIBUTING say the same | LLM verdict: honored (non-authoritative), **flagged** |
-| 01-09 | No secret printed, committed or pushed | test | none wired in CI (one-time pre-push scan) | `git log -p --all` token/PEM/AWS/Slack/sk- regex → 0 hits | **unverified-prohibition, human review recommended** |
+| Plan | Prohibition (must-NOT) | Tier | Enforcement | Evidence (re-run 2026-11-12) | Disposition |
+|------|------------------------|------|-------------|------------------------------|-------------|
+| 01-05 | No NestJS or framework code/deps in apps/api | test | none wired | 0 `@nestjs/`, `next`, `react`, `express`, `fastify` in apps manifests or lockfile package keys | unverified-prohibition, human review recommended |
+| 01-05 | No product name in apps/api or its Dockerfile | test | `name-guard` required check + tests | 0 hits; guard clean | verified (wired) |
+| 01-06 | No Next.js/React/UI framework in apps/web | test | none wired | as above (the ESLint React/Next plugins live only in `packages/config` as lint presets) | unverified-prohibition, human review recommended |
+| 01-07 | No automatic release/deploy path | test | none wired | release.yml trigger is `release: [published]` only; no workflow creates releases or tags; main-push-guard only opens issues | unverified-prohibition, human review recommended |
+| 01-07 | No product name in any workflow or composite action | test | `name-guard` | 0 hits | verified (wired) |
+| 01-08 | Executor must not change visibility, add collaborators/teams, Apps or webhooks | judgment | n/a | 0 direct and 0 outside collaborators, 0 hooks, 0 org app installations. Visibility (public) and the `devs` push grant were done by the lead after execution, the case the prohibition reserves to him | LLM verdict: honored (non-authoritative), **flagged** |
+| 01-08 | No ruleset bypass that permits direct push to main | test | none wired (live rule suite is evidence, not a test) | live main bypass is `OrganizationAdmin/pull_request` only; the direct push was rejected | unverified-prohibition, human review recommended |
+| 01-09 | Docs must not claim main is protected while the 403 persists | judgment | n/a | The 403 no longer persists and live protection is proven, so the `9b1c369` docs are accurate. Live main docs still say "not protected" (stale in the safe direction, see Warnings) | LLM verdict: honored (non-authoritative), **flagged** |
+| 01-09 | No secret printed, committed or pushed | test | none wired in CI | history regex scan 0 hits; `.env.example` holds names only | unverified-prohibition, human review recommended |
 
-Complete with 7 flagged prohibitions (5 test-tier with no wired enforcement, 2 judgment-tier). Deterministic evidence shows none of the must-NOTs happened; the flags exist because no wired test keeps them true in the future.
+Complete with 7 flagged prohibitions (5 test-tier with no wired enforcement, 2 judgment-tier). The lead signed them off on 2026-11-08 (01-UAT test 10). Re-confirmation on the republished repo is human item 2.
 
 ### Required Artifacts
 
-`gsd-tools verify.artifacts`, all exit 0: 01-01 7/7, 01-02 5/5, 01-03 3/3, 01-04 5/5, 01-05 4/4, 01-06 3/3, 01-07 4/4, 01-08 6/6, 01-09 2/2. **39/39 artifacts pass.** All artifacts are wired: each is consumed by a script, workflow or package and was exercised in the clone run or on GitHub. No ORPHANED or STUB artifacts. The placeholder apps are intentional per D-02 and the goal text.
+`gsd-tools verify.artifacts` on `9b1c369`, all exit 0: 01-01 7/7, 01-02 5/5, 01-03 3/3, 01-04 5/5, 01-05 4/4, 01-06 3/3, 01-07 4/4, 01-08 6/6, 01-09 2/2. **39/39 pass.** Every artifact is consumed by a script, workflow or package and was exercised in the clone run, a probe or on GitHub. No ORPHANED or STUB artifacts; the placeholder apps are intentional (D-02, goal text).
+
+Added after the 11-08 report (not plan artifacts, verified as wired): `.github/workflows/main-push-guard.yml` (it ran on main and opened issue #1, since closed), `.husky/pre-push` (blocks pushes to `refs/heads/main` locally), and the `packages/config` ESLint presets `base/next/nest` with their test (`@app/config:test` 5/5 in the pipeline).
 
 ### Key Link Verification
 
-`gsd-tools verify.key-links`, all exit 0: 3/3, 3/3, 3/3, 3/3, 2/2, 2/2, 4/4, 3/3, 3/3. **26/26 links WIRED.** Links confirmed by running code: root scripts → turbo (14 tasks); ci.yml → setup action and the name guard (live check runs); release.yml → `apps/${{ matrix.app }}/Dockerfile` (live images); ruleset contexts → CI job names (identical strings); apply script → rulesets/*.json and repo-settings.json (stub probe call log).
+`gsd-tools verify.key-links`, all exit 0: 3/3, 3/3, 3/3, 3/3, 2/2, 2/2, 4/4, 3/3, 3/3. **26/26 WIRED.** Confirmed by running code: root scripts to turbo (15 tasks); ci.yml to the setup action and name guard (live check runs on main); ruleset contexts to CI job names (live `required_status_checks` equals the job names); apply script to `rulesets/*.json` and `repo-settings.json` (stub call log); release.yml to `apps/${{ matrix.app }}/Dockerfile` (archive run).
 
 ### Data-Flow Trace (Level 4)
 
 | Artifact | Data | Source | Real data | Status |
 |----------|------|--------|-----------|--------|
-| release.yml image name | `ghcr.io/<owner>/<slug>-<app>` | `github.repository_owner` + `vars.PRODUCT_SLUG \|\| repo name` | Live GHCR packages `ulbigram-web` / `ulbigram-api` under the org | ✓ FLOWING |
-| name-guard `--expect-image-prefix` | repo-derived slug vs `PRODUCT_IMAGE_PREFIX` | same expression as release.yml | CI green, so they match | ✓ FLOWING |
-| apps/*/src/main.ts | PRODUCT_NAME / APP_VERSION | Docker build-args → ENV | Image printed the build-arg values | ✓ FLOWING |
+| release.yml image name | `ghcr.io/<owner>/<slug>-<app>` | `github.repository_owner` + `vars.PRODUCT_SLUG \|\| repo name` (no vars set in the new repo) | Archive: real `ulbigram-*` packages. New repo: resolves to `planktonic-*`, not yet pushed | FLOWING (archive) / unexercised (new repo) |
+| name-guard `--expect-image-prefix` | repo-derived slug vs `PRODUCT_IMAGE_PREFIX` | same expression as release.yml | name-guard green on main @6d63f36, so `planktonic` matches | FLOWING |
+| apps/*/src/main.ts | PRODUCT_NAME / APP_VERSION | build-args to ENV | web image built today printed the build-arg values | FLOWING |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| SC1 pipeline from a clean clone | `git clone` → `pnpm install --frozen-lockfile` → `pnpm turbo run lint typecheck test build --force` | exit 0 / 14 of 14 successful, 0 cached | ✓ PASS |
-| Remaining required-job steps | `format:check`, `check:pins`, `lint:root`, `check:name`, `test:root` | all exit 0; test:root 51 pass, 0 fail, 0 skipped | ✓ PASS |
-| Release-age gate | young typescript-eslint 8.72.1 + install | ERR_PNPM_NO_MATURE_MATCHING_VERSION | ✓ PASS |
-| Engine-strict gate | `--config.node-version=25.9.0` | ERR_PNPM_UNSUPPORTED_ENGINE | ✓ PASS |
-| Pre-commit blocks a lint error | commit a staged explicit `any` | exit 1, reverted | ✓ PASS |
-| Apply script plan-gap path | stub `gh` returns the 403 text | exit 3, GAP message | ✓ PASS |
-| api image | `docker build` + `run` | uid 1000, 2 files, read-only code, correct output | ✓ PASS |
-| Built contracts at runtime | `import dist/index.js` | UL-12 true / UL-01 false | ✓ PASS |
-| Live CI / release / GHCR | read-only `gh api` | facts reproduced (see SC2, SC5) | ✓ PASS |
+| SC1 pipeline from a clean clone | clone `9b1c369`, then `pnpm install --frozen-lockfile`, then `pnpm turbo run lint typecheck test build --force` | exit 0 / 15 of 15, 0 cached | PASS |
+| Remaining required-job steps | `format:check`, `check:pins`, `lint:root`, `check:name`, `test:root` | all exit 0; test:root 51 pass, 0 fail | PASS |
+| Release-age gate | young `globals 17.14.0`, then install | ERR_PNPM_NO_MATURE_MATCHING_VERSION | PASS |
+| Engine-strict gate | `--config.node-version=25.9.0` | ERR_PNPM_UNSUPPORTED_ENGINE | PASS |
+| Pre-commit blocks a lint error | commit a staged explicit `any` | exit 1, reverted | PASS |
+| Apply script, both paths | stub `gh` in gap and ok modes | exit 3 + GAP / exit 0 + upsert | PASS |
+| web image | `docker build` + `run` | uid 1000, 2 files, read-only code, correct output | PASS |
+| Built contracts | `import dist/index.js` | UL-12 true / UL-01 false | PASS |
+| Live rules, CI, settings | read-only `gh api` (rulesets, rules/branches/main, rule-suites, actions/permissions, runs) | facts in SC2, SC3, G1, 01-08.x | PASS |
+| Release to GHCR in the new repo | (needs a published release, a GitHub write) | not run | SKIP, human item 1 |
 
-All probe edits were made in the scratch clone and reverted (`git status` clean). The local test image was removed. No GitHub writes were made.
+All probes ran in scratch clones and were reverted (`git status` clean); the test image was removed. The verifier made no GitHub writes.
 
 ### Probe Execution
 
-No `scripts/*/tests/probe-*.sh` exist and no plan declares one. Step 7c is not applicable. The ad-hoc probes above were run by the verifier itself.
+No `scripts/*/tests/probe-*.sh` exist and no plan declares one, so Step 7c does not apply. The ad-hoc probes above were run by the verifier.
 
 ### Requirements Coverage
 
-All 21 IDs appear in at least one plan's `requirements:` field. REQUIREMENTS.md maps exactly these 21 IDs to Phase 1, so no requirement is ORPHANED.
+All 21 phase IDs appear in at least one plan's `requirements:` field, and REQUIREMENTS.md maps exactly these 21 IDs to Phase 1. None is ORPHANED.
 
 | Requirement | Plan(s) | Description | Status | Evidence |
 |-------------|---------|-------------|--------|----------|
-| TZ-FE-02 / TZ-BE-02 | 01-01, 01-04, 01-05, 01-06 | typescript | ✓ SATISFIED | TS 6.0.3 pinned, shared base, typecheck in all packages |
-| TZ-FE-10 / TZ-BE-10 | 01-01 | Eslint | ✓ SATISFIED | Shared flat config, `lint` required check |
-| TZ-FE-11 / TZ-BE-11 | 01-02 | prettier | ✓ SATISFIED | `@app/config/prettier`, format:check in lint job |
-| TZ-FE-12 / TZ-BE-12 | 01-02 | husky | ✓ SATISFIED | Pre-commit probe blocked a lint error |
-| TZ-FE-16 / TZ-BE-15 | 01-01, 01-06 | pnpm | ✓ SATISFIED | pnpm 12.15.0 packageManager + engines |
-| TZ-BE-16 | 01-02, 01-03, 01-07 | Mandatory linting | ✓ SATISFIED | lint in CI on every PR and push |
-| TZ-FE-18 / TZ-BE-17 | 01-08, 01-09 | Mandatory code review for every task | ✓ SATISFIED as code; enforcement under the G1 override | Ruleset requires 1 approval + code-owner review; template + CONTRIBUTING review rules. Not enforced until the rulesets apply |
-| TZ-FE-20 / TZ-BE-19 / TZ-CICD-02 | 01-07 | CI pipeline; lint/tests/build/typecheck on every PR | ✓ SATISFIED | ci.yml, live green runs on the PR and on main |
-| TZ-CICD-03 | 01-05, 01-06, 01-07, 01-09 | Releases via cut branch + release button | ✓ SATISFIED (build half; deploy is Phase 4 per the traceability "Also: 4") | release/0.0 + pre-release → live images |
-| TZ-CICD-04 | 01-08, 01-09 | No direct push to main, only PR with review | ✓ SATISFIED as code; **enforcement PASSED (override)** | Ruleset + apply script; 403 platform gap; closing action in G1 |
-| TZ-CICD-05 | 01-08, 01-09 | Trunk-based | ✓ SATISFIED | Squash only + auto-delete applied live; CONTRIBUTING branch lifetime rules |
-| TZ-PROD-10 | 01-02, 01-07, 01-09 | .env local, GitHub secrets in CI, no secrets committed | ✓ SATISFIED | `.env*` ignored, names-only example, release uses `secrets.GITHUB_TOKEN`, scan 0 hits |
-| TZ-PROCESS-06 | 01-01…01-06, 01-09 | Project init and base config | ✓ SATISFIED | Whole monorepo foundation |
+| TZ-FE-02 / TZ-BE-02 | 01-01, 01-04, 01-05/01-06 | typescript | SATISFIED | TS 6.0.3 pinned, shared base, typecheck in every package |
+| TZ-FE-10 / TZ-BE-10 | 01-01 | Eslint | SATISFIED | Shared flat config (+ base/next/nest presets), required `lint` check |
+| TZ-FE-11 / TZ-BE-11 | 01-02 | prettier | SATISFIED | `@app/config/prettier`, format:check in the lint job |
+| TZ-FE-12 / TZ-BE-12 | 01-02 | husky | SATISFIED | Pre-commit probe blocked a lint error; pre-push guards main |
+| TZ-FE-16 / TZ-BE-15 | 01-01, 01-06 | pnpm | SATISFIED | `packageManager: pnpm@12.15.0` + engines + engineStrict |
+| TZ-BE-16 | 01-02, 01-03, 01-07 | Mandatory linting | SATISFIED | lint is a required check on every PR and push |
+| TZ-FE-18 / TZ-BE-17 | 01-08, 01-09 | Mandatory code review for every task | SATISFIED (enforced live) | main ruleset: 1 approval + code-owner review + thread resolution, active. Exception by design (D-31): the single org admin can merge his own PR through the PR-mode bypass |
+| TZ-FE-20 / TZ-BE-19 / TZ-CICD-02 | 01-07 | CI pipeline; lint/tests/build/typecheck on every PR | SATISFIED | ci.yml; green on main; required checks enforced |
+| TZ-CICD-03 | 01-05, 01-06, 01-07, 01-09 | Releases via cut branch + release button | SATISFIED as code; build half proven in the archive, new-repo run pending (human item 1); deploy is Phase 4 | release.yml + release/release-create rulesets active |
+| TZ-CICD-04 | 01-08, 01-09 | No direct push to trunk, only PR with review | SATISFIED (enforced live) | Rule suite 5063143425: the direct push was rejected |
+| TZ-CICD-05 | 01-08, 01-09 | Trunk-based | SATISFIED | Squash only + auto-delete live; linear history rule |
+| TZ-PROD-10 | 01-02, 01-07, 01-09 | .env local, GitHub secrets in CI, no secrets committed | SATISFIED | `.env*` ignored, names-only example, release uses `secrets.GITHUB_TOKEN`, history scan 0 hits |
+| TZ-PROCESS-06 | 01-01 to 01-06, 01-09 | Project init and base config | SATISFIED | Whole monorepo foundation |
 
-**Info:** the REQUIREMENTS.md traceability table still says `Pending` for TZ-FE-18, TZ-FE-20, TZ-BE-17, TZ-BE-19 and TZ-CICD-02…05. The orchestrator should update those rows: Complete for FE-20, BE-19, CICD-02, CICD-03 (build half) and CICD-05, and "Complete (enforcement pending repo public)" or similar for FE-18, BE-17 and CICD-04.
+**Orchestrator action (info):** REQUIREMENTS.md still shows TZ-FE-18, TZ-BE-17 and TZ-CICD-04 as `[ ]` and "Partial — built as code, enforcement blocked until the repo is public (rulesets 403 on Free)". That is no longer true. Update all three to Complete.
 
 ### Decision Coverage
 
-`check.decision-coverage-verify`: **36/36 CONTEXT.md decisions honored** (D-01…D-36), not_honored: []. All trackable CONTEXT.md decisions are honored by shipped artifacts.
-
-### Test Quality Audit
-
-| Test File | Linked Req | Active | Skipped | Circular | Assertion Level | Verdict |
-|-----------|-----------|--------|---------|----------|-----------------|---------|
-| packages/contracts/src/ticket-key.test.ts | TZ-FE-02, TZ-PROCESS-06 | 13 | 0 | No | Value + compile-time brand | ✓ |
-| scripts/check-product-name.test.mjs | TZ-BE-16 / D-35 | 21 | 0 | No (fixtures written to temp dirs, oracle is the planted literal) | Exit code + stderr file:line | ✓ |
-| scripts/check-pins.test.mjs | D-07 / T-01-06 | 22 (+ shared) | 0 | No | Exit code on crafted manifests | ✓ |
-
-Disabled tests on requirements: 0. Circular patterns: 0. Insufficient assertions: 0.
+`check.decision-coverage-verify` with 01-CONTEXT.md: **36/36 decisions honored**, not_honored: [].
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| .github/workflows/release.yml | 160, 162 | `TODO(Phase 4)` | ℹ️ Info | Required by D-16 (deploy stub is the deliverable); references a roadmap phase |
-| apps/*/package.json | test script | `echo "no tests yet (Phase 1.1)"` | ℹ️ Info | Intentional placeholder per D-02 and the goal text |
+| .github/workflows/release.yml | deploy job | `TODO(Phase 4)` | Info | Required by D-16 (the deploy stub is the deliverable); references a roadmap phase |
+| apps/*/package.json | test script | `echo "no tests yet (Phase 1.1)"` | Info | Intentional placeholder (D-02, goal text) |
+| scripts/pr-hygiene.sh | 2, 28 | "PROCESS section 7" | Info | Points at `.planning/research/PROCESS.md`, which was intentionally removed from the repo; the reference is now dangling in a user-visible CI warning |
 
-No TBD, FIXME or XXX in any phase file, so the debt-marker gate passes. No stubs flow to user-visible output.
+No TBD, FIXME or XXX in any tracked file outside `.planning/` and the lockfile; the debt-marker gate passes. No stub output reaches users. No Cyrillic text remains in any tracked file.
 
-### Residual risks (from SECURITY/REVIEW, not gaps)
+### Warnings (non-blocking)
 
-- Actions `sha_pinning_required` is still `false` live (AR-06). The lead runs `scripts/apply-repo-rules.sh` without `SKIP_SHA_PINNING`. All pins are already 40-hex.
-- 11 deferred Info items in 01-REVIEW-DISPOSITION.md (e.g. gha BuildKit cache in the publishing job). None is blocking.
+1. **SUMMARY commit references exist only in the archive.** 46 of the 48 hex strings cited in the SUMMARYs resolve as commits in `planktonic-archive`; the other 2 (`8996bb58`, `b1934ee5`) are image digests, not commits. None exists in the new repo, which has one squashed commit `6d63f36`. This is expected from the republish, and the commit-count mismatch is not a gap.
+2. **Live `main` docs are stale.** On `6d63f36`, README still says "`main` is **not** protected" and quotes the 403 text, and CONTRIBUTING, CODEOWNERS comments, `.husky/pre-push` and the `main-push-guard.yml` header describe the gap. The corrected text is only on the unpushed local branch `docs/UL-9-complete-phase-1` (`9b1c369`). It is stale in the safe direction (it understates protection), but land it through a PR.
+3. **`main-push-guard` is red on `main` @6d63f36.** The seed commit was pushed directly before the rulesets existed, so the guard correctly flagged it and opened issue #1 (now closed). The commit shows a red check until the next merge.
+4. **Admin bypass in PR mode.** With `OrganizationAdmin/pull_request`, the only org admin (the lead) can merge a PR without an approval or green checks. This is the accepted design in D-31 and in plan truth 01-08.4. It is a residual edge on "only through a PR with green checks" for one actor.
+5. **Process:** ROADMAP `mode: mvp` with a goal that is not a user story (see top).
+
+### Info
+
+- Secret scanning and push protection report `disabled` in `security_and_analysis`. Both are free for a public repo; enabling them would add wired enforcement for the 01-09 secrets prohibition.
+- The pipeline is now 15 tasks, not the 14 in 01-06's truth, because `@app/config` gained a `test` task (ESLint preset tests). This is a superset.
+- The new repo has no `release/*` branch and no tags yet. `release-create` lets only the org admin cut `release/x.y`; a test release can also target `main` (README "Releases").
 
 ### Human Verification Required
 
-#### 1. PR template pre-fills in the web form
+#### 1. First release in the republished repository (SC5)
 
-**Test:** Open a compare page for any branch against `main` in the GitHub UI (e.g. `…/compare/main...release/0.0?expand=1`) and look at the description box.
-**Expected:** The body contains the template: `## Ticket` / `UL-`, `## Done when…` with checkboxes, `## How to test`, `## Review rules`.
-**Why human:** This is web-UI behavior. PR #1 was opened with an explicit body, so the API holds no evidence of the pre-fill.
+**Test:** In `ulbi-project-group-12/planktonic`, publish a test pre-release (for example `v0.0.1-rc.1` targeting `main`, or a `release/0.0` branch cut by the org admin) and watch the `release` workflow.
+**Expected:** `verify`, `images (web)`, `images (api)` and `deploy` succeed. GHCR shows `planktonic-web` and `planktonic-api` under the org, linked to `ulbi-project-group-12/planktonic`, tagged `v0.0.1-rc.1`, `0.0.1-rc.1` and `sha-<short>`, with no `latest`. Clean up the test release and tag as in README "Test releases".
+**Why human:** Nothing has run in the new repo. The workflow and all image inputs are byte-identical to the archive run that succeeded, but the repository name, visibility, active release rulesets and `sha_pinning_required` all differ, and only a human-published release can trigger it.
 
-#### 2. Sign off the 7 flagged prohibitions
+#### 2. Re-confirm the 7 flagged prohibitions on the republished repo
 
-**Test:** Read the Prohibitions table above. Confirm each must-NOT against the verifier's evidence, and decide whether to add wired tests for the 5 test-tier items.
-**Expected:** All confirmed honored (the verifier's deterministic evidence says they are).
-**Why human:** Fail-closed rule: no wired enforcing test (test-tier) or judgment-only (judgment-tier), so they cannot be marked verified automatically.
+**Test:** Read the Prohibitions table and confirm each must-NOT against today's evidence; optionally add wired tests for the 5 test-tier items, and/or enable secret scanning.
+**Expected:** All confirmed honored (the deterministic re-check found no violation).
+**Why human:** Fail-closed ADR-550 rule. The 2026-11-08 sign-off (01-UAT test 10) predates the republish, the rename and the preset work.
 
 ### Gaps Summary
 
-No code gaps. Every roadmap success criterion and every plan must-have is backed by code, and 9 behavioral probes plus live GitHub evidence confirm them. The one goal clause that is not true at runtime, "`main` accepts changes only through a PR with green checks", is a **GitHub Free + private platform limitation** (HTTP 403 on rulesets and branch protection). The lead's brief accepted it, and it carries an override. The ruleset, apply script and documentation are ready. **Closing action:** the lead makes the repository public → runs `scripts/apply-repo-rules.sh` and confirms exit 0 → confirms a direct `git push origin main` is rejected. No later roadmap phase covers this, so it stays the lead's open action rather than a deferred item.
+No code gaps and no blockers. Every roadmap success criterion and plan must-have is backed by code. The goal clause that carried an override on 2026-11-08 (G1, `main` only through a PR with green checks) is now **proven live**: the rulesets are active, committed JSON equals live, and the lead's own direct push was rejected with `pull_request` and `required_status_checks` failures. The one remaining open item is behavioral, not structural. The release-to-GHCR clause (SC5, `planktonic-{web,api}`) has never run in the republished repository. Its workflow and image inputs are byte-identical to the archive run that pushed `ulbigram-{web,api}` successfully, so it is reported as present but behavior-unverified, and closing it needs one human-published test release.
 
 ---
 
-_Verified: 2026-11-08T20:41:17Z_
+_Verified: 2026-11-12T06:21:03Z_
 _Verifier: Claude (gsd-verifier)_
