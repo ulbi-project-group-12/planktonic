@@ -75,7 +75,9 @@ README lists every variable.
 
 - `GET /api/health`: liveness, no database.
 - `GET /api/health/ready`: readiness, Prisma `SELECT 1`; 503 with `database unreachable` when the
-  database is down, without connection details.
+  database is down, without connection details. The cause goes to the server log as a value-free
+  warning, for example `database readiness failed: P2010 AuthenticationFailed 28P01` (Prisma code,
+  driver error kind, Postgres SQLSTATE).
 
 Phase 4 smoke-checks `GET /api/health` on each replica after a deploy, and a load balancer can
 gate traffic on `/api/health/ready` (D-12).

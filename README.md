@@ -115,7 +115,8 @@ bind to IPv4 loopback only.
 - `GET /api/health`: liveness. It never touches the database, so it answers 200 while the process
   runs.
 - `GET /api/health/ready`: readiness. It runs `SELECT 1` through Prisma and answers 503
-  (`database unreachable`, no connection details) when Postgres is down.
+  (`database unreachable`, no connection details) when Postgres is down. The api log names the
+  cause without values, e.g. `database readiness failed: P2010 AuthenticationFailed 28P01`.
 
 Phase 4 smoke-checks `GET /api/health` on each api replica after a deploy; `/api/health/ready` is
 what a load balancer can gate traffic on (D-12).
