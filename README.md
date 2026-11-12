@@ -79,7 +79,8 @@ bucket), so run `pnpm db:migrate` again afterwards.
 ## Environment variables
 
 `cp .env.example .env` gives you working local values; compose, the api and the Prisma CLI read
-the root `.env`. `.env` is git-ignored. Every value below is an obviously-dev default: real secrets
+the root `.env` (the api and the Prisma CLI only in development, never under `NODE_ENV` `test` or
+`production`). `.env` is git-ignored. Every value below is an obviously-dev default: real secrets
 never go into `.env.example` or the repository, and CI/CD reads them from GitHub secrets. Compose
 uses the same values as its defaults, so the services also start without a `.env`.
 

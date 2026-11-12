@@ -60,8 +60,9 @@ README lists every variable.
   client to `src/generated/prisma`, which is git-ignored. Turbo's `generate` task regenerates it
   before `build`, `typecheck`, `lint` and `test`, and `dev` runs `prisma generate` first.
 - `prisma.config.ts` takes the URL from `process.env.DATABASE_URL`, so `prisma generate` works
-  without a database. For `migrate`, `db` and `studio` with `DATABASE_URL` unset, it loads the root
-  `.env`.
+  without a database. For `migrate`, `db` and `studio` with `DATABASE_URL` unset, it loads the
+  repo-root `.env`, under the api's rule: never under `NODE_ENV` `test` or `production`, so there
+  `DATABASE_URL` must be exported.
 - The runtime connects through `@prisma/adapter-pg` (a `pg` pool). `PrismaService` never connects
   at startup; the first query does.
 - Migrations: `pnpm db:migrate` (`prisma migrate deploy`) applies the committed ones; the README

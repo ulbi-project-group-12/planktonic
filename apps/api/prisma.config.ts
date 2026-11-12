@@ -5,21 +5,23 @@
 // database or a URL.
 //
 // Dev convenience: database commands (`migrate`, `db`, `studio`) run with DATABASE_URL unset
-// load the repo-root .env if it exists. Both conditions matter: `prisma generate` never reads a
-// developer's .env, and an exported DATABASE_URL is never overwritten.
+// load the repo-root .env if it exists, under the api's rule (src/core/config/env-file.ts):
+// never under NODE_ENV test or production, so `NODE_ENV=production pnpm db:migrate` cannot pick
+// up a developer's or a server's .env. `prisma generate` never reads it, and an exported
+// DATABASE_URL is never overwritten.
 import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'prisma/config';
+import { mayReadEnvFile, ROOT_ENV_FILE } from './src/core/config/env-file.js';
 
 const DATABASE_COMMANDS = new Set(['migrate', 'db', 'studio']);
-const rootEnvFile = fileURLToPath(new URL('../../.env', import.meta.url));
 
 if (
+  mayReadEnvFile() &&
   process.env.DATABASE_URL === undefined &&
   process.argv.some((arg) => DATABASE_COMMANDS.has(arg)) &&
-  existsSync(rootEnvFile)
+  existsSync(ROOT_ENV_FILE)
 ) {
-  process.loadEnvFile(rootEnvFile);
+  process.loadEnvFile(ROOT_ENV_FILE);
 }
 
 export default defineConfig({
