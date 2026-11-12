@@ -49,4 +49,23 @@ describe('validateEnv', () => {
     expect(message).toContain('NODE_ENV');
     expect(message).not.toContain('staging');
   });
+
+  it('requires DATABASE_URL', () => {
+    expect(errorOf({})).toContain('DATABASE_URL');
+  });
+
+  it('accepts a postgresql:// DATABASE_URL', () => {
+    expect(validateEnv({ DATABASE_URL: 'postgresql://u:p@localhost:5432/db' }).DATABASE_URL).toBe(
+      'postgresql://u:p@localhost:5432/db',
+    );
+  });
+
+  it.each(['mysql://x', 'postgresql-but-not-a-url'])(
+    'rejects DATABASE_URL %s, naming the variable but not the value',
+    (value) => {
+      const message = errorOf({ DATABASE_URL: value });
+      expect(message).toContain('DATABASE_URL');
+      expect(message).not.toContain(value);
+    },
+  );
 });

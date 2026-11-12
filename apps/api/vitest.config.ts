@@ -8,5 +8,11 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.spec.ts', 'test/**/*.e2e-spec.ts'],
+    // Set before AppModule is imported (ConfigModule validates then). No database listens on
+    // 127.0.0.1:1, so the e2e spec proves the app boots and fails readiness without one.
+    env: {
+      NODE_ENV: 'test',
+      DATABASE_URL: 'postgresql://probe:probe@127.0.0.1:1/probe',
+    },
   },
 });
