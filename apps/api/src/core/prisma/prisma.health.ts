@@ -71,12 +71,18 @@ export class PrismaHealthIndicator {
 
   /**
    * The probe currently running, shared by concurrent checks, so however often /api/health/ready
-   * is hit only one probe runs at a time. A probe that outlives READINESS_TIMEOUT_MS (a network
-   * hang the server-side statement_timeout cannot reach) is abandoned, so the next check starts a
-   * fresh probe and readiness recovers with the network. The abandoned probe's socket is reaped by
-   * TCP keepalive (prisma.service.ts).
+   * is hit only one probe runs at a time.
    */
   private inFlight: Promise<unknown> | undefined;
+
+  /**
+   * At most one probe that outlived READINESS_TIMEOUT_MS (a hang the server-side
+   * statement_timeout cannot cut, e.g. a stalled network or a stuck server) is set aside, so the
+   * next check starts a fresh probe and readiness recovers as soon as the database answers again.
+   * While that slot is taken, a timed-out probe stays in flight and later checks keep waiting on
+   * it, so stuck probes never hold more than two pooled connections.
+   */
+  private abandoned: Promise<unknown> | undefined;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -90,7 +96,10 @@ export class PrismaHealthIndicator {
       try {
         await withTimeout(probe, READINESS_TIMEOUT_MS);
       } catch (error) {
-        if (this.inFlight === probe) this.inFlight = undefined;
+        if (this.inFlight === probe && this.abandoned === undefined) {
+          this.abandoned = probe;
+          this.inFlight = undefined;
+        }
         throw error;
       }
       return session.up();
@@ -113,8 +122,9 @@ export class PrismaHealthIndicator {
         this.prisma.$queryRaw`SELECT 1`,
       ])
       .finally(() => {
-        // An abandoned probe settling late must not clear a newer one.
+        // A set-aside probe settling late must not clear a newer one.
         if (this.inFlight === probe) this.inFlight = undefined;
+        if (this.abandoned === probe) this.abandoned = undefined;
       });
     this.inFlight = probe;
     return probe;

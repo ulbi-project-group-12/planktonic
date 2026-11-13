@@ -21,9 +21,9 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
         // database that connects but never answers is bounded by the readiness probe's own
         // timeout (prisma.health.ts), not here, so slow product queries are not cut off.
         connectionTimeoutMillis: 5000,
-        // A connection whose peer vanished (network hang, no FIN/RST) is detected by TCP
-        // keepalive and destroyed, so a hung query, such as an abandoned readiness probe, does
-        // not hold its pooled connection forever.
+        // A connection whose peer vanished (no FIN/RST) is detected by TCP keepalive and
+        // destroyed. It does not cut a query on a live but stuck server; the readiness probe
+        // bounds its own share of the pool (prisma.health.ts).
         keepAlive: true,
         keepAliveInitialDelayMillis: 10_000,
       }),
