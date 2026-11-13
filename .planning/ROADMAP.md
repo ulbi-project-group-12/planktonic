@@ -161,7 +161,7 @@ Research tickets (the original cut; re-sliced in the tracker on 2026-11-12 into 
   4. FE works on MSW mocks generated from OpenAPI while the BE is not ready
 **Plans**: TBD
 
-Research tickets (the original cut; re-sliced in the tracker on 2026-11-12 into smaller one-person tickets, live keys UL-136…UL-161 (26 tickets)):
+Research tickets (the original cut; re-sliced in the tracker on 2026-11-12 into smaller one-person tickets, live keys UL-136…UL-161 and UL-207 (27 tickets; UL-207 is the base Playwright harness, the two-instance harness stays in Phase 5 as UL-197)):
 - 3.1 ADR-0002: permission model — workspace and project roles, action matrix (S, must)
 - 3.2 Prisma schema: users, workspaces, members, invites, projects, project_members (S, must)
 - 3.3 Sign-up, sign-in, sign-out, refresh (JWT + httpOnly cookie, argon2) (M, must)
