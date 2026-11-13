@@ -96,7 +96,8 @@ Included: Next's `core-web-vitals` rules, `@eslint-react` `recommended-type-chec
 the rules of hooks, exhaustive deps and the compiler-style rules), the six a11y rules Next's own
 preset enables (`jsx-a11y-x/alt-text`, `aria-props`, `aria-proptypes`, `aria-unsupported-elements`,
 `role-has-required-aria-props`, `role-supports-aria-props`), browser globals, async JSX event
-handlers, and the Next ignores (`.next/`, `out/`, `build/`, `next-env.d.ts`).
+handlers, and the Next ignores (`.next/`, `out/`, `build/`, `next-env.d.ts`) plus the Storybook
+build output (`storybook-static/`).
 
 Not included, on purpose:
 
@@ -108,15 +109,10 @@ Not included, on purpose:
 next() needs an `app/` (or `pages/`) directory; without one, `@next/next/no-html-link-for-pages`
 prints "Pages directory cannot be found" on every run.
 
-## Phase 1.1 checklist
+## Who uses which preset
 
-- **UL-6 (web):** in the PR that creates `app/`, switch `apps/web/eslint.config.js` to
-  `import { next } from '@app/config/eslint';` and
-  `export default next({ tsconfigRootDir: import.meta.dirname });`. Keep the
-  `eslint . --max-warnings=0` lint script (Next 16 has no `next lint`). Put `next.config.ts` and
-  the test files in the tsconfig.
-- **UL-7 (api):** `apps/api` already uses nest(). Follow the file names above, put `PrismaService`
-  in `src/core/prisma/prisma.service.ts`, and set the Prisma `output` under `generated/prisma`.
+`apps/web` uses `next()` and `apps/api` uses `nest()`, each through a two-line `eslint.config.js`;
+the app READMEs describe the conventions on top of them.
 
 ## Changing the presets
 

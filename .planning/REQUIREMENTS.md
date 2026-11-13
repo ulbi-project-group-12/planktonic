@@ -135,25 +135,25 @@ Source: the 191 spec items with stable IDs from `tz_requirements` in `.planning/
 
 ### Frontend stack and quality (FE)
 
-- [ ] **TZ-FE-01**: next js _(spec l.190)_
+- [x] **TZ-FE-01**: next js _(spec l.190)_
 - [x] **TZ-FE-02**: typescript _(spec l.191)_
 - [ ] **TZ-FE-03**: tanstack query _(spec l.192)_
 - [ ] **TZ-FE-04**: zustand _(spec l.193)_
-- [ ] **TZ-FE-05**: shadcn + tailwind — for the UI kit _(spec l.194)_
+- [x] **TZ-FE-05**: shadcn + tailwind — for the UI kit _(spec l.194)_
 - [ ] **TZ-FE-06**: react hook form + zod — for forms _(spec l.195)_
 - [ ] **TZ-FE-07**: socket io — for realtime _(spec l.196)_
 - [ ] **TZ-FE-08**: a drag and drop library for the Kanban board — your choice _(spec l.197)_
-- [ ] **TZ-FE-09**: Feature sliced design. _(spec l.201)_
+- [x] **TZ-FE-09**: Feature sliced design. _(spec l.201)_
 - [x] **TZ-FE-10**: Eslint _(spec l.205)_
 - [x] **TZ-FE-11**: prettier _(spec l.206)_
 - [x] **TZ-FE-12**: husky _(spec l.207)_
 - [ ] **TZ-FE-13**: sentry for logging, GlitchTip can be used as an alternative _(spec l.208)_
-- [ ] **TZ-FE-14**: vitest, RTL — tests _(spec l.209)_
-- [ ] **TZ-FE-15**: Storybook for UI components _(spec l.210)_
+- [x] **TZ-FE-14**: vitest, RTL — tests _(spec l.209)_
+- [x] **TZ-FE-15**: Storybook for UI components _(spec l.210)_
 - [x] **TZ-FE-16**: pnpm _(spec l.211)_
 - [ ] **TZ-FE-17**: Mandatory linting + a linter for FSD rule compliance. _(spec l.215)_
 - [x] **TZ-FE-18**: Mandatory code review of every task. _(spec l.216)_
-- [ ] **TZ-FE-19**: Minimum of ad hoc custom styles; use the UI kit that was built. _(spec l.217)_
+- [x] **TZ-FE-19**: Minimum of ad hoc custom styles; use the UI kit that was built. _(spec l.217)_
 - [x] **TZ-FE-20**: A CI pipeline is mandatory. _(spec l.218)_
 - [ ] **TZ-FE-21**: Watch the performance of long conversations. A channel with thousands of messages must not freeze when opened and scrolled. _(spec l.219)_
 - [ ] **TZ-FE-22**: Think through scrolling behavior. A new message must not throw the user to the bottom if they are reading history. _(spec l.220)_
@@ -163,24 +163,24 @@ Source: the 191 spec items with stable IDs from `tz_requirements` in `.planning/
 
 ### Backend stack and quality (BE)
 
-- [ ] **TZ-BE-01**: nest js _(spec l.229)_
+- [x] **TZ-BE-01**: nest js _(spec l.229)_
 - [x] **TZ-BE-02**: typescript _(spec l.230)_
 - [ ] **TZ-BE-03**: socket io — realtime _(spec l.231)_
-- [ ] **TZ-BE-04**: postgresql _(spec l.232)_
-- [ ] **TZ-BE-05**: redis _(spec l.233)_
-- [ ] **TZ-BE-06**: prisma / typeorm _(spec l.234)_
+- [x] **TZ-BE-04**: postgresql _(spec l.232)_
+- [x] **TZ-BE-05**: redis _(spec l.233)_
+- [x] **TZ-BE-06**: prisma / typeorm _(spec l.234)_
 - [ ] **TZ-BE-07**: bull mq _(spec l.235)_
 - [ ] **TZ-BE-08**: swagger _(spec l.236)_
 - [ ] **TZ-BE-09**: openai for working with AI — that is the name of the package _(spec l.237)_
 - [x] **TZ-BE-10**: Eslint _(spec l.243)_
 - [x] **TZ-BE-11**: prettier _(spec l.244)_
 - [x] **TZ-BE-12**: husky _(spec l.245)_
-- [ ] **TZ-BE-13**: s3 for storing files and images. Any provider can be chosen. _(spec l.246)_
-- [ ] **TZ-BE-14**: Docker — mandatory for local development and production. _(spec l.247)_
+- [x] **TZ-BE-13**: s3 for storing files and images. Any provider can be chosen. _(spec l.246)_
+- [x] **TZ-BE-14**: Docker — mandatory for local development and production. _(spec l.247)_
 - [x] **TZ-BE-15**: pnpm _(spec l.248)_
 - [x] **TZ-BE-16**: Mandatory linting. _(spec l.264)_
 - [x] **TZ-BE-17**: Mandatory code review of every task. _(spec l.265)_
-- [ ] **TZ-BE-18**: Adherence to a modular architecture + a layered project structure. _(spec l.266)_
+- [x] **TZ-BE-18**: Adherence to a modular architecture + a layered project structure. _(spec l.266)_
 - [x] **TZ-BE-19**: A CI pipeline is mandatory. _(spec l.267)_
 - [ ] **TZ-BE-20**: Access rights are checked not only in HTTP requests but also in websocket events, search, file downloads and AI requests. _(spec l.268)_
 - [ ] **TZ-BE-21**: After a member is removed from a private channel, they must not keep receiving its new messages over an already open connection. _(spec l.269)_
@@ -193,7 +193,7 @@ Source: the 191 spec items with stable IDs from `tz_requirements` in `.planning/
 
 ### CI/CD and git process (CICD)
 
-- [ ] **TZ-CICD-01**: Be sure to write tests, at least for the core functionality. We are here to learn. _(spec l.176)_
+- [x] **TZ-CICD-01**: Be sure to write tests, at least for the core functionality. We are here to learn. _(spec l.176)_
 - [x] **TZ-CICD-02**: On every pull request, always run linters, tests, the project build and typecheck via ts. _(spec l.281)_
 - [x] **TZ-CICD-03**: Releases by cutting a branch + pressing the release button in GitHub. _(spec l.283)_
 - [x] **TZ-CICD-04**: Pushing directly to dev/trunk/master is forbidden, only through a PR with code review. _(spec l.285)_
@@ -214,7 +214,7 @@ Source: the 191 spec items with stable IDs from `tz_requirements` in `.planning/
 - [ ] **TZ-PROD-08**: Logging and metrics collection in production are mandatory! _(spec l.260)_
 - [ ] **TZ-PROD-09**: Collecting logs and metrics in production is mandatory. _(spec l.293)_
 - [x] **TZ-PROD-10**: Storing environment variables — .env for local development, GitHub secrets for CI/CD. We do not commit secrets to the repository. _(spec l.295)_
-- [ ] **TZ-PROD-11**: Maintaining documentation: how to run the project, variables, specifics, etc. _(spec l.297)_
+- [x] **TZ-PROD-11**: Maintaining documentation: how to run the project, variables, specifics, etc. _(spec l.297)_
 - [ ] **TZ-PROD-12**: A release to production must be easy and convenient, with one button press in GitHub. _(spec l.299)_
 - [ ] **TZ-PROD-13**: Be sure to check communication and collaboration between users connected to different backend instances. _(spec l.301)_
 
@@ -375,49 +375,49 @@ Each requirement has exactly one primary phase: Phase 1 owns the 21 items the le
 | TZ-VOICE-06 | Phase 15 | — | Pending |
 | TZ-VOICE-07 | Phase 15 | — | Pending |
 | TZ-VOICE-08 | Phase 15 | — | Pending |
-| TZ-FE-01 | Phase 1.1 | — | Pending |
+| TZ-FE-01 | Phase 1.1 | — | Complete |
 | TZ-FE-02 | Phase 1 | — | Complete |
 | TZ-FE-03 | Phase 3 | 5 | Pending |
 | TZ-FE-04 | Phase 5 | — | Pending |
-| TZ-FE-05 | Phase 1.1 | — | Pending |
+| TZ-FE-05 | Phase 1.1 | — | Complete |
 | TZ-FE-06 | Phase 3 | — | Pending |
 | TZ-FE-07 | Phase 5 | — | Pending |
 | TZ-FE-08 | Phase 9 | — | Pending |
-| TZ-FE-09 | Phase 1.1 | — | Pending |
+| TZ-FE-09 | Phase 1.1 | — | Complete |
 | TZ-FE-10 | Phase 1 | — | Complete |
 | TZ-FE-11 | Phase 1 | — | Complete |
 | TZ-FE-12 | Phase 1 | — | Complete |
 | TZ-FE-13 | Phase 4 | — | Pending |
-| TZ-FE-14 | Phase 1.1 | — | Pending |
-| TZ-FE-15 | Phase 1.1 | — | Pending |
+| TZ-FE-14 | Phase 1.1 | — | Complete |
+| TZ-FE-15 | Phase 1.1 | — | Complete |
 | TZ-FE-16 | Phase 1 | — | Complete |
 | TZ-FE-17 | Phase 1.1 | 1 | Pending |
 | TZ-FE-18 | Phase 1 | — | Complete |
-| TZ-FE-19 | Phase 1.1 | — | Pending |
+| TZ-FE-19 | Phase 1.1 | — | Complete |
 | TZ-FE-20 | Phase 1 | — | Complete |
 | TZ-FE-21 | Phase 5 | 14 | Pending |
 | TZ-FE-22 | Phase 5 | — | Pending |
 | TZ-FE-23 | Phase 5 | 8, 9 | Pending |
 | TZ-FE-24 | Phase 9 | — | Pending |
 | TZ-FE-25 | Phase 5 | — | Pending |
-| TZ-BE-01 | Phase 1.1 | — | Pending |
+| TZ-BE-01 | Phase 1.1 | — | Complete |
 | TZ-BE-02 | Phase 1 | 1.1 | Complete |
 | TZ-BE-03 | Phase 2 | — | Pending |
-| TZ-BE-04 | Phase 1.1 | — | Pending |
-| TZ-BE-05 | Phase 1.1 | 2 | Pending |
-| TZ-BE-06 | Phase 1.1 | — | Pending |
+| TZ-BE-04 | Phase 1.1 | — | Complete |
+| TZ-BE-05 | Phase 1.1 | 2 | Complete |
+| TZ-BE-06 | Phase 1.1 | — | Complete |
 | TZ-BE-07 | Phase 7 | — | Pending |
 | TZ-BE-08 | Phase 3 | — | Pending |
 | TZ-BE-09 | Phase 13 | — | Pending |
 | TZ-BE-10 | Phase 1 | — | Complete |
 | TZ-BE-11 | Phase 1 | — | Complete |
 | TZ-BE-12 | Phase 1 | — | Complete |
-| TZ-BE-13 | Phase 1.1 | 7 | Pending |
-| TZ-BE-14 | Phase 1.1 | 4 | Pending |
+| TZ-BE-13 | Phase 1.1 | 7 | Complete |
+| TZ-BE-14 | Phase 1.1 | 4 | Complete |
 | TZ-BE-15 | Phase 1 | — | Complete |
 | TZ-BE-16 | Phase 1 | — | Complete |
 | TZ-BE-17 | Phase 1 | — | Complete |
-| TZ-BE-18 | Phase 1.1 | — | Pending |
+| TZ-BE-18 | Phase 1.1 | — | Complete |
 | TZ-BE-19 | Phase 1 | — | Complete |
 | TZ-BE-20 | Phase 3 | 5, 7, 12, 13, 14 | Pending |
 | TZ-BE-21 | Phase 5 | — | Pending |
@@ -437,10 +437,10 @@ Each requirement has exactly one primary phase: Phase 1 owns the 21 items the le
 | TZ-PROD-08 | Phase 4 | — | Pending |
 | TZ-PROD-09 | Phase 4 | — | Pending |
 | TZ-PROD-10 | Phase 1 | 1.1, 4 | Complete |
-| TZ-PROD-11 | Phase 1.1 | 14 | Pending |
+| TZ-PROD-11 | Phase 1.1 | 14 | Complete |
 | TZ-PROD-12 | Phase 4 | 1 | Pending |
 | TZ-PROD-13 | Phase 2 | 5, 6 | Pending |
-| TZ-CICD-01 | Phase 1.1 | 1 | Pending |
+| TZ-CICD-01 | Phase 1.1 | 1 | Complete |
 | TZ-CICD-02 | Phase 1 | — | Complete |
 | TZ-CICD-03 | Phase 1 | 4 | Complete |
 | TZ-CICD-04 | Phase 1 | — | Complete |
@@ -478,4 +478,4 @@ Each requirement has exactly one primary phase: Phase 1 owns the 21 items the le
 
 ---
 *Requirements defined: 2026-11-08*
-*Last updated: 2026-11-08 after Phase 1*
+*Last updated: 2026-11-12 after Phase 1.1 verification (15 IDs proven by code; TZ-FE-17, TZ-CICD-07, TZ-CICD-08 and TZ-PROCESS-* stay Pending)*

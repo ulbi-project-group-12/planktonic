@@ -15,15 +15,15 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Repo foundation and CI/CD (lead)** - pnpm + Turborepo monorepo, root tooling, CI, main ruleset, PR template, release images to GHCR (completed 2026-11-08)
 - [ ] **Phase 1.1: App skeletons (team)** - kickoff, Next.js and NestJS skeletons, docker-compose, CodeRabbit, README, Storybook
 - [ ] **Phase 2: Realtime prototype** - two clients, two instances, reconnect, protocol ADR
-- [ ] **Phase 3: Access and workspaces** - sign-up and sign-in, workspaces, invites, roles, projects, landing
+- [ ] **Phase 3: Access and workspaces** - sign-up and sign-in, workspaces, invites, roles, projects, landing; beyond the spec: email confirmation, GitHub sign-in, 2FA
 - [ ] **Phase 4: Prod and observability** - server, Traefik, two api instances, release by button, logs, metrics, errors
 - [ ] **Phase 5: Channels and messages** - channels and DMs, send with status, history, scroll, edit and delete
-- [ ] **Phase 6: Live chat** - unread and mentions, presence and typing, threads, reactions, pins, saved
+- [ ] **Phase 6: Live chat** - unread and mentions, presence and typing, threads, reactions, pins, saved; beyond the spec: message forwarding, scheduled send
 - [ ] **Phase 7: Files** - upload, image previews, private download, limits, background worker
 - [ ] **Phase 8: Tasks from discussions** - task from message, card, change history, checklist, task mentions
-- [ ] **Phase 9: Kanban and My work** - project board, columns, order, realtime, blockers, filters, due dates
+- [ ] **Phase 9: Kanban and My work** - project board, columns, order, realtime, blockers, filters, due dates; beyond the spec: message reminders
 - [ ] **Phase 10: GitHub** - connect repo, webhook verification, PR ↔ task link, auto-transitions, PR messages
-- [ ] **Phase 11: Notifications** - notification center, per-channel settings, DND, working hours, Telegram bot
+- [ ] **Phase 11: Notifications** - notification center, per-channel settings, DND, working hours, Telegram bot; beyond the spec: web push
 - [ ] **Phase 12: Search, standups and decisions** - filtered search, async standups, team decisions
 - [ ] **Phase 13: AI assistant** - summaries, cited answers, tasks from discussion, digests, report draft
 - [ ] **Phase 14: Final** - long channels, access audit, limits, docs, final release
@@ -88,7 +88,37 @@ Research tickets:
   3. `docker compose up` starts Postgres 18 + pgvector, Redis 8 and SeaweedFS with healthchecks, and an init script creates the bucket
   4. README «how to run» was followed by two members on different OSes in ≤ 30 min; CodeRabbit left a comment on a test PR; Storybook shows 3 UI-kit components and its build is green in CI
   5. Kickoff agreements (roles, call times, DoR/DoD, review and Friday-report rules) are recorded in Docs or `docs/adr/0000`
-**Plans**: Unplanned — team phase (owners plan it themselves or work ticket by ticket)
+**Plans**: 11/11 plans executed (lead decision D-01: all tickets done in full by agents; UL-3 kickoff stays organisational, D-02)
+
+Plans:
+**Wave 1**
+- [x] 01.1-01-PLAN.md — check-pins accepts pnpm 12 `allowBuilds` (D-06, prerequisite of UL-6/UL-7)
+- [x] 01.1-02-PLAN.md — UL-8 dev `compose.yaml`: Postgres 18 + pgvector, Redis 8, SeaweedFS, `s3-init`
+- [x] 01.1-03-PLAN.md — UL-10 `.coderabbit.yaml` + PR template review rule
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 01.1-04-PLAN.md — UL-7 NestJS 12 ESM skeleton: zod config, `/api/health`, Vitest, multi-stage image
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 01.1-05-PLAN.md — UL-7 Prisma 7 + adapter-pg, `init` migration, `/api/health/ready`, e2e without DB
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 01.1-06-PLAN.md — UL-6 Next.js 16 FSD skeleton, Tailwind 4, next() lint, standalone image
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [x] 01.1-07-PLAN.md — UL-6 shadcn UI kit (Button, Input, Dialog) + Vitest/RTL
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [x] 01.1-08-PLAN.md — UL-6 Steiger + required `steiger` CI job
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [x] 01.1-09-PLAN.md — UL-12 Storybook 10 stories + required `storybook` CI job
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [x] 01.1-10-PLAN.md — UL-11 `pnpm dev` through Turbo, `services:*`/`db:*` scripts, `.env.example` documented
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [x] 01.1-11-PLAN.md — UL-11 README from zero, app READMEs, CONTRIBUTING, walkthrough check
 
 Research tickets:
 - 1.1 Kickoff and team agreements: roles, calls, rules, decomposition (S, must)
@@ -110,7 +140,7 @@ Research tickets:
   4. A prototype video is attached to the W2 Friday report
 **Plans**: TBD
 
-Research tickets:
+Research tickets (the original cut; re-sliced in the tracker on 2026-11-12 into smaller one-person tickets, live keys UL-123…UL-135 (13 tickets)):
 - 2.1 Mini NestJS gateway + Redis Streams adapter, two instances behind Traefik with a sticky cookie (M, must)
 - 2.2 REST send with clientMsgId and per-channel seq in one transaction (M, must)
 - 2.3 Backfill of missed messages via `?afterSeq=` and client-side dedup (M, must)
@@ -131,7 +161,7 @@ Research tickets:
   4. FE works on MSW mocks generated from OpenAPI while the BE is not ready
 **Plans**: TBD
 
-Research tickets:
+Research tickets (the original cut; re-sliced in the tracker on 2026-11-12 into smaller one-person tickets, live keys UL-136…UL-161 (26 tickets)):
 - 3.1 ADR-0002: permission model — workspace and project roles, action matrix (S, must)
 - 3.2 Prisma schema: users, workspaces, members, invites, projects, project_members (S, must)
 - 3.3 Sign-up, sign-in, sign-out, refresh (JWT + httpOnly cookie, argon2) (M, must)
@@ -142,6 +172,13 @@ Research tickets:
 - 3.8 Invites by link, accept, revoke; managing members and roles (M, must)
 - 3.9 Landing page (M, should)
 - 3.10 Profile and settings: name, avatar, time zone (S, should)
+
+Additions beyond the spec (lead decision 2026-11-12; no TZ requirement IDs, so they do not change coverage and do not gate the phase):
+- UL-157 Devices: list of account sessions and ending any of them (M, lead requirement)
+- UL-158 Email confirmation on sign-up; prod mail through Resend over SMTP (M)
+- UL-159 Sign-in hardening: password length, breached-password check, brute-force limits (M)
+- UL-160 Sign in with GitHub, PKCE, linking only by verified email (M)
+- UL-161 Two-factor authentication: TOTP and backup codes, optional (M)
 
 ### Phase 4: Prod and observability
 **Goal**: The lead cuts `release/0.1` and presses Publish in GitHub Releases. Minutes later the server runs web, two api instances and the worker, with the migration applied as a separate step. Grafana shows logs and metrics per instance, and frontend and backend errors land in GlitchTip. Logs contain no tokens and no message bodies. (The image build half of research ticket 4.2 is already done in Phase 1; this phase adds the deploy half.)
@@ -155,7 +192,7 @@ Research tickets:
   4. The organizer answered about Alloy instead of Promtail (recorded in an ADR)
 **Plans**: TBD
 
-Research tickets:
+Research tickets (the original cut; re-sliced in the tracker on 2026-11-12 into smaller one-person tickets, live keys UL-162…UL-177 (16 tickets)):
 - 4.1 Server + docker compose prod + Traefik (TLS, sticky cookie for api) (M, must)
 - 4.2 (deploy half — the image build half is done in Phase 1) release.yml: images to GHCR, separate migrate, rolling up, smoke check (M, must)
 - 4.3 Pino logs with redact + a "no secrets in logs" test (S, must)
@@ -177,7 +214,7 @@ Research tickets:
   4. Release v0.1 and the W4 Friday report with a video
 **Plans**: TBD
 
-Research tickets:
+Research tickets (the original cut; re-sliced in the tracker on 2026-11-12 into smaller one-person tickets, live keys UL-178…UL-199 (22 tickets)):
 - 5.1 Channels: public and private, inviting to a private one, rename, archive (M, must)
 - 5.2 DMs and group conversations as channels of type DM/GROUP (M, must)
 - 5.3 Client socket layer: singleton, connection store, status banner (M, must)
@@ -209,6 +246,10 @@ Research tickets:
 - 6.6 Reactions: BE module + UI (idempotent add and remove) (S, should)
 - 6.7 Pinned messages and personal favorites (M, should)
 - 6.8 Two-instance test: presence, typing, cross-tab read (S, must)
+
+Additions beyond the spec (lead decision 2026-11-12; no TZ requirement IDs, so they do not change coverage and do not gate the phase):
+- UL-200 Forwarding a message to another channel or conversation (M)
+- UL-201 Scheduled send (M)
 
 ### Phase 7: Files
 **Goal**: A member attaches an image or a file up to 25 MB and sees the image preview in the feed without the feed jumping. A file link from a private channel does not open for a non-member. Heavy processing runs in a separate worker process.
@@ -273,6 +314,10 @@ Research tickets:
 - 9.7 "Due soon" scheduler (Job Scheduler) (S, should)
 - 9.8 "My Work" section: tasks from all projects, review requests, mentions (M, must)
 
+Additions beyond the spec (lead decision 2026-11-12; no TZ requirement IDs, so they do not change coverage and do not gate the phase):
+- UL-202 Message reminders and a «Come back later» list in My work (M)
+- UL-203 Moving a card without dragging — WCAG 2.2 SC 2.5.7 (S)
+
 ### Phase 10: GitHub
 **Goal**: A project admin connects a repository through the GitHub App and picks a notification channel. Opening a PR with the task key moves the task to In review, merging moves it to Done, and the transitions show in the task history. The channel gets one message per PR with author, title, link and check results. The task card shows linked PRs. Redelivered webhooks duplicate nothing, signatures are verified, and private-repo data is visible only to permitted members. The full spec scenario passes from message to Done.
 **Mode:** mvp
@@ -296,6 +341,10 @@ Research tickets:
 - 10.8 E2E of the full spec scenario on Playwright (M, must)
 - 10.9 v0.2 release and Demo 2 rehearsal before the holidays (S, must)
 
+Additions beyond the spec (lead decision 2026-11-12; no TZ requirement IDs, so they do not change coverage and do not gate the phase):
+- UL-204 Rule «review requested → In review» (S)
+- UL-205 Link cards for GitHub PRs and issues in messages (M)
+
 ### Phase 11: Notifications
 **Goal**: A member sees mentions, assigned tasks, thread replies and review requests in one center and jumps to the exact message, task or PR. Reading in one tab clears the notification in the others. Notification levels are set per channel and project, with Do not disturb and working hours in the user's time zone. After linking Telegram, standup reminders, assignments, mentions and review requests arrive there without duplicates.
 **Mode:** mvp
@@ -315,6 +364,9 @@ Research tickets:
 - 11.4 Telegram bot on grammY: deep-link binding, webhook with secret_token (M, should)
 - 11.5 Delivery to Telegram: DND, limits, 403 "bot blocked" (S, should)
 - 11.6 Notification idempotency test (webhook redelivery, reminders, job retry) (S, should)
+
+Additions beyond the spec (lead decision 2026-11-12; no TZ requirement IDs, so they do not change coverage and do not gate the phase):
+- UL-206 PWA and web push (M)
 
 ### Phase 12: Search, standups and decisions
 **Goal**: A member searches the messages of channels they can access, filtered by project, channel, author and date, and jumps to the hit. A project admin configures a standup (schedule, time zone, questions); members get a reminder and answer in the day's shared thread with links to tasks and PRs, everyone sees who answered, and the history is available to project members. A message or thread can be saved as a decision with title, description, author, date and a link to the discussion, superseded with an explanation and linked to tasks.
@@ -410,7 +462,7 @@ Phases execute in numeric order: 1 → 1.1 → 2 → 3 → … → 15 (2 can run
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Repo foundation and CI/CD (lead) | 9/9 | Complete    | 2026-11-08 |
-| 1.1. App skeletons (team) | 0/TBD | Not started | - |
+| 1.1. App skeletons (team) | 11/11 | In Progress | - |
 | 2. Realtime prototype | 0/TBD | Not started | - |
 | 3. Access and workspaces | 0/TBD | Not started | - |
 | 4. Prod and observability | 0/TBD | Not started | - |

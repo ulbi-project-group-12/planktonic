@@ -1,5 +1,6 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
+  "globalPassThroughEnv": ["NEXT_TELEMETRY_DISABLED", "STORYBOOK_DISABLE_TELEMETRY"],
   "tasks": {
     "transit": {
       "dependsOn": ["^transit"]
@@ -17,6 +18,10 @@
     "test": {
       "dependsOn": ["transit"],
       "outputs": []
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
     }
   }
 }

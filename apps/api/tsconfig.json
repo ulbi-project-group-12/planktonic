@@ -3,7 +3,8 @@
   "compilerOptions": {
     "noEmit": true,
     "types": ["node"],
-    "erasableSyntaxOnly": true
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
-  "include": ["src"]
+  "include": ["src", "test", "*.ts"]
 }

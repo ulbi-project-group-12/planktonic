@@ -186,6 +186,8 @@ test('next(): Next, React and a11y rules fire; FSD stays with Steiger', async ()
   // no-html-link-for-pages finds pages/ from rootDir, not from the cwd (lint-staged runs at the root).
   const settings = /** @type {{ next?: { rootDir?: unknown } } | undefined} */ (config.settings);
   assert.equal(settings?.next?.rootDir, cwd);
+  // The Storybook build output is a bundle, never source (01.1-09).
+  assert.ok(await eslint.isPathIgnored(join(cwd, 'storybook-static/assets/iframe.js')));
   const boundary =
     /^(no-restricted-imports|no-restricted-paths|@typescript-eslint\/no-restricted-imports|boundaries\/|import(-x)?\/|@feature-sliced\/|fsd\/)/;
   for (const [id, entry] of Object.entries(config.rules ?? {})) {

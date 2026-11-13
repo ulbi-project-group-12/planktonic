@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# AI first-pass review (D-22). The CodeRabbit GitHub App is installed on the org by an org owner.
+# This file is lead-owned (CODEOWNERS): a change can silence the review, so it gets a deliberate one.
+language: ru-RU
+early_access: false
+reviews:
+  profile: chill
+  # Never approve: the required approval comes from a teammate (main ruleset).
+  request_changes_workflow: false
+  auto_approvals:
+    enabled: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - '!pnpm-lock.yaml'
+    - '!**/generated/**'
+    - '!.planning/**'
+chat:
+  auto_reply: true
+  # Public repo: only org members can drive the bot from PR comments.
+  allow_non_org_members: false

@@ -16,7 +16,7 @@ planktonic is a Slack-like work messenger for development teams: workspaces and 
 - **Package scope**: neutral `@app/*`; the display name lives in one place so the product can be renamed.
 - **Git**: trunk-based, protected `main`, squash merge, branch names `feat/UL-n-…` / `fix/UL-n-…`, `UL-n` in PR titles.
 - **Release**: cut `release/x.y` → publish a GitHub Release → `release.yml` builds images to GHCR (`ghcr.io/ulbi-project-group-12/planktonic-*`) → deploy (server arrives in roadmap Phase 4).
-- **Org plan**: GitHub Free; repo private for now — rulesets/branch protection may be unavailable until it is public.
+- **Org plan**: GitHub Free; the repo is public (since 2026-11-12), so rulesets, required checks and free Actions minutes apply.
 - **Language**: docs and code identifiers in English; team chat in Russian.
 - **Timeline**: 3 months, maybe 4 (extension is reserve for ★ and 999.x only).
 

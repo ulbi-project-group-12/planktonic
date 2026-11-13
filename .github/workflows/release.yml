@@ -165,4 +165,4 @@ jobs:
           echo "  1. docker compose pull"
           echo "  2. one-shot migrate service (prisma migrate deploy)"
           echo "  3. docker compose up -d (api replicas: 2)"
-          echo "  4. smoke GET /health on each replica"
+          echo "  4. smoke GET /api/health (liveness) on each replica; /api/health/ready checks the database"

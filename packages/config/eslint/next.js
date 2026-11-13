@@ -16,7 +16,7 @@ import { CODE_FILES, coreBlocks, finalize, JS_FILES } from './base.js';
 export function next({ tsconfigRootDir }) {
   return finalize(
     ...coreBlocks({ tsconfigRootDir }),
-    globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts']),
+    globalIgnores(['.next/**', 'out/**', 'build/**', 'storybook-static/**', 'next-env.d.ts']),
     {
       files: [CODE_FILES],
       extends: [nextPlugin.configs['core-web-vitals']],

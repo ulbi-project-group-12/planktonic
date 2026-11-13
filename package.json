@@ -8,6 +8,7 @@
     "pnpm": "12.15.0"
   },
   "scripts": {
+    "dev": "turbo run dev --env-mode=loose",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
@@ -19,7 +20,12 @@
     "check:name": "node scripts/check-product-name.mjs",
     "lint:root": "eslint eslint.config.js scripts --max-warnings=0",
     "test:root": "node --test --test-reporter=tap scripts/check-product-name.test.mjs scripts/check-pins.test.mjs",
-    "check:all": "pnpm format:check && pnpm check:pins && pnpm lint:root && turbo run lint typecheck test build && pnpm check:name && pnpm test:root"
+    "services:up": "docker compose up -d && docker compose wait s3-init",
+    "services:down": "docker compose down",
+    "services:reset": "docker compose down -v",
+    "db:migrate": "pnpm --filter @app/api db:migrate",
+    "db:migrate:dev": "pnpm --filter @app/api db:migrate:dev",
+    "check:all": "pnpm format:check && pnpm check:pins && pnpm lint:root && turbo run lint typecheck test build && pnpm check:name && pnpm test:root && pnpm --filter @app/web lint:fsd && pnpm --filter @app/web build-storybook"
   },
   "prettier": "@app/config/prettier",
   "lint-staged": {

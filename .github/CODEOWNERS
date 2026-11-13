@@ -28,10 +28,28 @@
 /.prettierignore        @soadap
 /.dockerignore          @soadap
 /eslint.config.js       @soadap
+/.coderabbit.yaml       @soadap
 
-# An app's ESLint config can replace a preset's rules (nest() layering), so it gets the same
-# owner as packages/config.
+# An app's ESLint config can replace a preset's rules (nest() layering), its Steiger config can
+# switch off FSD rules, and its turbo.json can skip a task's dependencies, so they all get the
+# same owner as packages/config. The same goes for every file that defines what a required check
+# runs: package.json scripts (`steiger ./src || true`, `build-storybook: true`, a dropped
+# --max-warnings=0), a Vitest `include`, a tsconfig's `strict`, and the Storybook `stories` glob
+# can each turn a required check green without testing anything.
 /apps/*/eslint.config.js @soadap
+/apps/*/steiger.config.ts @soadap
+/apps/*/turbo.json @soadap
+/apps/*/package.json @soadap
+/apps/*/vitest.config.* @soadap
+/apps/*/tsconfig*.json @soadap
+/apps/*/.storybook/ @soadap
+
+# Files that hold security mitigations: the non-root USER in the images, the loopback-only
+# port binds of the dev services, and the web app's response headers.
+/apps/*/Dockerfile @soadap
+/compose.yaml @soadap
+/apps/web/next.config.ts @soadap
+/apps/*/vitest.setup.ts @soadap
 
 # The lockfile is what CI and the images actually install. A lockfile-only edit can change
 # a transitive dependency's resolved version or tarball with no catalog or manifest change,

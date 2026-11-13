@@ -3,18 +3,50 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Placeholder. The Next.js 16 FSD skeleton arrives in Phase 1.1 (team ticket 1.4).",
+  "description": "Next.js 16 App Router web app (FSD)",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "dev": "next dev -H 127.0.0.1",
+    "build": "next build",
+    "start": "next start -H 127.0.0.1",
+    "typegen": "next typegen",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
-    "test": "echo \"@app/web: no tests yet (Phase 1.1)\"",
-    "start": "node dist/main.js"
+    "test": "vitest run",
+    "lint:fsd": "steiger ./src --fail-on-warnings",
+    "storybook": "storybook dev -p 6006 --host 127.0.0.1 --ci",
+    "build-storybook": "storybook build --quiet"
+  },
+  "dependencies": {
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
+    "lucide-react": "catalog:",
+    "next": "catalog:",
+    "radix-ui": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwind-merge": "catalog:",
+    "tw-animate-css": "catalog:"
   },
   "devDependencies": {
     "@app/config": "workspace:*",
+    "@feature-sliced/steiger-plugin": "catalog:",
+    "@storybook/nextjs-vite": "catalog:",
+    "@tailwindcss/postcss": "catalog:",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
     "eslint": "catalog:",
-    "typescript": "catalog:"
+    "jsdom": "catalog:",
+    "steiger": "catalog:",
+    "storybook": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   }
 }

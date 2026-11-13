@@ -1,0 +1,121 @@
+# Local development services only. The production compose arrives in Phase 4.
+#
+#   docker compose up -d          # start (first run pulls the images)
+#   docker compose wait s3-init   # exits 0 once the whole stack is ready
+#   docker compose down -v        # stop and reset every volume
+#
+# Every value comes from env with defaults equal to .env.example, so the stack starts with no
+# .env at all. Ports bind to 127.0.0.1 only and default to non-standard numbers to avoid clashes
+# with services already on the machine.
+#
+# Images are the newest tag of their line that is at least 14 days old, pinned by the multi-arch
+# index digest. Bumping one means re-checking its age (push date on Docker Hub and the build date
+# from `docker buildx imagetools inspect`) and updating the digest.
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a # pushed 2026-08-13
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app_dev_password}
+    ports:
+      - 127.0.0.1:${POSTGRES_PORT:-55432}:5432
+    volumes:
+      # Postgres 18 images keep PGDATA under /var/lib/postgresql/18/docker and declare the
+      # volume at /var/lib/postgresql, so the named volume goes there, not at .../data.
+      - pgdata:/var/lib/postgresql
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # Over TCP, not the unix socket: on a fresh volume the entrypoint first runs initdb on a
+      # temporary socket-only server, and a socket probe would pass before the real server is up.
+      test:
+        ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 5432 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.10.2@sha256:97ec88159e6d7cfb5ddef9015386087d58a912de80112f06ebdfa78fa5989901 # pushed 2026-10-22
+    # No password in dev: the port is bound to 127.0.0.1 only.
+    command: redis-server --appendonly yes
+    ports:
+      - 127.0.0.1:${REDIS_PORT:-56379}:6379
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  # S3-compatible object storage (D-09): SeaweedFS over Garage because it is Apache-2.0, runs
+  # master, volume, filer and the S3 gateway in a single container (`server -s3`), and is the
+  # first option in STACK §0/§9. MinIO CE stopped shipping images in Oct 2025.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.51@sha256:f7a49e3f3972ebed5be2ed4befa4a0c68eb7bdddba6e692d42729ceb545134b8 # pushed 2026-10-26
+    command: server -s3 -dir=/data -ip=seaweedfs -ip.bind=0.0.0.0
+    environment:
+      # The S3 admin identity: with it set, the gateway refuses anonymous requests.
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-dev-access-key}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-dev-secret-key}
+    ports:
+      - 127.0.0.1:${S3_PORT:-58333}:8333
+    volumes:
+      - s3data:/data
+    healthcheck:
+      # busybox wget ships in the image.
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8333/healthz']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  # One-shot job: creates the dev bucket if it is missing; safe to re-run. It starts only when
+  # postgres, redis and seaweedfs are all healthy, so its exit code 0 means the whole stack is
+  # ready: `docker compose wait s3-init` is the ready signal (`up --wait` fails on any one-shot).
+  s3-init:
+    image: chrislusf/seaweedfs:4.51@sha256:f7a49e3f3972ebed5be2ed4befa4a0c68eb7bdddba6e692d42729ceb545134b8 # pushed 2026-10-26
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      S3_BUCKET: ${S3_BUCKET:-app-dev}
+    entrypoint: ['/bin/sh', '-c']
+    # `weed shell` exits 0 even when a command fails, so the job lists the buckets again
+    # afterwards and fails unless the bucket is there. The name is compared literally against the
+    # first field of each listed line (`  <name>\tsize:...`): a regex would read the `.` that S3
+    # bucket names allow as "any character", so `app.dev` would match an existing `appxdev`.
+    command:
+      - |
+        set -eu
+        has_bucket() {
+          echo s3.bucket.list | weed shell -master=seaweedfs:9333 2>/dev/null |
+            awk '{ print $$1 }' | grep -Fxq -- "$${S3_BUCKET}"
+        }
+        if has_bucket; then
+          echo "s3-init: bucket $${S3_BUCKET} already exists"
+        else
+          echo "s3-init: creating bucket $${S3_BUCKET}"
+          echo "s3.bucket.create -name $${S3_BUCKET}" | weed shell -master=seaweedfs:9333
+        fi
+        if ! has_bucket; then
+          echo "s3-init: bucket $${S3_BUCKET} is missing after create" >&2
+          exit 1
+        fi
+        echo "s3-init: ready"
+    restart: 'no'
+
+volumes:
+  pgdata:
+  redisdata:
+  s3data:

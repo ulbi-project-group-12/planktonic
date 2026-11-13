@@ -1,0 +1,16 @@
+// Prisma schema for @app/api (D-14, STACK §5).
+// The database URL is not set here: the CLI reads it from prisma.config.ts, and the app passes
+// it to the PrismaPg adapter in src/core/prisma/prisma.service.ts. Product models arrive with
+// Phase 3+.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+  runtime             = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
