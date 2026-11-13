@@ -151,7 +151,7 @@ Source: the 191 spec items with stable IDs from `tz_requirements` in `.planning/
 - [x] **TZ-FE-14**: vitest, RTL — tests _(spec l.209)_
 - [x] **TZ-FE-15**: Storybook for UI components _(spec l.210)_
 - [x] **TZ-FE-16**: pnpm _(spec l.211)_
-- [ ] **TZ-FE-17**: Mandatory linting + a linter for FSD rule compliance. _(spec l.215)_
+- [x] **TZ-FE-17**: Mandatory linting + a linter for FSD rule compliance. _(spec l.215)_
 - [x] **TZ-FE-18**: Mandatory code review of every task. _(spec l.216)_
 - [x] **TZ-FE-19**: Minimum of ad hoc custom styles; use the UI kit that was built. _(spec l.217)_
 - [x] **TZ-FE-20**: A CI pipeline is mandatory. _(spec l.218)_
@@ -199,7 +199,7 @@ Source: the 191 spec items with stable IDs from `tz_requirements` in `.planning/
 - [x] **TZ-CICD-04**: Pushing directly to dev/trunk/master is forbidden, only through a PR with code review. _(spec l.285)_
 - [x] **TZ-CICD-05**: Working with git using the trunk-based approach. _(spec l.287)_
 - [ ] **TZ-CICD-06**: Containerization is mandatory when deploying. _(spec l.289)_
-- [ ] **TZ-CICD-07**: Cross code review is mandatory. Everyone looks at each other's code, not only the team lead. We learn from other people's code as from our own. _(spec l.348)_
+- [x] **TZ-CICD-07**: Cross code review is mandatory. Everyone looks at each other's code, not only the team lead. We learn from other people's code as from our own. _(spec l.348)_
 - [ ] **TZ-CICD-08**: Every week, a report on the work done goes to the chat on Friday. We write the gap even if it is small. _(spec l.350)_
 
 ### Production and observability (PROD)
@@ -391,7 +391,7 @@ Each requirement has exactly one primary phase: Phase 1 owns the 21 items the le
 | TZ-FE-14 | Phase 1.1 | — | Complete |
 | TZ-FE-15 | Phase 1.1 | — | Complete |
 | TZ-FE-16 | Phase 1 | — | Complete |
-| TZ-FE-17 | Phase 1.1 | 1 | Pending |
+| TZ-FE-17 | Phase 1.1 | 1 | Complete |
 | TZ-FE-18 | Phase 1 | — | Complete |
 | TZ-FE-19 | Phase 1.1 | — | Complete |
 | TZ-FE-20 | Phase 1 | — | Complete |
@@ -446,7 +446,7 @@ Each requirement has exactly one primary phase: Phase 1 owns the 21 items the le
 | TZ-CICD-04 | Phase 1 | — | Complete |
 | TZ-CICD-05 | Phase 1 | — | Complete |
 | TZ-CICD-06 | Phase 4 | 1 | Pending |
-| TZ-CICD-07 | Phase 1.1 | 1 | Pending |
+| TZ-CICD-07 | Phase 1.1 | 1 | Complete |
 | TZ-CICD-08 | Phase 1.1 | 5 | Pending |
 | TZ-PRODUCT-01 | Phase 10 | — | Pending |
 | TZ-PRODUCT-02 | Phase 10 | — | Pending |
@@ -478,4 +478,4 @@ Each requirement has exactly one primary phase: Phase 1 owns the 21 items the le
 
 ---
 *Requirements defined: 2026-11-08*
-*Last updated: 2026-11-12 after Phase 1.1 verification (15 IDs proven by code; TZ-FE-17, TZ-CICD-07, TZ-CICD-08 and TZ-PROCESS-* stay Pending)*
+*Last updated: 2026-11-13 after Phase 1.1 re-verification (17 IDs proven by code and the live main ruleset; TZ-CICD-08 and TZ-PROCESS-* stay Pending, UL-3)*
