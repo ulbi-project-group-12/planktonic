@@ -13,7 +13,7 @@ Fifteen phases from the research roadmap (`.planning/research/ROADMAP-RESEARCH.m
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Repo foundation and CI/CD (lead)** - pnpm + Turborepo monorepo, root tooling, CI, main ruleset, PR template, release images to GHCR (completed 2026-11-08)
-- [ ] **Phase 1.1: App skeletons (team)** - kickoff, Next.js and NestJS skeletons, docker-compose, CodeRabbit, README, Storybook
+- [x] **Phase 1.1: App skeletons (team)** - kickoff, Next.js and NestJS skeletons, docker-compose, CodeRabbit, README, Storybook (completed 2026-11-12)
 - [ ] **Phase 2: Realtime prototype** - two clients, two instances, reconnect, protocol ADR
 - [ ] **Phase 3: Access and workspaces** - sign-up and sign-in, workspaces, invites, roles, projects, landing; beyond the spec: email confirmation, GitHub sign-in, 2FA
 - [ ] **Phase 4: Prod and observability** - server, Traefik, two api instances, release by button, logs, metrics, errors
@@ -88,7 +88,7 @@ Research tickets:
   3. `docker compose up` starts Postgres 18 + pgvector, Redis 8 and SeaweedFS with healthchecks, and an init script creates the bucket
   4. README «how to run» was followed by two members on different OSes in ≤ 30 min; CodeRabbit left a comment on a test PR; Storybook shows 3 UI-kit components and its build is green in CI
   5. Kickoff agreements (roles, call times, DoR/DoD, review and Friday-report rules) are recorded in Docs or `docs/adr/0000`
-**Plans**: 11/11 plans executed (lead decision D-01: all tickets done in full by agents; UL-3 kickoff stays organisational, D-02)
+**Plans**: 11/11 plans complete (lead decision D-01: all tickets done in full by agents; UL-3 kickoff stays organisational, D-02)
 
 Plans:
 **Wave 1**
@@ -462,7 +462,7 @@ Phases execute in numeric order: 1 → 1.1 → 2 → 3 → … → 15 (2 can run
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Repo foundation and CI/CD (lead) | 9/9 | Complete    | 2026-11-08 |
-| 1.1. App skeletons (team) | 11/11 | In Progress | - |
+| 1.1. App skeletons (team) | 11/11 | Complete    | 2026-11-12 |
 | 2. Realtime prototype | 0/TBD | Not started | - |
 | 3. Access and workspaces | 0/TBD | Not started | - |
 | 4. Prod and observability | 0/TBD | Not started | - |
