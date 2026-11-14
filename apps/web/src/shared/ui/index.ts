@@ -1,7 +1,8 @@
 export { Button, buttonVariants } from './button';
-export { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter } from './dialog';
-export { DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from './dialog';
+export { Checkbox, type CheckboxProps } from './checkbox';
 export { Input } from './input';
+export { Modal, modalSizes, type ModalAction, type ModalProps, type ModalSize } from './modal';
+export { Switch, type SwitchProps } from './switch';
 export {
   Typography,
   typographyColors,
