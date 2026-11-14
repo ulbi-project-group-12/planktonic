@@ -1,7 +1,7 @@
 # Local development services only. The production compose arrives in Phase 4.
 #
 #   docker compose up -d          # start (first run pulls the images)
-#   docker compose wait s3-init   # exits 0 once the whole stack is ready
+#   docker compose wait s3-init   # waits for S3 bucket initialization
 #   docker compose down -v        # stop and reset every volume
 #
 # Every value comes from env with defaults equal to .env.example, so the stack starts with no
@@ -76,9 +76,9 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  # One-shot job: creates the dev bucket if it is missing; safe to re-run. It starts only when
-  # postgres, redis and seaweedfs are all healthy, so its exit code 0 means the whole stack is
-  # ready: `docker compose wait s3-init` is the ready signal (`up --wait` fails on any one-shot).
+  # One-shot job: creates the dev S3 bucket if missing.
+  # Waits for healthy Postgres, Redis and SeaweedFS.
+  # Does not verify API or Traefik readiness.
   s3-init:
     image: chrislusf/seaweedfs:4.51@sha256:f7a49e3f3972ebed5be2ed4befa4a0c68eb7bdddba6e692d42729ceb545134b8 # pushed 2026-10-26
     depends_on:
@@ -114,6 +114,51 @@ services:
         fi
         echo "s3-init: ready"
     restart: 'no'
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app_dev_password}@postgres:5432/${POSTGRES_DB:-app}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=PathPrefix(`/api`) || PathPrefix(`/socket.io`)
+      - traefik.http.routers.api.entrypoints=web
+      - traefik.http.services.api.loadbalancer.server.port=3001
+      - traefik.http.services.api.loadbalancer.sticky.cookie.name=io_srv
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('node:http').get('http://127.0.0.1:3001/api/health', r => { r.resume(); process.exitCode = r.statusCode === 200 ? 0 : 1 }).on('error', () => { process.exitCode = 1 })"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 2
+    restart: unless-stopped
+
+  traefik:
+    image: traefik:v3.7.17@sha256:f4bb143d1135a579b630ed491e17ec50f6f7c9c6a30585ff3d385471d2a86f5a
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.transport.respondingtimeouts.idletimeout=60s
+      - --accesslog=true
+    ports:
+      - '127.0.0.1:${TRAEFIK_PORT:-58080}:80'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
 
 volumes:
   pgdata:

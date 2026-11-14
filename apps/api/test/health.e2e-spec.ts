@@ -4,6 +4,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
 
@@ -22,10 +23,14 @@ afterAll(async () => {
 });
 
 describe('health endpoints without a database', () => {
-  it('GET /api/health returns 200 with status ok', async () => {
+  it('GET /api/health returns 200 with status ok and instanceId', async () => {
     const response = await fetch(`${baseUrl}/api/health`);
+    const body = z
+      .object({ status: z.literal('ok'), instanceId: z.string().min(1) })
+      .parse(await response.json());
+
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain('"status":"ok"');
+    expect(body.status).toBe('ok');
     expect(response.headers.get('x-powered-by')).toBeNull();
   });
 

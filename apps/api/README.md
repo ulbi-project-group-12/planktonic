@@ -4,8 +4,34 @@ The api of this project: NestJS 12 as native ESM, compiled with `tsc`, with zod-
 Prisma 7 on Postgres and terminus health endpoints. The multi-stage `Dockerfile` ships `dist`
 plus production dependencies as a non-root image.
 
-Run it from the repo root with `pnpm dev` after `pnpm services:up` and `pnpm db:migrate` (README
-"Quick start"); it listens on http://localhost:3001/api.
+## Running locally
+
+Run these commands from the repo root after installing dependencies and copying
+`.env.example` to `.env`:
+
+```sh
+pnpm services:up
+pnpm db:migrate
+```
+
+Compose builds and starts two API replicas behind Traefik. The API is available at
+http://127.0.0.1:58080/api/health (`TRAEFIK_PORT` changes the host port). The API's internal
+port `3001` is not published to the host. `services:up` waits for S3 initialization, so check
+`docker compose ps` for API health and `/api/health/ready` for database readiness.
+
+For hot reload, run the API on the host instead:
+
+```sh
+docker compose stop api traefik
+docker compose up -d postgres redis seaweedfs s3-init
+docker compose wait s3-init
+pnpm db:migrate
+pnpm --filter @app/api dev
+```
+
+The host API listens on http://127.0.0.1:3001/api/health by default. Use `pnpm dev` instead of
+the last command to start both the web app and API in watch mode.
+See the [root README](../../README.md#local-services) for Traefik routing and sticky sessions.
 
 ## Layout
 
@@ -54,6 +80,12 @@ There is no per-package `.env`: the api and the Prisma CLI always read the same 
 `NODE_ENV` `test` or `production` it reads no env file, only the process environment. The root
 README lists every variable.
 
+Host development and Prisma CLI commands use `DATABASE_URL` from the root `.env`, normally
+pointing to `127.0.0.1:55432`. Compose explicitly sets the Docker API's `API_HOST=0.0.0.0`,
+`API_PORT=3001` and `DATABASE_URL` using the `POSTGRES_*` credentials and `postgres:5432`.
+The Docker API runs with `NODE_ENV=production`; it does not load `.env` itself or use the
+host's `DATABASE_URL` and `API_PORT` values.
+
 ## Prisma 7
 
 - `prisma/schema.prisma` uses the `prisma-client` generator (ESM, `.js` imports) and writes the
@@ -73,14 +105,18 @@ README lists every variable.
 
 ## Health endpoints
 
-- `GET /api/health`: liveness, no database.
+- `GET /api/health`: liveness, no database. Returns `status: "ok"` and a nonempty `instanceId`
+  provided by `src/modules/health/instance-id.provider.ts` using the hostname. In Docker this
+  identifies the replica serving the request.
 - `GET /api/health/ready`: readiness, Prisma `SELECT 1`; 503 with `database unreachable` when the
   database is down, without connection details. The cause goes to the server log as a value-free
   warning, for example `database readiness failed: P2010 AuthenticationFailed 28P01` (Prisma code,
   driver error kind, Postgres SQLSTATE).
 
-Phase 4 smoke-checks `GET /api/health` on each replica after a deploy, and a load balancer can
-gate traffic on `/api/health/ready` (D-12).
+The Compose healthcheck calls `/api/health` every 10 seconds, with a 5-second timeout,
+3 retries and a 20-second start period. It checks liveness only; `/api/health/ready` also checks
+the database. Traefik currently has no explicit active readiness probe configured.
+An `unhealthy` status alone does not trigger `restart: unless-stopped`.
 
 ## Scripts
 
@@ -106,9 +142,28 @@ live in `test/` as `*.e2e-spec.ts`. They boot the whole `AppModule` against an u
 database URL set in `vitest.config.ts`, so `pnpm test` never needs a database (CI has none).
 Import `describe`/`it`/`expect` from `vitest` (no globals).
 
+`test/health.e2e-spec.ts` checks that liveness returns 200 and uses Zod to validate
+`status: "ok"` and a nonempty string `instanceId`. It also checks that readiness returns 503
+without exposing database credentials or the host and port.
+Run only these tests from the repo root with:
+
+```sh
+pnpm --filter @app/api exec vitest run test/health.e2e-spec.ts
+```
+
 ## Image
 
 `Dockerfile` builds from the repo root: a frozen pnpm install of `@app/api` and its workspace
 dependencies, `prisma generate`, `tsc`, then `pnpm deploy --prod`. The runtime stage holds `dist`,
 `package.json` and production `node_modules`, runs as uid 1000 and starts `node dist/main.js`. The
 Prisma CLI stays a dev dependency; Phase 4 decides how migrations run in production.
+
+The Docker API runs compiled code without hot reload. After API source changes, rebuild and
+recreate the replicas from the repo root:
+
+```sh
+docker compose up -d --build api
+```
+
+Compose does not apply migrations automatically. Run `pnpm db:migrate` separately from the
+host; the runtime image does not include the Prisma CLI.
