@@ -14,24 +14,12 @@ pnpm services:up
 pnpm db:migrate
 ```
 
-Compose builds and starts two API replicas behind Traefik. The API is available at
-http://127.0.0.1:58080/api/health (`TRAEFIK_PORT` changes the host port). The API's internal
-port `3001` is not published to the host. `services:up` waits for S3 initialization, so check
-`docker compose ps` for API health and `/api/health/ready` for database readiness.
+Then `pnpm dev` (web + api) or `pnpm --filter @app/api dev` (api only) runs it in watch mode on
+http://127.0.0.1:3001/api.
 
-For hot reload, run the API on the host instead:
-
-```sh
-docker compose stop api traefik
-docker compose up -d postgres redis seaweedfs s3-init
-docker compose wait s3-init
-pnpm db:migrate
-pnpm --filter @app/api dev
-```
-
-The host API listens on http://127.0.0.1:3001/api/health by default. Use `pnpm dev` instead of
-the last command to start both the web app and API in watch mode.
-See the [root README](../../README.md#local-services) for Traefik routing and sticky sessions.
+Two compiled replicas behind Traefik start only with the compose profile `realtime`:
+`docker compose --profile realtime up -d --build`, then http://127.0.0.1:58080/api/health
+(`TRAEFIK_PORT`). See the [root README](../../README.md#api-replicas-and-traefik-ul-123).
 
 ## Layout
 
@@ -116,7 +104,9 @@ host's `DATABASE_URL` and `API_PORT` values.
 The Compose healthcheck calls `/api/health` every 10 seconds, with a 5-second timeout,
 3 retries and a 20-second start period. It checks liveness only; `/api/health/ready` also checks
 the database. Traefik currently has no explicit active readiness probe configured.
-An `unhealthy` status alone does not trigger `restart: unless-stopped`.
+An `unhealthy` status alone does not trigger `restart: unless-stopped`. Phase 4 smoke-checks
+`GET /api/health` on each replica after a deploy, and a load balancer can gate traffic on
+`/api/health/ready` (D-12).
 
 ## Scripts
 
@@ -163,7 +153,7 @@ The Docker API runs compiled code without hot reload. After API source changes, 
 recreate the replicas from the repo root:
 
 ```sh
-docker compose up -d --build api
+docker compose --profile realtime up -d --build api
 ```
 
 Compose does not apply migrations automatically. Run `pnpm db:migrate` separately from the

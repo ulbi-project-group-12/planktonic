@@ -1,7 +1,8 @@
 # Local development services only. The production compose arrives in Phase 4.
 #
 #   docker compose up -d          # start (first run pulls the images)
-#   docker compose wait s3-init   # waits for S3 bucket initialization
+#   docker compose wait s3-init   # exits 0 once the dev services are ready
+#   docker compose --profile realtime up -d --build   # also two api replicas behind Traefik (UL-123)
 #   docker compose down -v        # stop and reset every volume
 #
 # Every value comes from env with defaults equal to .env.example, so the stack starts with no
@@ -11,6 +12,11 @@
 # Images are the newest tag of their line that is at least 14 days old, pinned by the multi-arch
 # index digest. Bumping one means re-checking its age (push date on Docker Hub and the build date
 # from `docker buildx imagetools inspect`) and updating the digest.
+
+# A fixed, product-neutral project name (D-33) keeps container names stable (app-api-2) whatever the
+# checkout folder is called. A second checkout or worktree must set its own COMPOSE_PROJECT_NAME (or use -p),
+# otherwise both share one stack and one database.
+name: app
 
 services:
   postgres:
@@ -76,9 +82,10 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  # One-shot job: creates the dev S3 bucket if missing.
-  # Waits for healthy Postgres, Redis and SeaweedFS.
-  # Does not verify API or Traefik readiness.
+  # One-shot job: creates the dev bucket if it is missing; safe to re-run. It starts only when
+  # postgres, redis and seaweedfs are all healthy, so its exit code 0 means the dev services are
+  # ready: `docker compose wait s3-init` is the ready signal (`up --wait` fails on any one-shot).
+  # The api replicas and Traefik (profile `realtime`) are not part of that signal.
   s3-init:
     image: chrislusf/seaweedfs:4.51@sha256:f7a49e3f3972ebed5be2ed4befa4a0c68eb7bdddba6e692d42729ceb545134b8 # pushed 2026-10-26
     depends_on:
@@ -115,7 +122,10 @@ services:
         echo "s3-init: ready"
     restart: 'no'
 
+  # Two api replicas behind Traefik (UL-123). Profile `realtime`: a plain `up` (and `pnpm dev` on
+  # the host) does not build or start them; `--profile realtime` does.
   api:
+    profiles: [realtime]
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -147,7 +157,8 @@ services:
     restart: unless-stopped
 
   traefik:
-    image: traefik:v3.7.17@sha256:f4bb143d1135a579b630ed491e17ec50f6f7c9c6a30585ff3d385471d2a86f5a
+    profiles: [realtime]
+    image: traefik:v3.7.16@sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65 # pushed 2026-10-26
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false

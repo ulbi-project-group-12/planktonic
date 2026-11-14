@@ -25,12 +25,10 @@ afterAll(async () => {
 describe('health endpoints without a database', () => {
   it('GET /api/health returns 200 with status ok and instanceId', async () => {
     const response = await fetch(`${baseUrl}/api/health`);
-    const body = z
-      .object({ status: z.literal('ok'), instanceId: z.string().min(1) })
-      .parse(await response.json());
-
     expect(response.status).toBe(200);
-    expect(body.status).toBe('ok');
+    z.object({ status: z.literal('ok'), instanceId: z.string().min(1) }).parse(
+      await response.json(),
+    );
     expect(response.headers.get('x-powered-by')).toBeNull();
   });
 
