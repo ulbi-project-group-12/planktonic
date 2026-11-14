@@ -49,6 +49,11 @@ Commits inside your branch can be as small and informal as you like; they disapp
   flag can turn a required check green without testing anything.
 - [.github/CODEOWNERS](.github/CODEOWNERS) only asks the lead to look at CI, repository rules and the
   shared lint presets; that review is not required.
+- **Lead override.** The lead (org admin) may merge a PR without a teammate's approval through the
+  ruleset bypass (`gh pr merge <n> --squash --admin`, or "Merge without waiting for requirements"
+  in the UI): for example after pushing review fixes into someone's branch, when the lead's own
+  approval no longer counts, or for the lead's own repository-rule PRs. The bypass works only
+  through a pull request, never as a direct push, and is used only with every CI check green.
 
 ## Protecting `main`
 

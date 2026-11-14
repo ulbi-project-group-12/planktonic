@@ -416,7 +416,8 @@ The rules live as code in `.github/repo-settings.json` and `.github/rulesets/`, 
 **Who approves.** The team is horizontal: every developer has write access through the org team
 `devs`, so any teammate's approval counts, on every path (the TZ asks for cross-review, not the
 lead's). CODEOWNERS only asks the lead to look at CI, repository rules and the shared lint presets,
-and that review is optional. The only bypass is an org admin, and only through a pull
+and that review is optional. The only bypass is an org admin (the lead's override, see
+[CONTRIBUTING.md](CONTRIBUTING.md#review)), and only through a pull
 request, except for `v*` tags and creating a `release/*` branch, which never go through a PR.
 
 The pre-push hook and the `main-push-guard` workflow stay as a second line of defence (see
