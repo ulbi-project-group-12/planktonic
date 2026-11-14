@@ -1,7 +1,6 @@
-import * as React from 'react';
+import type { ComponentProps } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { cn } from '@/shared/lib';
-import { Slot } from 'radix-ui';
 
 const buttonVariants = ['solid', 'secondary', 'subtle'] as const;
 type ButtonVariant = (typeof buttonVariants)[number];
@@ -62,6 +61,19 @@ const sizeClasses: Record<ButtonSize, string> = {
   icon: 'size-9 md:size-10',
 };
 
+interface ButtonProps extends ComponentProps<'button'> {
+  /** Вид кнопки: solid — основное действие, secondary — нейтральная, subtle — тихая. */
+  variant?: ButtonVariant;
+  /** Палитра заливки и текста; для secondary не используется. */
+  palette?: ButtonPalette;
+  /** Размер: высоты mobile → desktop, icon — квадратная кнопка только с иконкой. */
+  size?: ButtonSize;
+  /** Показывает спиннер и блокирует клики; подпись берётся из children или «Загрузка…». */
+  loading?: boolean;
+  /** Растягивает кнопку на всю ширину контейнера (типично для мобильных). */
+  fullWidth?: boolean;
+}
+
 function Button({
   className,
   variant = 'solid',
@@ -69,21 +81,11 @@ function Button({
   size = 'm',
   loading = false,
   fullWidth = false,
-  asChild = false,
   children,
   ...props
-}: React.ComponentProps<'button'> & {
-  variant?: ButtonVariant;
-  palette?: ButtonPalette;
-  size?: ButtonSize;
-  loading?: boolean;
-  fullWidth?: boolean;
-  asChild?: boolean;
-}) {
-  const Comp = asChild ? Slot.Root : 'button';
-
+}: ButtonProps) {
   return (
-    <Comp
+    <button
       data-slot="button"
       data-variant={variant}
       data-palette={palette}
@@ -107,7 +109,7 @@ function Button({
       ) : (
         children
       )}
-    </Comp>
+    </button>
   );
 }
 
@@ -117,6 +119,7 @@ export {
   buttonSizes,
   buttonVariants,
   type ButtonPalette,
+  type ButtonProps,
   type ButtonSize,
   type ButtonVariant,
 };

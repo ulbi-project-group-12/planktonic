@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const radiusTokens: [name: string, cssVar: string][] = [
   ['radius.xs', '--radius-xs'],
@@ -11,10 +11,10 @@ const radiusTokens: [name: string, cssVar: string][] = [
 ];
 
 function RadiusSample({ name, cssVar }: { name: string; cssVar: string }) {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const [value, setValue] = React.useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  const [value, setValue] = useState('');
 
-  React.useEffect(() => {
+  useEffect(() => {
     const element = ref.current;
     if (element) setValue(getComputedStyle(element).borderRadius);
   }, []);

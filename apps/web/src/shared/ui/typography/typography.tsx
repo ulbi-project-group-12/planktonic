@@ -1,4 +1,4 @@
-import * as React from 'react';
+import type { ElementType, HTMLAttributes } from 'react';
 import { cn } from '@/shared/lib';
 
 const typographySizes = [
@@ -30,15 +30,15 @@ const typographyColors = [
   'brand-hover',
   'brand-active',
   'brand-subtle',
-  'app',
-  'surface',
-  'sunken',
-  'overlay',
-  'fg-primary',
-  'fg-secondary',
-  'fg-muted',
-  'line',
-  'line-strong',
+  'bg-app',
+  'bg-surface',
+  'bg-sunken',
+  'bg-overlay',
+  'text-primary',
+  'text-secondary',
+  'text-muted',
+  'border-default',
+  'border-strong',
   'on-brand',
   'success',
   'success-hover',
@@ -61,6 +61,19 @@ type TypographyColor = (typeof typographyColors)[number];
 
 const typographyWeights = ['200', '400', '700'] as const;
 type TypographyWeight = (typeof typographyWeights)[number];
+
+type TypographyElement = 'span' | 'p' | 'div' | 'h1' | 'h2' | 'h3' | 'h4' | 'label' | 'li';
+
+interface TypographyProps extends HTMLAttributes<HTMLElement> {
+  /** HTML-тег, которым рендерится текст: span, p, div, h1–h4, label, li. */
+  as?: TypographyElement;
+  /** Токен шкалы из макета: 2xs–9xl или семантические h1–h6 (всегда с weight 700). */
+  size?: TypographySize;
+  /** Цвет по имени дизайн-токена (см. Design Tokens/Colors); по умолчанию text-primary. */
+  color?: TypographyColor;
+  /** Начертание Onest: 200 (extralight), 400 (regular), 700 (bold). */
+  weight?: TypographyWeight;
+}
 
 /** Size tokens from the mockup type scale (see shared/Atoms/Typography).
    h1–h6 are semantic aliases of the heading steps, always paired with weight 700. */
@@ -87,21 +100,21 @@ const sizeClasses: Record<TypographySize, string> = {
   h6: 'text-2xl',
 };
 
-/** Palette colors from the mockup tokens (see Design Tokens/Colors). */
+/** Palette colors by the design token names (see Design Tokens/Colors). */
 const colorClasses: Record<TypographyColor, string> = {
   'brand-primary': 'text-brand-primary',
   'brand-hover': 'text-brand-hover',
   'brand-active': 'text-brand-active',
   'brand-subtle': 'text-brand-subtle',
-  app: 'text-app',
-  surface: 'text-surface',
-  sunken: 'text-sunken',
-  overlay: 'text-overlay',
-  'fg-primary': 'text-fg-primary',
-  'fg-secondary': 'text-fg-secondary',
-  'fg-muted': 'text-fg-muted',
-  line: 'text-line',
-  'line-strong': 'text-line-strong',
+  'bg-app': 'text-app',
+  'bg-surface': 'text-surface',
+  'bg-sunken': 'text-sunken',
+  'bg-overlay': 'text-overlay',
+  'text-primary': 'text-fg-primary',
+  'text-secondary': 'text-fg-secondary',
+  'text-muted': 'text-fg-muted',
+  'border-default': 'text-line',
+  'border-strong': 'text-line-strong',
   'on-brand': 'text-on-brand',
   success: 'text-success',
   'success-hover': 'text-success-hover',
@@ -128,22 +141,19 @@ const weightClasses: Record<TypographyWeight, string> = {
   '700': 'font-bold',
 };
 
-type TypographyElement = 'span' | 'p' | 'div' | 'h1' | 'h2' | 'h3' | 'h4' | 'label' | 'li';
-
+/**
+ * Текст по макету: размер из токенов шкалы, цвет из палитры токенов,
+ * начертание из загруженных начертаний Onest (200/400/700).
+ */
 function Typography({
   as = 'span',
   size = 'sm',
-  color = 'fg-primary',
+  color = 'text-primary',
   weight = '400',
   className,
   ...props
-}: React.HTMLAttributes<HTMLElement> & {
-  as?: TypographyElement;
-  size?: TypographySize;
-  color?: TypographyColor;
-  weight?: TypographyWeight;
-}) {
-  const Comp: React.ElementType = as;
+}: TypographyProps) {
+  const Comp: ElementType = as;
 
   return (
     <Comp
@@ -164,6 +174,7 @@ export {
   typographyWeights,
   type TypographyColor,
   type TypographyElement,
+  type TypographyProps,
   type TypographySize,
   type TypographyWeight,
 };

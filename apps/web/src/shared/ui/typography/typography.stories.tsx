@@ -1,4 +1,4 @@
-import * as React from 'react';
+import type { ReactNode } from 'react';
 import {
   Typography,
   typographyColors,
@@ -105,7 +105,7 @@ const bodyTexts: {
   },
 ];
 
-function Card({ label, children }: { label: string; children: React.ReactNode }) {
+function Card({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="rounded-xl border border-line bg-app p-6">
       <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">{label}</div>
@@ -114,7 +114,7 @@ function Card({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-function SpecRow({ meta, children }: { meta: string; children: React.ReactNode }) {
+function SpecRow({ meta, children }: { meta: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[280px_1fr] items-baseline gap-6 border-t border-line py-4 first:border-t-0 first:pt-0 last:pb-0">
       <div className="text-xs whitespace-nowrap text-fg-muted">{meta}</div>
@@ -130,7 +130,7 @@ function TypeScale() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {weights.map((item) => (
             <div key={item.weight} className="min-w-0">
-              <Typography as="div" size="9xl" weight={item.weight} color="fg-muted">
+              <Typography as="div" size="9xl" weight={item.weight} color="text-muted">
                 Aa
               </Typography>
               <Typography as="p" size="4xl" weight={item.weight} className="mt-2">
@@ -205,7 +205,7 @@ export const Playground = {
   args: {
     children: 'Планктон — основа пищевой цепи',
     size: 'sm',
-    color: 'fg-primary',
+    color: 'text-primary',
     weight: '400',
   },
   argTypes: {

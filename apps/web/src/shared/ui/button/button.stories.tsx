@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { Plus } from 'lucide-react';
 import {
@@ -66,7 +67,7 @@ const subtleRows: SpecRowConfig[] = [
   { name: 'Info', label: 'Детали', palette: 'info', tokenCaption: 'fill: $light.info.subtle' },
 ];
 
-function Card({ label, children }: { label: string; children: React.ReactNode }) {
+function Card({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="rounded-xl border border-line bg-app p-6">
       <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">{label}</div>
@@ -115,7 +116,7 @@ function VariantTable({ variant, rows }: { variant: ButtonVariant; rows: SpecRow
   );
 }
 
-function SizeItem({ caption, children }: { caption: string; children: React.ReactNode }) {
+function SizeItem({ caption, children }: { caption: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col items-start gap-2">
       {children}

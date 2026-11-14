@@ -5,7 +5,7 @@ import { Typography } from './typography';
 describe('Typography', () => {
   it('renders the size, color and weight token classes', () => {
     render(
-      <Typography size="6xl" color="fg-muted" weight="700">
+      <Typography size="6xl" color="text-muted" weight="700">
         Заголовок
       </Typography>,
     );
@@ -14,7 +14,7 @@ describe('Typography', () => {
     expect(element).toHaveClass('text-fg-muted');
     expect(element).toHaveClass('font-bold');
     expect(element).toHaveAttribute('data-size', '6xl');
-    expect(element).toHaveAttribute('data-color', 'fg-muted');
+    expect(element).toHaveAttribute('data-color', 'text-muted');
     expect(element).toHaveAttribute('data-weight', '700');
   });
 

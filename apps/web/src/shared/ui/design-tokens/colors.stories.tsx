@@ -1,4 +1,5 @@
-import * as React from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 
 /** Parses a computed `rgb()` / `rgba()` value into the mockup's `#HEX rgb(...)` form. */
 function formatColor(css: string | null): string {
@@ -39,10 +40,10 @@ function formatColor(css: string | null): string {
 }
 
 /** Reads the computed color of the swatch element after mount (theme-aware). */
-function ComputedColorValue({ targetRef }: { targetRef: React.RefObject<HTMLDivElement | null> }) {
-  const [color, setColor] = React.useState<string | null>(null);
+function ComputedColorValue({ targetRef }: { targetRef: RefObject<HTMLDivElement | null> }) {
+  const [color, setColor] = useState<string | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const element = targetRef.current;
     if (element) {
       setColor(getComputedStyle(element).getPropertyValue('background-color').trim());
@@ -62,7 +63,7 @@ interface SwatchItem {
 }
 
 function Swatch({ item }: { item: SwatchItem }) {
-  const ref = React.useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   return (
     <div className="min-w-0">
@@ -204,7 +205,7 @@ function SemanticRow({ status }: { status: (typeof semanticStatuses)[number] }) 
 }
 
 function SemanticSwatch({ cssVar, label }: { cssVar: string; label: string }) {
-  const ref = React.useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   return (
     <div className="min-w-0">
