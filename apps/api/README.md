@@ -148,6 +148,7 @@ without exposing database credentials or the host and port.
 Run only these tests from the repo root with:
 
 ```sh
+pnpm --filter @app/api generate
 pnpm --filter @app/api exec vitest run test/health.e2e-spec.ts
 ```
 
