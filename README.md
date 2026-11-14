@@ -406,7 +406,7 @@ The rules live as code in `.github/repo-settings.json` and `.github/rulesets/`, 
 - **SHA-pinned actions:** required at the repository level, so GitHub rejects any action that is
   not pinned to a full commit SHA.
 - **`main`:** changes land only through a pull request with green required checks and one
-  approval, plus code-owner review on the paths in [CODEOWNERS](.github/CODEOWNERS). No force
+  approval from any teammate (code-owner review is not required). No force
   pushes, no deletion, linear history. A direct push is rejected (`GH013`), for the lead too.
 - **Secret scanning and push protection:** on, so GitHub flags committed secrets and rejects a
   push that contains a known token format.
@@ -414,9 +414,9 @@ The rules live as code in `.github/repo-settings.json` and `.github/rulesets/`, 
   moved or deleted except by an org admin.
 
 **Who approves.** The team is horizontal: every developer has write access through the org team
-`devs`, so any teammate's approval counts. CODEOWNERS names the lead only on CI, repository rules,
-tooling, root configs, the configs and scripts behind the required checks in each app, and the
-lockfile. The only bypass is an org admin, and only through a pull
+`devs`, so any teammate's approval counts, on every path (the TZ asks for cross-review, not the
+lead's). CODEOWNERS only asks the lead to look at CI, repository rules and the shared lint presets,
+and that review is optional. The only bypass is an org admin, and only through a pull
 request, except for `v*` tags and creating a `release/*` branch, which never go through a PR.
 
 The pre-push hook and the `main-push-guard` workflow stay as a second line of defence (see
@@ -429,5 +429,5 @@ repository goes private again, every CI run bills those jobs against that allowa
 ## Planning
 
 `.planning/` holds the GSD planning files (requirements, roadmap, phase plans). Only the lead
-changes it on `main`; CODEOWNERS names the lead as its owner, and the `main` ruleset enforces it. GSD is
+changes it on `main` (a team rule, not enforced by GitHub). GSD is
 optional for everyone; see [CONTRIBUTING.md](CONTRIBUTING.md#gsd).

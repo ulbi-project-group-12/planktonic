@@ -44,9 +44,11 @@ Commits inside your branch can be as small and informal as you like; they disapp
 - Everyone reviews everyone, juniors included.
 - Label comments with [Conventional Comments](https://conventionalcomments.org/): `praise:`,
   `nitpick:`, `suggestion:`, `issue:`, `question:`.
-- Any teammate's approval merges product code. Paths listed in [.github/CODEOWNERS](.github/CODEOWNERS)
-  (CI, repository rules, tooling, root configs, each app's check configs and `package.json`, the
-  lockfile) also need their owner's review, and GitHub enforces it.
+- Any teammate's approval merges any change, configs and the lockfile included. Review the checks
+  as carefully as the code: a PR that loosens a lint rule, a test `include` or a `--max-warnings`
+  flag can turn a required check green without testing anything.
+- [.github/CODEOWNERS](.github/CODEOWNERS) only asks the lead to look at CI, repository rules and the
+  shared lint presets; that review is not required.
 
 ## Protecting `main`
 
