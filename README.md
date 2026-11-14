@@ -66,6 +66,13 @@ compose project is named `app` (`name:` in `compose.yaml`; containers are `app-a
 `127.0.0.1` only. A second checkout or git worktree that runs its own stack must set a different
 `COMPOSE_PROJECT_NAME` in its `.env` (and other ports), or both share one stack and one database.
 
+**Upgrading an existing checkout.** Before this change the project was named after the checkout
+folder (usually `planktonic`), so your old database and bucket live in volumes like
+`planktonic_pgdata`. With `name: app` compose starts with fresh, empty volumes. Either run
+`pnpm db:migrate` again on the new ones, or keep the old data by adding
+`COMPOSE_PROJECT_NAME=planktonic` to your `.env`. Old containers can be removed with
+`docker compose -p planktonic --profile "*" down` (add `-v` to delete the old data).
+
 | Service     | Image (pinned by digest)         | Host port                 | Purpose                                                       |
 | ----------- | -------------------------------- | ------------------------- | ------------------------------------------------------------- |
 | `postgres`  | `pgvector/pgvector:0.8.6-pg18`   | `55432` (`POSTGRES_PORT`) | Postgres 18 with the `vector` extension (init SQL)            |
@@ -80,7 +87,8 @@ single container, and it is the first option in the stack research. MinIO CE no 
 images.
 
 `pnpm services:up` returns when `s3-init` exits 0, which happens only after the other three are
-healthy (plain `docker compose up --wait` fails on a one-shot job). `pnpm services:down` stops the stack and keeps the data;
+healthy (plain `docker compose up --wait` fails on a one-shot job). `pnpm services:down` stops the
+whole stack, the `realtime` replicas included (`--profile "*"`), and keeps the data;
 `pnpm services:reset` also deletes the volumes (database, Redis and the
 bucket), so run `pnpm db:migrate` again afterwards.
 
