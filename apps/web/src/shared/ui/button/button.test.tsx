@@ -24,4 +24,33 @@ describe('Button', () => {
     await userEvent.click(button);
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it('renders variant, palette and size data attributes', () => {
+    render(
+      <Button variant="subtle" palette="success" size="l">
+        Принять
+      </Button>,
+    );
+    const button = screen.getByRole('button', { name: 'Принять' });
+    expect(button).toHaveAttribute('data-variant', 'subtle');
+    expect(button).toHaveAttribute('data-palette', 'success');
+    expect(button).toHaveAttribute('data-size', 'l');
+  });
+
+  it('shows a spinner and a loading label when loading', () => {
+    render(<Button loading>Save</Button>);
+    const button = screen.getByRole('button', { name: /Save/ });
+    expect(button).toHaveAttribute('data-loading', 'true');
+    expect(button).toHaveAttribute('aria-busy', 'true');
+  });
+
+  it('falls back to a default loading label when no children', () => {
+    render(<Button loading />);
+    expect(screen.getByText('Загрузка…')).toBeInTheDocument();
+  });
+
+  it('keeps full opacity styles for loading state', () => {
+    render(<Button loading>Save</Button>);
+    expect(screen.getByRole('button')).not.toBeDisabled();
+  });
 });

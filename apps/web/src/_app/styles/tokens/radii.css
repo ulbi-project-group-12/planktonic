@@ -1,11 +1,12 @@
 /* Radius tokens from the mockup cornerRadius scale: 3 — small controls (checkboxes),
-   8 — buttons and inputs, 12 — cards and badges, 16/24 — dialogs. Pills and avatars
-   use rounded-full. Radii are not theme-dependent. */
+   8 — inputs, 10 — buttons (mockup geometry caption), 12 — cards and badges,
+   16/24 — dialogs. Pills and avatars use rounded-full. Radii are not theme-dependent. */
 
 @theme inline {
   --radius-xs: 3px;
   --radius-sm: 4px;
   --radius-md: 8px;
+  --radius-button: 10px;
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-2xl: 24px;

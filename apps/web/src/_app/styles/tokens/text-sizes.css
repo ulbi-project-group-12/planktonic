@@ -1,34 +1,36 @@
-/* Text size tokens from the mockup type scale (px comments): 12 is the main UI
-   text, 14 — accents and inputs, 11 — captions, 10 — microtext, 20–32 — screen
-   titles. Body sizes carry a readable line-height, display sizes are tighter. */
+/* Text size tokens from the mockup type scale. Body text: text/xs–text/xl
+   (12–20 px), headings always 700 at h1–h6 (40–16 px). Line-heights follow
+   the mockup specs exactly (40/48, 32/40, 28/36, 24/32, 20/28, 16/24 and
+   12/16, 14/20, 16/24, 18/26, 20/28). Sizes not covered by the mockup
+   (10–11 px microtext, 13/15 px, 64 px display) keep sensible defaults. */
 
 @theme inline {
   --text-2xs: 0.625rem; /* 10 */
   --text-2xs--line-height: 1.4;
   --text-xs: 0.6875rem; /* 11 */
   --text-xs--line-height: 1.4;
-  --text-sm: 0.75rem; /* 12 */
-  --text-sm--line-height: 1.4;
+  --text-sm: 0.75rem; /* 12 — text/xs */
+  --text-sm--line-height: 1.333; /* 16 */
   --text-md: 0.8125rem; /* 13 */
   --text-md--line-height: 1.4;
-  --text-lg: 0.875rem; /* 14 */
-  --text-lg--line-height: 1.4;
+  --text-lg: 0.875rem; /* 14 — text/s */
+  --text-lg--line-height: 1.429; /* 20 */
   --text-xl: 0.9375rem; /* 15 */
   --text-xl--line-height: 1.4;
-  --text-2xl: 1rem; /* 16 */
-  --text-2xl--line-height: 1.35;
-  --text-3xl: 1.125rem; /* 18 */
-  --text-3xl--line-height: 1.35;
-  --text-4xl: 1.25rem; /* 20 */
-  --text-4xl--line-height: 1.25;
-  --text-5xl: 1.5rem; /* 24 */
-  --text-5xl--line-height: 1.25;
-  --text-6xl: 1.75rem; /* 28 */
-  --text-6xl--line-height: 1.2;
-  --text-7xl: 2rem; /* 32 */
-  --text-7xl--line-height: 1.2;
-  --text-8xl: 2.5rem; /* 40 */
-  --text-8xl--line-height: 1.1;
-  --text-9xl: 4rem; /* 64 */
+  --text-2xl: 1rem; /* 16 — text/m, h6 */
+  --text-2xl--line-height: 1.5; /* 24 */
+  --text-3xl: 1.125rem; /* 18 — text/l */
+  --text-3xl--line-height: 1.444; /* 26 */
+  --text-4xl: 1.25rem; /* 20 — text/xl, h5 */
+  --text-4xl--line-height: 1.4; /* 28 */
+  --text-5xl: 1.5rem; /* 24 — h4 */
+  --text-5xl--line-height: 1.333; /* 32 */
+  --text-6xl: 1.75rem; /* 28 — h3 */
+  --text-6xl--line-height: 1.286; /* 36 */
+  --text-7xl: 2rem; /* 32 — h2 */
+  --text-7xl--line-height: 1.25; /* 40 */
+  --text-8xl: 2.5rem; /* 40 — h1 */
+  --text-8xl--line-height: 1.2; /* 48 */
+  --text-9xl: 4rem; /* 64 — display */
   --text-9xl--line-height: 1.1;
 }

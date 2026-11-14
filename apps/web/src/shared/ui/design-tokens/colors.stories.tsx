@@ -1,128 +1,262 @@
 import * as React from 'react';
 
-/** A single design token shown as a swatch with its mockup name and current value. */
-function TokenCard({
-  name,
-  utility,
-  children,
-  value,
-}: {
+/** Parses a computed `rgb()` / `rgba()` value into the mockup's `#HEX rgb(...)` form. */
+function formatColor(css: string | null): string {
+  if (!css) return '…';
+  const match = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?\s*\)/.exec(css);
+  if (!match) return css;
+
+  const r = Number(match[1]);
+  const g = Number(match[2]);
+  const b = Number(match[3]);
+  const alpha = match[4] === undefined ? 1 : Number(match[4]);
+
+  const toHex = (value: number) => value.toString(16).padStart(2, '0').toUpperCase();
+
+  const hex = [
+    '#',
+    toHex(r),
+    toHex(g),
+    toHex(b),
+    alpha < 1 ? toHex(Math.round(alpha * 255)) : '',
+  ].join('');
+  const rgb =
+    alpha < 1
+      ? [
+          'rgba(',
+          String(r),
+          ', ',
+          String(g),
+          ', ',
+          String(b),
+          ', ',
+          String(Math.round(alpha * 100) / 100),
+          ')',
+        ].join('')
+      : ['rgb(', String(r), ', ', String(g), ', ', String(b), ')'].join('');
+
+  return [hex, ' ', rgb].join('');
+}
+
+/** Reads the computed color of the swatch element after mount (theme-aware). */
+function ComputedColorValue({ targetRef }: { targetRef: React.RefObject<HTMLDivElement | null> }) {
+  const [color, setColor] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const element = targetRef.current;
+    if (element) {
+      setColor(getComputedStyle(element).getPropertyValue('background-color').trim());
+    }
+  }, [targetRef]);
+
+  return <>{formatColor(color)}</>;
+}
+
+interface SwatchItem {
+  /** CSS variable holding the raw token, e.g. --brand-primary. */
+  cssVar: string;
+  /** Mockup token name, e.g. brand/primary. */
   name: string;
-  utility?: string;
-  children: React.ReactNode;
-  value: React.ReactNode;
-}) {
+  /** Usage description from the mockup. */
+  description: string;
+}
+
+function Swatch({ item }: { item: SwatchItem }) {
+  const ref = React.useRef<HTMLDivElement>(null);
+
   return (
-    <div className="flex min-w-0 items-center gap-3">
-      {children}
-      <div className="min-w-0">
-        <div className="truncate text-sm font-bold">{name}</div>
-        <div className="truncate text-xs text-fg-muted">
-          {utility ? `${utility} · ` : ''}
-          {value}
-        </div>
+    <div className="min-w-0">
+      <div
+        ref={ref}
+        className="h-14 rounded-xl border border-line"
+        style={{ background: `var(${item.cssVar})` }}
+      />
+      <div className="mt-2 truncate text-sm font-bold text-fg-primary">{item.name}</div>
+      <div className="mt-0.5 text-xs text-fg-secondary">
+        <ComputedColorValue targetRef={ref} />
+      </div>
+      <div className="mt-0.5 text-xs text-fg-muted">{item.description}</div>
+    </div>
+  );
+}
+
+function Group({ label, items }: { label: string; items: SwatchItem[] }) {
+  return (
+    <div>
+      <div className="text-xs font-medium tracking-wider text-fg-muted uppercase">{label}</div>
+      <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">
+        {items.map((item) => (
+          <Swatch key={item.name} item={item} />
+        ))}
       </div>
     </div>
   );
 }
 
-/** Reads a computed CSS value from the element in ref after mount (theme-aware). */
-function ComputedValue({
-  targetRef,
-  property,
-}: {
-  targetRef: React.RefObject<HTMLElement | null>;
-  property: string;
-}) {
-  const [value, setValue] = React.useState('');
-
-  React.useEffect(() => {
-    const element = targetRef.current;
-    if (element) setValue(getComputedStyle(element).getPropertyValue(property).trim());
-  }, [targetRef, property]);
-
-  return <>{value || '…'}</>;
+interface Section {
+  title: string;
+  groups: { label: string; items: SwatchItem[] }[];
 }
 
-const swatchRefGroups: {
-  title: string;
-  note?: string;
-  items: [name: string, utility: string, cssVar: string][];
-}[] = [
+const sections: Section[] = [
   {
-    title: 'Brand',
-    items: [
-      ['brand.primary', 'brand-primary', '--brand-primary'],
-      ['brand.hover', 'brand-hover', '--brand-hover'],
-      ['brand.active', 'brand-active', '--brand-active'],
-      ['brand.subtle', 'brand-subtle', '--brand-subtle'],
+    title: 'Brand — акцент',
+    groups: [
+      {
+        label: 'BRAND — КНОПКИ, ССЫЛКИ, АКТИВНЫЙ КАНАЛ',
+        items: [
+          {
+            cssVar: '--brand-primary',
+            name: 'brand/primary',
+            description: 'кнопки, ссылки, активный канал',
+          },
+          { cssVar: '--brand-hover', name: 'brand/hover', description: 'hover по акценту' },
+          { cssVar: '--brand-active', name: 'brand/active', description: 'нажатое состояние' },
+          {
+            cssVar: '--brand-subtle',
+            name: 'brand/subtle',
+            description: 'фон выделенного пункта, бейджи',
+          },
+        ],
+      },
     ],
   },
   {
-    title: 'Surfaces',
-    note: 'bg.* в макете',
-    items: [
-      ['bg.app', 'app', '--bg-app'],
-      ['bg.surface', 'surface', '--bg-surface'],
-      ['bg.sunken', 'sunken', '--bg-sunken'],
-      ['bg.overlay', 'overlay', '--bg-overlay'],
-    ],
-  },
-  {
-    title: 'Text',
-    note: 'text.* в макете',
-    items: [
-      ['text.primary', 'fg-primary', '--text-primary'],
-      ['text.secondary', 'fg-secondary', '--text-secondary'],
-      ['text.muted', 'fg-muted', '--text-muted'],
-    ],
-  },
-  {
-    title: 'Borders',
-    note: 'border.* в макете',
-    items: [
-      ['border.default', 'line', '--border-default'],
-      ['border.strong', 'line-strong', '--border-strong'],
-    ],
-  },
-  {
-    title: 'Semantic',
-    items: [
-      ['success', 'success', '--success'],
-      ['success.hover', 'success-hover', '--success-hover'],
-      ['success.active', 'success-active', '--success-active'],
-      ['success.subtle', 'success-subtle', '--success-subtle'],
-      ['warning', 'warning', '--warning'],
-      ['warning.hover', 'warning-hover', '--warning-hover'],
-      ['warning.active', 'warning-active', '--warning-active'],
-      ['warning.subtle', 'warning-subtle', '--warning-subtle'],
-      ['danger', 'danger', '--danger'],
-      ['danger.hover', 'danger-hover', '--danger-hover'],
-      ['danger.active', 'danger-active', '--danger-active'],
-      ['danger.subtle', 'danger-subtle', '--danger-subtle'],
-      ['info', 'info', '--info'],
-      ['info.hover', 'info-hover', '--info-hover'],
-      ['info.active', 'info-active', '--info-active'],
-      ['info.subtle', 'info-subtle', '--info-subtle'],
+    title: 'Neutral — фоны, текст, бордеры',
+    groups: [
+      {
+        label: 'ФОНЫ И ПОВЕРХНОСТИ',
+        items: [
+          { cssVar: '--bg-app', name: 'bg/app', description: 'фон приложения' },
+          { cssVar: '--bg-surface', name: 'bg/surface', description: 'сайдбары, панели, карточки' },
+          {
+            cssVar: '--bg-sunken',
+            name: 'bg/sunken',
+            description: 'ввод, вложенные области, hover-строки',
+          },
+          { cssVar: '--bg-overlay', name: 'bg/overlay', description: 'подложка модалок' },
+          {
+            cssVar: '--border-default',
+            name: 'border/default',
+            description: 'разделители, обводки полей',
+          },
+          {
+            cssVar: '--border-strong',
+            name: 'border/strong',
+            description: 'активные поля, DnD-зоны',
+          },
+        ],
+      },
+      {
+        label: 'ТЕКСТ',
+        items: [
+          { cssVar: '--text-primary', name: 'text/primary', description: 'основной текст' },
+          {
+            cssVar: '--text-secondary',
+            name: 'text/secondary',
+            description: 'метаданные, вторичный текст',
+          },
+          {
+            cssVar: '--text-muted',
+            name: 'text/muted',
+            description: 'время, плейсхолдеры, офлайн',
+          },
+          {
+            cssVar: '--on-brand',
+            name: 'text/on-accent',
+            description: 'текст на акцентном фоне',
+          },
+        ],
+      },
     ],
   },
 ];
 
-function ColorSwatch({ name, utility, cssVar }: { name: string; utility: string; cssVar: string }) {
+const semanticStatuses: { name: string; usage: string; cssPrefix: string }[] = [
+  { name: 'success', usage: '«Готово», delivered, online', cssPrefix: '--success' },
+  { name: 'warning', usage: 'горит срок, «На проверке»', cssPrefix: '--warning' },
+  { name: 'danger', usage: 'ошибки, удаление, блокировка', cssPrefix: '--danger' },
+  { name: 'info', usage: 'упоминания, уведомления', cssPrefix: '--info' },
+];
+
+const semanticStates: { label: string; suffix: string }[] = [
+  { label: 'BASE', suffix: '' },
+  { label: 'HOVER', suffix: '-hover' },
+  { label: 'ACTIVE', suffix: '-active' },
+  { label: 'SUBTLE', suffix: '-subtle' },
+];
+
+function SemanticRow({ status }: { status: (typeof semanticStatuses)[number] }) {
+  return (
+    <div className="grid grid-cols-[180px_1fr] items-start gap-6">
+      <div className="min-w-0">
+        <div className="text-sm font-bold text-fg-primary">{status.name}</div>
+        <div className="mt-0.5 text-xs text-fg-muted">{status.usage}</div>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        {semanticStates.map((state) => {
+          const cssVar = `${status.cssPrefix}${state.suffix}`;
+          return <SemanticSwatch key={state.label} cssVar={cssVar} label={state.label} />;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SemanticSwatch({ cssVar, label }: { cssVar: string; label: string }) {
   const ref = React.useRef<HTMLDivElement>(null);
 
   return (
-    <TokenCard
-      name={name}
-      utility={`bg-${utility} / text-${utility} / border-${utility}`}
-      value={<ComputedValue targetRef={ref} property="background-color" />}
-    >
+    <div className="min-w-0">
       <div
         ref={ref}
-        className="size-12 shrink-0 rounded-lg border border-line"
+        className="h-10 rounded-lg border border-line"
         style={{ background: `var(${cssVar})` }}
       />
-    </TokenCard>
+      <div className="mt-1.5 text-[10px] font-medium tracking-wider text-fg-muted">{label}</div>
+      <div className="text-xs text-fg-secondary">
+        <ComputedColorValue targetRef={ref} />
+      </div>
+    </div>
+  );
+}
+
+function ThemePalette({ theme }: { theme: 'light' | 'dark' }) {
+  return (
+    <div className={theme === 'dark' ? 'dark' : undefined}>
+      <div className="rounded-2xl border border-line bg-surface p-6">
+        <h2 className="mb-8 text-base font-bold text-fg-primary">
+          {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
+        </h2>
+
+        <div className="flex flex-col gap-10">
+          {sections.map((section) => (
+            <section key={section.title}>
+              <h3 className="mb-4 text-xl font-bold text-fg-primary">{section.title}</h3>
+              <div className="flex flex-col gap-8 rounded-xl border border-line bg-app p-6">
+                {section.groups.map((group) => (
+                  <Group key={group.label} label={group.label} items={group.items} />
+                ))}
+              </div>
+            </section>
+          ))}
+
+          <section>
+            <h3 className="mb-4 text-xl font-bold text-fg-primary">
+              Semantic — цвет и его состояния
+            </h3>
+            <div className="flex flex-col gap-8 rounded-xl border border-line bg-app p-6">
+              <div className="text-xs font-medium tracking-wider text-fg-muted uppercase">
+                BASE — HOVER — ACTIVE — SUBTLE
+              </div>
+              {semanticStatuses.map((status) => (
+                <SemanticRow key={status.name} status={status} />
+              ))}
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -133,41 +267,9 @@ export default {
 
 export const Palette = {
   render: () => (
-    <div className="flex flex-col gap-10 p-8 font-sans">
-      {(['light', 'dark'] as const).map((theme) => (
-        <div key={theme} className={theme === 'dark' ? 'dark' : undefined}>
-          <div
-            className="rounded-2xl border border-line p-6"
-            style={{ background: 'var(--bg-app)', color: 'var(--text-primary)' }}
-          >
-            <h2 className="mb-1 text-lg font-bold">
-              {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
-            </h2>
-            <p className="mb-6 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Значения переключаются классом <code>.dark</code> на контейнере.
-            </p>
-            <div className="grid gap-x-8 gap-y-6 lg:grid-cols-2">
-              {swatchRefGroups.map((group) => (
-                <section key={group.title}>
-                  <h3 className="mb-3 text-sm font-bold tracking-wide uppercase">
-                    {group.title}
-                    {group.note ? (
-                      <span className="ml-2 font-normal normal-case text-fg-muted">
-                        {group.note}
-                      </span>
-                    ) : null}
-                  </h3>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {group.items.map(([name, utility, cssVar]) => (
-                      <ColorSwatch key={name} name={name} utility={utility} cssVar={cssVar} />
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          </div>
-        </div>
-      ))}
+    <div className="flex flex-col gap-10 bg-app p-8 font-sans">
+      <ThemePalette theme="light" />
+      <ThemePalette theme="dark" />
     </div>
   ),
 };

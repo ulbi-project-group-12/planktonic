@@ -29,7 +29,7 @@ const meta = {
         </DialogHeader>
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="outline">
+            <Button type="button" variant="secondary">
               Cancel
             </Button>
           </DialogClose>

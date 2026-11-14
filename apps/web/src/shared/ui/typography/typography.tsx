@@ -16,6 +16,12 @@ const typographySizes = [
   '7xl',
   '8xl',
   '9xl',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
 ] as const;
 type TypographySize = (typeof typographySizes)[number];
 
@@ -56,7 +62,8 @@ type TypographyColor = (typeof typographyColors)[number];
 const typographyWeights = ['200', '400', '700'] as const;
 type TypographyWeight = (typeof typographyWeights)[number];
 
-/** Size tokens from the mockup type scale (see Design Tokens/Text Sizes). */
+/** Size tokens from the mockup type scale (see shared/Atoms/Typography).
+   h1–h6 are semantic aliases of the heading steps, always paired with weight 700. */
 const sizeClasses: Record<TypographySize, string> = {
   '2xs': 'text-2xs',
   xs: 'text-xs',
@@ -72,6 +79,12 @@ const sizeClasses: Record<TypographySize, string> = {
   '7xl': 'text-7xl',
   '8xl': 'text-8xl',
   '9xl': 'text-9xl',
+  h1: 'text-8xl',
+  h2: 'text-7xl',
+  h3: 'text-6xl',
+  h4: 'text-5xl',
+  h5: 'text-4xl',
+  h6: 'text-2xl',
 };
 
 /** Palette colors from the mockup tokens (see Design Tokens/Colors). */
