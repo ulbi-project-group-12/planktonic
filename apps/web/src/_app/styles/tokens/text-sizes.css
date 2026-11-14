@@ -1,0 +1,34 @@
+/* Text size tokens from the mockup type scale (px comments): 12 is the main UI
+   text, 14 — accents and inputs, 11 — captions, 10 — microtext, 20–32 — screen
+   titles. Body sizes carry a readable line-height, display sizes are tighter. */
+
+@theme inline {
+  --text-2xs: 0.625rem; /* 10 */
+  --text-2xs--line-height: 1.4;
+  --text-xs: 0.6875rem; /* 11 */
+  --text-xs--line-height: 1.4;
+  --text-sm: 0.75rem; /* 12 */
+  --text-sm--line-height: 1.4;
+  --text-md: 0.8125rem; /* 13 */
+  --text-md--line-height: 1.4;
+  --text-lg: 0.875rem; /* 14 */
+  --text-lg--line-height: 1.4;
+  --text-xl: 0.9375rem; /* 15 */
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1rem; /* 16 */
+  --text-2xl--line-height: 1.35;
+  --text-3xl: 1.125rem; /* 18 */
+  --text-3xl--line-height: 1.35;
+  --text-4xl: 1.25rem; /* 20 */
+  --text-4xl--line-height: 1.25;
+  --text-5xl: 1.5rem; /* 24 */
+  --text-5xl--line-height: 1.25;
+  --text-6xl: 1.75rem; /* 28 */
+  --text-6xl--line-height: 1.2;
+  --text-7xl: 2rem; /* 32 */
+  --text-7xl--line-height: 1.2;
+  --text-8xl: 2.5rem; /* 40 */
+  --text-8xl--line-height: 1.1;
+  --text-9xl: 4rem; /* 64 */
+  --text-9xl--line-height: 1.1;
+}

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { Button } from './button';
 
 const meta = {
-  title: 'shared/ui/Button',
+  title: 'shared/Atoms/Button',
   component: Button,
   args: { children: 'Button' },
 } satisfies Meta<typeof Button>;

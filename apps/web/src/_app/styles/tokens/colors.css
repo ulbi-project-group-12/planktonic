@@ -1,0 +1,112 @@
+/* Color tokens (mockups PlanctonicDesign, index.kui).
+
+   Raw layer: the mockup token names are kept verbatim (brand.primary -> --brand-primary)
+   so the CSS stays traceable to the design file; :root holds the light theme, .dark the
+   dark theme. Utility layer (@theme inline): the tokens as Tailwind color utilities
+   (bg-brand-primary, text-fg-muted, border-line, ...) — the .dark class rethemes them. */
+
+:root {
+  --brand-primary: #6c5ce7;
+  --brand-hover: #5a4bd1;
+  --brand-active: #4838b0;
+  --brand-subtle: #6c5ce71f;
+
+  --bg-app: #f7f8fa;
+  --bg-surface: #ffffff;
+  --bg-sunken: #eff1f4;
+  --bg-overlay: #0f121c7a;
+
+  --text-primary: #171a21;
+  --text-secondary: #5b6472;
+  --text-muted: #9aa3b0;
+
+  --border-default: #e3e6eb;
+  --border-strong: #c9cfd8;
+
+  --on-brand: #ffffff;
+
+  --success: #2fa36b;
+  --success-hover: #268a59;
+  --success-active: #1e7048;
+  --success-subtle: #2fa36b1a;
+
+  --warning: #d9822b;
+  --warning-hover: #bc6f21;
+  --warning-active: #9c5a1b;
+  --warning-subtle: #d9822b1a;
+
+  --danger: #de3b40;
+  --danger-hover: #c22f34;
+  --danger-active: #a02529;
+  --danger-subtle: #de3b401a;
+
+  --info: #3b82d6;
+  --info-hover: #2f6cb4;
+  --info-active: #265893;
+  --info-subtle: #3b82d61a;
+}
+
+.dark {
+  --brand-primary: #8577ff;
+  --brand-hover: #9c90ff;
+  --brand-active: #6c5ce7;
+  --brand-subtle: #8577ff29;
+
+  --bg-app: #12141a;
+  --bg-surface: #1b1f28;
+  --bg-sunken: #232836;
+  --bg-overlay: #00000099;
+
+  --text-primary: #edeff3;
+  --text-secondary: #a6adba;
+  --text-muted: #6b7280;
+
+  --border-default: #2c3242;
+  --border-strong: #3a4256;
+
+  --success-subtle: #2fa36b24;
+  --warning-subtle: #d9822b24;
+  --danger-subtle: #de3b402e;
+  --info-subtle: #3b82d624;
+}
+
+@theme inline {
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-active: var(--brand-active);
+  --color-brand-subtle: var(--brand-subtle);
+
+  --color-app: var(--bg-app);
+  --color-surface: var(--bg-surface);
+  --color-sunken: var(--bg-sunken);
+  --color-overlay: var(--bg-overlay);
+
+  --color-fg-primary: var(--text-primary);
+  --color-fg-secondary: var(--text-secondary);
+  --color-fg-muted: var(--text-muted);
+
+  --color-line: var(--border-default);
+  --color-line-strong: var(--border-strong);
+
+  --color-on-brand: var(--on-brand);
+
+  --color-success: var(--success);
+  --color-success-hover: var(--success-hover);
+  --color-success-active: var(--success-active);
+  --color-success-subtle: var(--success-subtle);
+
+  --color-warning: var(--warning);
+  --color-warning-hover: var(--warning-hover);
+  --color-warning-active: var(--warning-active);
+  --color-warning-subtle: var(--warning-subtle);
+
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-active: var(--danger-active);
+  --color-danger-subtle: var(--danger-subtle);
+
+  --color-info: var(--info);
+  --color-info-hover: var(--info-hover);
+  --color-info-active: var(--info-active);
+  --color-info-subtle: var(--info-subtle);
+}

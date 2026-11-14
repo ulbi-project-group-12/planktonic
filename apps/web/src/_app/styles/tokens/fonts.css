@@ -1,0 +1,30 @@
+/* Fonts: Onest (mockups: Onest 200/400/700, cyrillic+latin), self-hosted in
+   public/fonts — no cloud font service. Only the three weights the design
+   system uses are loaded. */
+@font-face {
+  font-family: 'Onest';
+  src: url('/fonts/onest/onest-v11-cyrillic_latin-200.woff2') format('woff2');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Onest';
+  src: url('/fonts/onest/onest-v11-cyrillic_latin-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Onest';
+  src: url('/fonts/onest/onest-v11-cyrillic_latin-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme inline {
+  --font-sans: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}

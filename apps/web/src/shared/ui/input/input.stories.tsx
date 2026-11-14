@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { Input } from './input';
 
 const meta = {
-  title: 'shared/ui/Input',
+  title: 'shared/Atoms/Input',
   component: Input,
   args: { placeholder: 'name@example.com', 'aria-label': 'Email' },
 } satisfies Meta<typeof Input>;
@@ -14,5 +14,5 @@ export const Default: Story = {};
 
 export const Disabled: Story = { args: { disabled: true } };
 
-// The shadcn Input styles aria-invalid as the error state (destructive border and ring).
+// aria-invalid is the error state: danger border and ring (tokens/colors.css).
 export const Invalid: Story = { args: { 'aria-invalid': true, defaultValue: 'not-an-email' } };

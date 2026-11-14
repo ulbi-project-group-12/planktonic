@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import { Button } from './button';
+import { Button } from '@/shared/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -12,7 +12,7 @@ import {
 } from './dialog';
 
 const meta = {
-  title: 'shared/ui/Dialog',
+  title: 'shared/Atoms/Dialog',
   component: Dialog,
   args: { defaultOpen: false },
   render: (args) => (
