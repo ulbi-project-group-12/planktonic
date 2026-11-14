@@ -18,7 +18,7 @@ dev services in Docker) on top of the Phase 1 foundation (monorepo, CI, release 
   switches itself to the `packageManager` version in `package.json`.
 
 - **Docker** with **Compose v2.24 or newer** (Docker Desktop, or Docker Engine with the compose
-  plugin). It runs Postgres, Redis and the S3 store for local development, so it is required.
+  plugin). It runs Postgres, Redis, the S3 store, two API replicas and Traefik for local development.
 - **Git.**
 
 On Windows, run the commands in WSL2 or PowerShell; `cp` works in both. nvm-windows does not read
@@ -36,22 +36,41 @@ pnpm install --frozen-lockfile
 cp .env.example .env
 pnpm services:up
 pnpm db:migrate
-pnpm dev
+pnpm --filter @app/web dev
 ```
 
-- `pnpm services:up` starts Postgres, Redis and SeaweedFS (S3) in the background. It returns once
-  all three are healthy and the one-shot `s3-init` job has created the dev bucket.
-- `pnpm db:migrate` applies the committed database migrations.
-- `pnpm dev` starts the web app and the api together and keeps running.
+- `pnpm services:up` starts all Compose services, including two API replicas and Traefik. The
+  first run builds the API image. The command returns after Postgres, Redis and SeaweedFS are
+  healthy and `s3-init` has created the dev bucket; it does not wait for API or Traefik readiness.
+- `pnpm db:migrate` applies the committed database migrations from the host. Compose does not
+  run migrations automatically.
+- `pnpm --filter @app/web dev` starts the web app in watch mode and keeps running. The Docker API
+  runs compiled code; after API changes, rebuild it with `docker compose up -d --build api`.
 
 Then open:
 
 - the web app: http://localhost:3000
-- the api health check: http://localhost:3001/api/health (and http://localhost:3001/api/health/ready
-  for the database check)
+- the API through Traefik: http://127.0.0.1:58080/api/health
+- the API database readiness check: http://127.0.0.1:58080/api/health/ready
 
-To stop, press `Ctrl+C` in the `pnpm dev` terminal, then run `pnpm services:down`. The data stays
+The Traefik port is configurable with `TRAEFIK_PORT`. Check container status with
+`docker compose ps`; both API replicas should become `healthy`.
+
+To stop, press `Ctrl+C` in the web dev terminal, then run `pnpm services:down`. The data stays
 in Docker volumes; `pnpm services:reset` deletes it (database, Redis and bucket).
+
+For API development with hot reload, start only the infrastructure and run both apps on the host:
+
+```sh
+docker compose up -d postgres redis seaweedfs s3-init
+docker compose wait s3-init
+pnpm db:migrate
+pnpm dev
+```
+
+In this mode the API is at http://127.0.0.1:3001/api/health and is not routed through Traefik.
+If the Docker API and Traefik are already running, stop them with `docker compose stop api traefik`
+before switching modes.
 
 The install also enables the husky pre-commit hook.
 
@@ -60,21 +79,70 @@ The install also enables the husky pre-commit hook.
 `compose.yaml` (dev only; the production compose arrives in Phase 4) runs these services. The
 compose project is named after the checkout directory, and every port binds to `127.0.0.1` only.
 
-| Service     | Image (pinned by digest)       | Host port                 | Purpose                                                  |
-| ----------- | ------------------------------ | ------------------------- | -------------------------------------------------------- |
-| `postgres`  | `pgvector/pgvector:0.8.6-pg18` | `55432` (`POSTGRES_PORT`) | Postgres 18 with the `vector` extension (init SQL)       |
-| `redis`     | `redis:8.10.2`                 | `56379` (`REDIS_PORT`)    | Redis 8, append-only; no consumer until Phase 2 realtime |
-| `seaweedfs` | `chrislusf/seaweedfs:4.51`     | `58333` (`S3_PORT`)       | S3-compatible object storage (`server -s3`)              |
-| `s3-init`   | `chrislusf/seaweedfs:4.51`     | none                      | One-shot job: creates the dev bucket, safe to re-run     |
+| Service     | Image (pinned by digest)         | Host port                 | Purpose                                                         |
+| ----------- | -------------------------------- | ------------------------- | --------------------------------------------------------------- |
+| `postgres`  | `pgvector/pgvector:0.8.6-pg18`   | `55432` (`POSTGRES_PORT`) | Postgres 18 with the `vector` extension (init SQL)              |
+| `redis`     | `redis:8.10.2`                   | `56379` (`REDIS_PORT`)    | Redis 8, append-only; no consumer until Phase 2 realtime        |
+| `seaweedfs` | `chrislusf/seaweedfs:4.51`       | `58333` (`S3_PORT`)       | S3-compatible object storage (`server -s3`)                     |
+| `s3-init`   | `chrislusf/seaweedfs:4.51`       | none                      | One-shot job: creates the dev bucket, safe to re-run            |
+| `api`       | Built from `apps/api/Dockerfile` | none                      | Two NestJS replicas, internal port `3001`, liveness healthcheck |
+| `traefik`   | `traefik:v3.7.17`                | `58080` (`TRAEFIK_PORT`)  | Reverse proxy, load balancing and sticky sessions               |
 
 Why SeaweedFS and not Garage (D-09): SeaweedFS is Apache-2.0 and runs the whole S3 store in a
 single container, and it is the first option in the stack research. MinIO CE no longer ships
 images.
 
 `pnpm services:up` returns when `s3-init` exits 0, which happens only after the other three are
-healthy (plain `docker compose up --wait` fails on a one-shot job). `pnpm services:down` stops the
-stack and keeps the data; `pnpm services:reset` also deletes the volumes (database, Redis and the
+healthy (plain `docker compose up --wait` fails on a one-shot job). This does not verify API or
+Traefik readiness. `pnpm services:down` stops the stack and keeps the data;
+`pnpm services:reset` also deletes the volumes (database, Redis and the
 bucket), so run `pnpm db:migrate` again afterwards.
+
+Traefik discovers the API containers through the Docker socket and routes `/api` and
+`/socket.io` to their internal port `3001`. The `io_srv` sticky cookie keeps a client on the
+same replica. The `/socket.io` routing rule prepares the proxy for realtime; it does not add a
+Socket.IO server to the API. Access logs are enabled, and the entrypoint idle timeout is 60 seconds.
+
+The API healthcheck calls `/api/health` every 10 seconds, with a 5-second timeout, 3 retries and
+a 20-second start period. It checks liveness only. `restart: unless-stopped` restarts exited
+containers; an `unhealthy` status alone does not restart them.
+
+## API replicas and Traefik (UL-123)
+
+Two NestJS API replicas run behind Traefik (`v3.7.17`) in Docker Compose.
+
+- **Routing:** `/api` and `/socket.io` → API port `3001`.
+- **Load balancing:** Round Robin with sticky cookie `io_srv`.
+- **Health:** `GET /api/health` returns `instanceId` to identify the replica.
+- **Access:** `http://127.0.0.1:58080` (`TRAEFIK_PORT` in `.env`).
+
+### Run and verify
+
+```bash
+docker compose up -d --build api traefik
+docker compose ps api
+curl http://127.0.0.1:58080/api/health
+```
+
+Both API replicas should be `healthy`. Requests without cookies are distributed between replicas; requests with the `io_srv` cookie stay on the same replica. If one replica stops, the other continues serving requests.
+
+```bash
+# Sticky: five requests sharing the same cookie jar
+for i in {1..5}; do
+  curl -s -c /tmp/io-jar -b /tmp/io-jar \
+    http://127.0.0.1:58080/api/health
+  echo
+done
+
+# Round Robin: five requests without cookies
+for i in {1..5}; do
+  curl -s http://127.0.0.1:58080/api/health
+  echo
+done
+```
+
+Compare `instanceId` in the responses: it should stay the same with the cookie and vary across
+replicas without it. Replace `58080` if you changed `TRAEFIK_PORT`. The loops work in Bash and Zsh.
 
 ## Environment variables
 
@@ -84,6 +152,11 @@ the root `.env` (the api and the Prisma CLI only in development, never under `NO
 never go into `.env.example` or the repository, and CI/CD reads them from GitHub secrets. Compose
 uses the same values as its defaults, so the services also start without a `.env`.
 
+The Docker API receives `API_HOST=0.0.0.0`, `API_PORT=3001` and a `DATABASE_URL` built from the
+`POSTGRES_*` credentials with the internal address `postgres:5432`. It does not use the host's
+`DATABASE_URL` or `API_PORT` from `.env`. Host development and Prisma CLI commands use the
+loopback connection below.
+
 | Variable               | Purpose                                                               | Local example value                                     | Read by                          |
 | ---------------------- | --------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------- |
 | `NODE_ENV`             | Node environment (`development`, `test` or `production`)              | empty (each tool's default)                             | `@app/api` env schema            |
@@ -92,6 +165,7 @@ uses the same values as its defaults, so the services also start without a `.env
 | `PRODUCT_SLUG`         | Slug override (URLs, image names)                                     | empty                                                   | reserved (no local reader yet)   |
 | `API_PORT`             | Port the api listens on                                               | `3001`                                                  | `@app/api`                       |
 | `API_HOST`             | Interface the api binds to (the api image sets `0.0.0.0`)             | empty (`127.0.0.1`, loopback only)                      | `@app/api`                       |
+| `TRAEFIK_PORT`         | Host HTTP port for Traefik                                            | `58080`                                                 | compose `traefik`                |
 | `POSTGRES_DB`          | Database created on the first start                                   | `app`                                                   | compose `postgres`               |
 | `POSTGRES_USER`        | Database owner role created on the first start                        | `app`                                                   | compose `postgres`               |
 | `POSTGRES_PASSWORD`    | Dev-only password for `POSTGRES_USER`                                 | `app_dev_password`                                      | compose `postgres`               |
@@ -113,21 +187,26 @@ bind to IPv4 loopback only.
 ## Health endpoints
 
 - `GET /api/health`: liveness. It never touches the database, so it answers 200 while the process
-  runs.
+  runs. The response also includes a nonempty `instanceId` from the hostname; in Docker it
+  identifies the replica serving the request.
 - `GET /api/health/ready`: readiness. It runs `SELECT 1` through Prisma and answers 503
   (`database unreachable`, no connection details) when Postgres is down. The api log names the
   cause without values, e.g. `database readiness failed: P2010 AuthenticationFailed 28P01`.
 
-Phase 4 smoke-checks `GET /api/health` on each api replica after a deploy; `/api/health/ready` is
-what a load balancer can gate traffic on (D-12).
+The current Compose healthcheck uses `/api/health`. `/api/health/ready` also checks the database;
+Traefik does not currently have an explicit active readiness probe configured.
+
+The API e2e tests start the app with an unreachable test database: liveness must return 200 with
+a nonempty `instanceId`, and readiness must return 503 without leaking connection details.
 
 ## Troubleshooting
 
 - **A port is already in use** (`port is already allocated` from Docker, or `EADDRINUSE` from
   `pnpm dev`). Find the process with `lsof -i :<port>` (macOS, Linux) or
   `netstat -ano | findstr :<port>` (Windows) and stop it. Or pick other ports in your `.env`:
-  `POSTGRES_PORT`, `REDIS_PORT`, `S3_PORT` or `API_PORT`. When you change `POSTGRES_PORT`, change
-  the port in `DATABASE_URL` too; for `REDIS_PORT` and `S3_PORT`, change `REDIS_URL` and
+  `POSTGRES_PORT`, `REDIS_PORT`, `S3_PORT`, `TRAEFIK_PORT` or `API_PORT` (host API only).
+  When you change `POSTGRES_PORT`, change the port in `DATABASE_URL` too;
+  for `REDIS_PORT` and `S3_PORT`, change `REDIS_URL` and
   `S3_ENDPOINT`. Then run `pnpm services:down && pnpm services:up`.
 - **Docker is not running** (`Cannot connect to the Docker daemon`, or `docker info` fails). Start
   Docker Desktop, or the daemon on Linux (`sudo systemctl start docker`), and run
@@ -135,10 +214,16 @@ what a load balancer can gate traffic on (D-12).
 - **Wrong Node version.** `pnpm install` stops with `ERR_PNPM_UNSUPPORTED_ENGINE`. Run `nvm use`
   (or `fnm use`; `nvm use 26.13.0` on nvm-windows) and check that `node -v` prints `v26.13.0`.
 - **`pnpm services:up` hangs or fails.** A service did not become healthy. Look at its log with
-  `docker compose logs postgres` (or `redis`, `seaweedfs`, `s3-init`) and `docker compose ps`. A
-  stale volume from an old setup is fixed with `pnpm services:reset`.
-- **`/api/health/ready` returns 503.** Postgres is not reachable: check that `pnpm services:up`
-  succeeded and that `DATABASE_URL` matches `POSTGRES_PORT`, then run `pnpm db:migrate`.
+  `docker compose logs postgres` (or `redis`, `seaweedfs`, `s3-init`, `api`, `traefik`) and
+  `docker compose ps`. Resetting stale volumes with `pnpm services:reset` deletes their data.
+- **`/api/health/ready` returns 503.** Postgres is not reachable: inspect
+  `docker compose logs api postgres`. For a host API, check that `DATABASE_URL` matches
+  `POSTGRES_PORT`; the Docker API
+  connects to `postgres:5432`. Apply migrations separately with `pnpm db:migrate`.
+- **Traefik returns 502 or 503.** Check `docker compose ps` and `docker compose logs api traefik`.
+  After API source changes, run `docker compose up -d --build api`.
+- **Steiger fails with `EMFILE: too many open files, watch`.** Retry with polling:
+  `CHOKIDAR_USEPOLLING=1 pnpm --filter @app/web lint:fsd` (POSIX shells).
 - **Dependency errors.** `ERR_PNPM_IGNORED_BUILDS` and `ERR_PNPM_NO_MATURE_MATCHING_VERSION` come
   from the supply-chain rules; see [Dependency rules](#dependency-rules).
 
@@ -147,7 +232,9 @@ what a load balancer can gate traffic on (D-12).
 | Script                                     | What it does                                                           |
 | ------------------------------------------ | ---------------------------------------------------------------------- |
 | `pnpm dev`                                 | Web (:3000) and api (:3001) in watch mode through Turbo (never cached) |
-| `pnpm services:up`                         | Start the dev services and wait until the bucket exists                |
+| `pnpm services:up`                         | Start all Compose services; wait for S3 initialization only            |
+| `pnpm --filter @app/web dev`               | Web (:3000) in watch mode, with the API running in Docker              |
+| `docker compose up -d --build api`         | Rebuild and recreate the Docker API replicas after source changes      |
 | `pnpm services:down`                       | Stop the dev services, keep the data                                   |
 | `pnpm services:reset`                      | Stop the dev services and delete their volumes                         |
 | `pnpm db:migrate`                          | Apply the committed migrations (`prisma migrate deploy`)               |
@@ -185,7 +272,7 @@ cache (`FULL TURBO`).
 | `packages/config`         | ESLint presets (see its README), TS and Prettier config, `product.ts`                              |
 | `scripts`                 | Repo tooling: pin check, name guard, PR hygiene, `apply-repo-rules.sh`                             |
 | `.github`                 | CI and release workflows, rulesets as code, CODEOWNERS, PR template                                |
-| `compose.yaml`, `docker/` | Dev services (Postgres, Redis, SeaweedFS) and the Postgres init SQL                                |
+| `compose.yaml`, `docker/` | Dev services (Postgres, Redis, SeaweedFS, API, Traefik) and Postgres init SQL                      |
 | `.coderabbit.yaml`        | CodeRabbit config: the AI first-pass review (Russian, never approves)                              |
 
 ## Dependency rules
