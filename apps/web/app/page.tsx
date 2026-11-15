@@ -1,2 +1,2 @@
-// Routing only: the page lives in the FSD `_pages` layer.
+// Только роутинг: страница живёт в слое FSD `_pages`.
 export { HomePage as default } from '@/_pages/home';

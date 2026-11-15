@@ -76,7 +76,7 @@ function Card({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** One interactive row per palette: hover / active / focus try on the live button. */
+/** Одна интерактивная строка на палитру: hover / active / focus проверяются на живой кнопке. */
 function VariantTable({ variant, rows }: { variant: ButtonVariant; rows: SpecRowConfig[] }) {
   return (
     <div>

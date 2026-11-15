@@ -1,7 +1,7 @@
-/* The web app's global stylesheet (TZ-FE-19): Tailwind plus the design tokens
-   (mockups PlanctonicDesign — one file per token group in ./tokens, that folder
-   is the single source of variables). The remaining custom variants below are
-   what the radix-ui based components use. */
+/* Глобальная таблица стилей веб-приложения (TZ-FE-19): Tailwind плюс дизайн-токены
+   (макеты PlanctonicDesign — один файл на группу токенов в ./tokens, эта папка —
+   единый источник переменных). Оставшиеся кастомные варианты ниже используют
+   компоненты на radix-ui. */
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import './tokens/fonts.css';
@@ -10,7 +10,7 @@
 @import './tokens/radii.css';
 @import './tokens/breakpoints.css';
 
-/* Custom variants for radix-ui state attributes (data-state / data-open / ...). */
+/* Кастомные варианты для атрибутов состояния radix-ui (data-state / data-open / ...). */
 @custom-variant data-open {
   &:where([data-state='open']),
   &:where([data-open]:not([data-open='false'])) {

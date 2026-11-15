@@ -10,7 +10,7 @@ import { Button, type ButtonPalette, type ButtonVariant } from '@/shared/ui/butt
 const modalSizes = ['s', 'm', 'l'] as const;
 type ModalSize = (typeof modalSizes)[number];
 
-/** Desktop width per mockup: S 400 · M 560 · L 720; mobile sheet is full-width. */
+/** Ширина десктопного окна по макету: S 400 · M 560 · L 720; мобильная шторка — во всю ширину. */
 const sizeClasses: Record<ModalSize, string> = {
   s: 'desktop-s:w-[400px]',
   m: 'desktop-s:w-[560px]',
@@ -123,7 +123,7 @@ function Modal({
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
             // Мобильная шторка (<1024): выезд снизу.
             'max-desktop-s:data-[state=open]:slide-in-from-bottom-16 max-desktop-s:data-[state=closed]:slide-out-to-bottom-16',
-            // Desktop (>=1024): окно по центре, появление с масштабом.
+            // Десктоп (>=1024): окно по центру, появление с масштабом.
             'desktop-s:top-1/2 desktop-s:bottom-auto desktop-s:left-1/2 desktop-s:-translate-x-1/2 desktop-s:-translate-y-1/2 desktop-s:rounded-xl',
             'desktop-s:data-[state=open]:zoom-in-95 desktop-s:data-[state=closed]:zoom-out-95',
             sizeClasses[size],

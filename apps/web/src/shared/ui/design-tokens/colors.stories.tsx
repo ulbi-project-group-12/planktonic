@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 
-/** Parses a computed `rgb()` / `rgba()` value into the mockup's `#HEX rgb(...)` form. */
+/** Разбирает вычисленное значение `rgb()` / `rgba()` в формат макета `#HEX rgb(...)`. */
 function formatColor(css: string | null): string {
   if (!css) return '…';
   const match = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?\s*\)/.exec(css);
@@ -39,7 +39,7 @@ function formatColor(css: string | null): string {
   return [hex, ' ', rgb].join('');
 }
 
-/** Reads the computed color of the swatch element after mount (theme-aware). */
+/** Считывает вычисленный цвет элемента-образца после монтирования (зависит от темы). */
 function ComputedColorValue({ targetRef }: { targetRef: RefObject<HTMLDivElement | null> }) {
   const [color, setColor] = useState<string | null>(null);
 
@@ -54,11 +54,11 @@ function ComputedColorValue({ targetRef }: { targetRef: RefObject<HTMLDivElement
 }
 
 interface SwatchItem {
-  /** CSS variable holding the raw token, e.g. --brand-primary. */
+  /** CSS-переменная с сырым токеном, напр. --brand-primary. */
   cssVar: string;
-  /** Mockup token name, e.g. brand/primary. */
+  /** Имя токена макета, напр. brand/primary. */
   name: string;
-  /** Usage description from the mockup. */
+  /** Описание использования из макета. */
   description: string;
 }
 

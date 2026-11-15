@@ -75,8 +75,8 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
   weight?: TypographyWeight;
 }
 
-/** Size tokens from the mockup type scale (see shared/Atoms/Typography).
-   h1–h6 are semantic aliases of the heading steps, always paired with weight 700. */
+/** Токены размеров из типографической шкалы макета (см. shared/Atoms/Typography).
+   h1–h6 — семантические алиасы шагов заголовков, всегда парные с начертанием 700. */
 const sizeClasses: Record<TypographySize, string> = {
   '2xs': 'text-2xs',
   xs: 'text-xs',
@@ -100,7 +100,7 @@ const sizeClasses: Record<TypographySize, string> = {
   h6: 'text-2xl',
 };
 
-/** Palette colors by the design token names (see Design Tokens/Colors). */
+/** Цвета палитры по именам дизайн-токенов (см. Design Tokens/Colors). */
 const colorClasses: Record<TypographyColor, string> = {
   'brand-primary': 'text-brand-primary',
   'brand-hover': 'text-brand-hover',
@@ -134,7 +134,7 @@ const colorClasses: Record<TypographyColor, string> = {
   'info-subtle': 'text-info-subtle',
 };
 
-/** Onest weights loaded by the design system (see tokens/fonts.css). */
+/** Начертания Onest, загружаемые дизайн-системой (см. tokens/fonts.css). */
 const weightClasses: Record<TypographyWeight, string> = {
   '200': 'font-extralight',
   '400': 'font-normal',

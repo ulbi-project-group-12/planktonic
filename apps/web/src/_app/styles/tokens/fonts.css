@@ -1,6 +1,6 @@
-/* Fonts: Onest (mockups: Onest 200/400/700, cyrillic+latin), self-hosted in
-   public/fonts — no cloud font service. Only the three weights the design
-   system uses are loaded. */
+/* Шрифты: Onest (макеты: Onest 200/400/700, кириллица+латиница), лежит локально в
+   public/fonts — без облачных сервисов шрифтов. Загружаются только три начертания,
+   которые использует дизайн-система. */
 @font-face {
   font-family: 'Onest';
   src: url('/fonts/onest/onest-v11-cyrillic_latin-200.woff2') format('woff2');

@@ -9,7 +9,7 @@ if (typeof Element !== 'undefined') {
   Element.prototype.releasePointerCapture = () => undefined;
 }
 
-// Vitest runs without globals, so RTL cannot register its own cleanup.
+// Vitest запускается без globals, поэтому RTL не может зарегистрировать собственный cleanup.
 afterEach(() => {
   cleanup();
 });

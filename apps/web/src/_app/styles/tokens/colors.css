@@ -1,9 +1,9 @@
-/* Color tokens (mockups PlanctonicDesign, index.kui).
+/* Токены цветов (макеты PlanctonicDesign, index.kui).
 
-   Raw layer: the mockup token names are kept verbatim (brand.primary -> --brand-primary)
-   so the CSS stays traceable to the design file; :root holds the light theme, .dark the
-   dark theme. Utility layer (@theme inline): the tokens as Tailwind color utilities
-   (bg-brand-primary, text-fg-muted, border-line, ...) — the .dark class rethemes them. */
+   Сырой слой: имена токенов макета сохранены дословно (brand.primary -> --brand-primary),
+   чтобы CSS оставался сопоставимым с дизайн-файлом; :root держит светлую тему, .dark —
+   тёмную. Слой утилит (@theme inline): те же токены как цветовые утилиты Tailwind
+   (bg-brand-primary, text-fg-muted, border-line, ...) — класс .dark переключает их. */
 
 :root {
   --brand-primary: #6c5ce7;

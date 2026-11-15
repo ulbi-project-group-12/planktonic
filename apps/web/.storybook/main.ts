@@ -1,6 +1,6 @@
 import type { StorybookConfig } from '@storybook/nextjs-vite';
 
-// Storybook for the UI kit (D-21): framework package only, no addons, no telemetry.
+// Storybook для UI-кита (D-21): только пакет фреймворка, без аддонов и телеметрии.
 const config: StorybookConfig = {
   stories: ['../src/**/*.stories.@(ts|tsx)'],
   framework: { name: '@storybook/nextjs-vite', options: {} },

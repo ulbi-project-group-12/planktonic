@@ -1,8 +1,8 @@
-/* Text size tokens from the mockup type scale. Body text: text/xs–text/xl
-   (12–20 px), headings always 700 at h1–h6 (40–16 px). Line-heights follow
-   the mockup specs exactly (40/48, 32/40, 28/36, 24/32, 20/28, 16/24 and
-   12/16, 14/20, 16/24, 18/26, 20/28). Sizes not covered by the mockup
-   (10–11 px microtext, 13/15 px, 64 px display) keep sensible defaults. */
+/* Токены размеров текста из типографической шкалы макета. Основной текст: text/xs–text/xl
+   (12–20 px), заголовки всегда 700 на h1–h6 (40–16 px). Интерлиньяж взят точно из макета
+   (40/48, 32/40, 28/36, 24/32, 20/28, 16/24 и 12/16, 14/20, 16/24, 18/26, 20/28).
+   Размеры, не покрытые макетом (микротекст 10–11 px, 13/15 px, 64 px display),
+   получили разумные значения по умолчанию. */
 
 @theme inline {
   --text-2xs: 0.625rem; /* 10 */
