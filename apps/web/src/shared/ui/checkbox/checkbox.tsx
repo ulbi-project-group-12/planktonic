@@ -1,11 +1,15 @@
 'use client';
 
 import { useId } from 'react';
+import type { ComponentPropsWithoutRef } from 'react';
 import { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import { Check } from 'lucide-react';
 import { cn } from '@/shared/lib';
 
-interface CheckboxProps {
+interface CheckboxProps extends Omit<
+  ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
+  'checked' | 'onCheckedChange'
+> {
   /** Контролируемое состояние; вместе с onCheckedChange. */
   checked?: boolean;
   /** Неконтролируемое начальное состояние. */
@@ -14,9 +18,6 @@ interface CheckboxProps {
   onCheckedChange?: (checked: boolean) => void;
   /** Подпись справа от бокса; клик по ней переключает чекбокс. */
   label?: string;
-  disabled?: boolean;
-  id?: string;
-  className?: string;
 }
 
 /** Чекбокс по токенам дизайн-системы: бокс 20, radius/s 4, brand при отметке. */
@@ -28,6 +29,7 @@ function Checkbox({
   disabled = false,
   id,
   className,
+  ...rest
 }: CheckboxProps) {
   const autoId = useId();
   const checkboxId = id ?? autoId;
@@ -43,6 +45,8 @@ function Checkbox({
         onCheckedChange={(state) => {
           onCheckedChange?.(state === true);
         }}
+        // нативные пропсы кнопки (aria-label, aria-labelledby и т.д.) — на корень
+        {...rest}
         className={cn(
           'flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-line-strong bg-surface transition-colors outline-none',
           'focus-visible:ring-3 focus-visible:ring-brand-primary/40',

@@ -33,4 +33,9 @@ describe('Checkbox', () => {
     await userEvent.click(screen.getByText('Уведомления'));
     expect(screen.getByRole('checkbox')).toHaveAttribute('data-state', 'checked');
   });
+
+  it('пробрасывает aria-label на чекбокс без подписи', () => {
+    render(<Checkbox checked aria-label="Принимаю условия" />);
+    expect(screen.getByRole('checkbox', { name: 'Принимаю условия' })).toBeInTheDocument();
+  });
 });
