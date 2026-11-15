@@ -2,14 +2,15 @@
 
 import { useSyncExternalStore } from 'react';
 import { Toast, ToastProvider } from './toast';
-import { dismissToast, getToasts, subscribeToasts } from './toast-store';
+import { dismissToast, getServerToasts, getToasts, subscribeToasts } from './toast-store';
 
 /**
  * Рендерер тостов: один раз в корне приложения.
  * Показывает тосты, созданные императивным вызовом `toast({...})`.
  */
 function Toaster() {
-  const toasts = useSyncExternalStore(subscribeToasts, getToasts);
+  // Серверный снимок пустой: на сервере тостов нет, гидрация подхватит стор на клиенте
+  const toasts = useSyncExternalStore(subscribeToasts, getToasts, getServerToasts);
 
   return (
     <ToastProvider>

@@ -61,4 +61,20 @@ function getToasts(): ToastRecord[] {
   return toasts;
 }
 
-export { dismissToast, getToasts, subscribeToasts, toast, type ToastInput, type ToastRecord };
+/** Серверный снимок для useSyncExternalStore: на сервере тостов нет.
+ *  Должен быть стабилен по ссылке — иначе React ругается на «should be cached». */
+const SERVER_TOASTS: ToastRecord[] = [];
+
+function getServerToasts(): ToastRecord[] {
+  return SERVER_TOASTS;
+}
+
+export {
+  dismissToast,
+  getServerToasts,
+  getToasts,
+  subscribeToasts,
+  toast,
+  type ToastInput,
+  type ToastRecord,
+};
