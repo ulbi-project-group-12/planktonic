@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Select, type SelectOption } from './select';
@@ -99,6 +99,33 @@ describe('Select (множественный)', () => {
     await userEvent.click(within(listbox).getByText('Merge'));
     expect(screen.getByRole('checkbox', { name: 'Merge' })).not.toBeChecked();
     expect(screen.getByText('Выбрано: 2 из 5')).toBeInTheDocument();
+  });
+
+  it('toggles the dropdown with Enter and Space on the trigger', () => {
+    render(<ControlledMultiple />);
+    const trigger = screen.getByRole('button', { name: /PR открыт/ });
+    // preventDefault у Space отменяет стандартное поведение браузера (fireEvent вернул бы true)
+    expect(fireEvent.keyDown(trigger, { key: ' ' })).toBe(false);
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('does not intercept keys from the chip remove button', async () => {
+    render(<ControlledMultiple />);
+    const remove = screen.getAllByRole('button', { name: 'Убрать' })[0]!;
+    remove.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('does not toggle with keyboard when disabled', async () => {
+    render(<Select multiple disabled options={many} value={['pr']} onValueChange={vi.fn()} />);
+    const trigger = screen.getByRole('button', { name: /PR открыт/ });
+    expect(trigger).toHaveAttribute('tabIndex', '-1');
+    trigger.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.queryByRole('listbox')).toBeNull();
   });
 
   it('keeps chips on one line with ellipsis by default, wraps when chipsWrap is on', () => {

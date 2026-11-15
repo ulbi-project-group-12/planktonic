@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { MouseEvent } from 'react';
+import type { KeyboardEvent, MouseEvent } from 'react';
 import { Popover as PopoverPrimitive } from 'radix-ui';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import { cn } from '@/shared/lib';
@@ -107,6 +107,16 @@ function Select({
     event.stopPropagation();
   };
 
+  /** Клавиатура на div-триггере множественного режима: Enter/Space переключают открытие. */
+  const onTriggerKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    // не перехватываем нажатия на вложенные элементы (кнопка удаления чипса)
+    if (event.target !== event.currentTarget) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault(); // Space иначе прокрутил бы страницу
+    setOpen((previous) => !previous);
+  };
+
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
       <PopoverPrimitive.Trigger asChild>
@@ -117,6 +127,7 @@ function Select({
             aria-haspopup="listbox"
             aria-expanded={open}
             aria-disabled={disabled || undefined}
+            onKeyDown={onTriggerKeyDown}
             data-slot="select"
             className={cn(
               triggerClass,
