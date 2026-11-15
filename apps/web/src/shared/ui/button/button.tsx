@@ -81,6 +81,7 @@ function Button({
   size = 'm',
   loading = false,
   fullWidth = false,
+  disabled = false,
   children,
   ...props
 }: ButtonProps) {
@@ -92,12 +93,15 @@ function Button({
       data-size={size}
       data-loading={loading || undefined}
       className={cn(
-        "inline-flex shrink-0 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-button border font-bold outline-none transition-colors focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-45 data-[loading]:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "inline-flex shrink-0 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-button border font-bold outline-none transition-colors focus-visible:ring-3 disabled:pointer-events-none [&:disabled:not([data-loading])]:opacity-45 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         variantClasses[variant][palette],
         sizeClasses[size],
         fullWidth && 'w-full',
         className,
       )}
+      // loading блокирует активацию нативно (мышь, клавиатура, submit формы);
+      // по макету loading не приглушает кнопку — opacity 0.45 только у disabled (правило выше)
+      disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...props}
     >

@@ -49,8 +49,26 @@ describe('Button', () => {
     expect(screen.getByText('Загрузка…')).toBeInTheDocument();
   });
 
-  it('keeps full opacity styles for loading state', () => {
-    render(<Button loading>Save</Button>);
-    expect(screen.getByRole('button')).not.toBeDisabled();
+  it('blocks activation while loading and keeps full opacity per mockup', async () => {
+    const onClick = vi.fn();
+    render(
+      <Button loading onClick={onClick}>
+        Save
+      </Button>,
+    );
+    const button = screen.getByRole('button', { name: /Save/ });
+    // loading блокирует кнопку нативно — клик не вызывает onClick
+    expect(button).toBeDisabled();
+    await userEvent.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+    // по макету loading не приглушает кнопку (opacity 0.45 — только у disabled)
+    expect(button.className).toContain('[&:disabled:not([data-loading])]:opacity-45');
+  });
+
+  it('dims a plain disabled button (opacity 0.45)', () => {
+    render(<Button disabled>Save</Button>);
+    expect(screen.getByRole('button').className).toContain(
+      '[&:disabled:not([data-loading])]:opacity-45',
+    );
   });
 });
