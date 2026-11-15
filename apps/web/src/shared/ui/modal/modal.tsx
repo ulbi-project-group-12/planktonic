@@ -12,9 +12,9 @@ type ModalSize = (typeof modalSizes)[number];
 
 /** Desktop width per mockup: S 400 · M 560 · L 720; mobile sheet is full-width. */
 const sizeClasses: Record<ModalSize, string> = {
-  s: 'lg:w-[400px]',
-  m: 'lg:w-[560px]',
-  l: 'lg:w-[720px]',
+  s: 'desktop-s:w-[400px]',
+  m: 'desktop-s:w-[560px]',
+  l: 'desktop-s:w-[720px]',
 };
 
 /** Смахивание шторки ниже порога (px) закрывает модалку. */
@@ -122,10 +122,10 @@ function Modal({
             'fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col rounded-t-xl bg-surface text-lg text-fg-primary outline-none',
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
             // Мобильная шторка (<1024): выезд снизу.
-            'max-lg:data-[state=open]:slide-in-from-bottom-16 max-lg:data-[state=closed]:slide-out-to-bottom-16',
+            'max-desktop-s:data-[state=open]:slide-in-from-bottom-16 max-desktop-s:data-[state=closed]:slide-out-to-bottom-16',
             // Desktop (>=1024): окно по центре, появление с масштабом.
-            'lg:top-1/2 lg:bottom-auto lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-xl',
-            'lg:data-[state=open]:zoom-in-95 lg:data-[state=closed]:zoom-out-95',
+            'desktop-s:top-1/2 desktop-s:bottom-auto desktop-s:left-1/2 desktop-s:-translate-x-1/2 desktop-s:-translate-y-1/2 desktop-s:rounded-xl',
+            'desktop-s:data-[state=open]:zoom-in-95 desktop-s:data-[state=closed]:zoom-out-95',
             sizeClasses[size],
             portalDark && 'dark',
             className,

@@ -1,6 +1,7 @@
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { Toaster } from '@/shared/ui/toast';
 import '../styles/globals.css';
 
 export const metadata: Metadata = {
@@ -11,7 +12,10 @@ export const metadata: Metadata = {
 export function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }

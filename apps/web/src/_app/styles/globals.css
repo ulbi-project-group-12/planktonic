@@ -8,6 +8,7 @@
 @import './tokens/colors.css';
 @import './tokens/text-sizes.css';
 @import './tokens/radii.css';
+@import './tokens/breakpoints.css';
 
 /* Custom variants for radix-ui state attributes (data-state / data-open / ...). */
 @custom-variant data-open {
@@ -78,5 +79,28 @@
   }
   body {
     @apply bg-app font-sans text-fg-primary;
+  }
+}
+
+/* Анимации тостов: появление снизу и плавное скрытие (см. shared/ui/toast). */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
   }
 }
