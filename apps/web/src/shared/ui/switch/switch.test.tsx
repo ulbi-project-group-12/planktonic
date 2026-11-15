@@ -28,6 +28,11 @@ describe('Switch', () => {
     expect(onCheckedChange).not.toHaveBeenCalled();
   });
 
+  it('keeps aria-label on the root for switches without label', () => {
+    render(<Switch aria-label="Уведомления" />);
+    expect(screen.getByRole('switch', { name: 'Уведомления' })).toBeInTheDocument();
+  });
+
   it('toggles by clicking the label', async () => {
     render(<Switch defaultChecked label="Приватный" />);
     await userEvent.click(screen.getByText('Приватный'));

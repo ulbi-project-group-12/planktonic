@@ -1,10 +1,14 @@
 'use client';
 
 import { useId } from 'react';
+import type { ComponentPropsWithoutRef } from 'react';
 import { Switch as SwitchPrimitive } from 'radix-ui';
 import { cn } from '@/shared/lib';
 
-interface SwitchProps {
+interface SwitchProps extends Omit<
+  ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>,
+  'checked' | 'onCheckedChange'
+> {
   /** Контролируемое состояние; вместе с onCheckedChange. */
   checked?: boolean;
   /** Неконтролируемое начальное состояние. */
@@ -27,6 +31,7 @@ function Switch({
   disabled = false,
   id,
   className,
+  ...rest
 }: SwitchProps) {
   const autoId = useId();
   const switchId = id ?? autoId;
@@ -40,6 +45,8 @@ function Switch({
         defaultChecked={defaultChecked}
         disabled={disabled}
         onCheckedChange={onCheckedChange}
+        // нативные пропсы кнопки (aria-label, aria-labelledby и т.д.) — на корень
+        {...rest}
         className={cn(
           'inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border p-0.5 transition-colors outline-none',
           'focus-visible:ring-3 focus-visible:ring-brand-primary/40',
