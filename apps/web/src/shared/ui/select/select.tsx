@@ -56,6 +56,7 @@ function Select({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const chipsRef = useRef<HTMLDivElement>(null);
+  const listboxRef = useRef<HTMLDivElement>(null);
   /** Чипсы не влезают в одну строку — показываем многоточие (режим без переноса). */
   const [chipsOverflow, setChipsOverflow] = useState(false);
 
@@ -112,9 +113,50 @@ function Select({
     if (disabled) return;
     // не перехватываем нажатия на вложенные элементы (кнопка удаления чипса)
     if (event.target !== event.currentTarget) return;
-    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Space') return;
     event.preventDefault(); // Space иначе прокрутил бы страницу
     setOpen((previous) => !previous);
+  };
+
+  /** Фокус на опцию одиночного списка по индексу (индексы выходят за край — гасим). */
+  const focusOption = (index: number) => {
+    const items = listboxRef.current?.querySelectorAll<HTMLElement>('[role="option"]');
+    if (!items || items.length === 0) return;
+    items[Math.max(0, Math.min(index, items.length - 1))]?.focus();
+  };
+
+  /** Клавиатура одиночного списка: стрелки/Home/End двигают фокус, Enter/Space выбирают. */
+  const onListboxKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (multiple) return;
+    const target = event.target as HTMLElement;
+    if (target.getAttribute('role') !== 'option') return;
+    const items = Array.from(
+      listboxRef.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? [],
+    );
+    const index = items.indexOf(target);
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusOption(event.key === 'ArrowDown' ? index + 1 : index - 1);
+      return;
+    }
+    if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      focusOption(event.key === 'Home' ? 0 : items.length - 1);
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ' || event.key === 'Space') {
+      event.preventDefault(); // Space иначе прокрутил бы страницу
+      const optionValue = target.dataset.value;
+      if (optionValue !== undefined) toggle(optionValue);
+    }
+  };
+
+  /** При открытии фокус на выбранную опцию (иначе первую); в searchable — на поиск. */
+  const onContentOpenAutoFocus = (event: Event) => {
+    if (searchable || multiple) return; // дефолтный фокус Radix: поле поиска / триггер
+    event.preventDefault();
+    const selectedIndex = options.findIndex((option) => option.value === value[0]);
+    focusOption(selectedIndex === -1 ? 0 : selectedIndex);
   };
 
   return (
@@ -186,6 +228,7 @@ function Select({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={4}
+          onOpenAutoFocus={onContentOpenAutoFocus}
           data-slot="select-content"
           className="z-50 flex max-h-72 w-[var(--radix-popover-trigger-width)] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-lg"
         >
@@ -205,8 +248,10 @@ function Select({
           ) : null}
 
           <div
+            ref={listboxRef}
             role="listbox"
             aria-multiselectable={multiple || undefined}
+            onKeyDown={onListboxKeyDown}
             className="flex-1 overflow-y-auto p-1"
           >
             {filtered.length === 0 ? (
@@ -243,13 +288,16 @@ function Select({
                   <div
                     key={option.value}
                     role="option"
+                    tabIndex={-1}
+                    data-value={option.value}
                     aria-selected={selected}
                     onClick={() => {
                       toggle(option.value);
                     }}
                     className={cn(
                       'flex h-9 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm text-fg-primary select-none',
-                      selected ? 'bg-brand-subtle' : 'hover:bg-sunken',
+                      'focus-visible:outline-none',
+                      selected ? 'bg-brand-subtle' : 'hover:bg-sunken focus:bg-sunken',
                     )}
                   >
                     <span className="flex-1 truncate">{option.label}</span>

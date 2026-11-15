@@ -41,6 +41,37 @@ describe('Select (одиночный)', () => {
     expect(option.querySelector('svg')).not.toBeNull();
   });
 
+  it('moves focus with arrows and selects with Enter', async () => {
+    const onValueChange = vi.fn();
+    render(<Select options={options} value={[]} onValueChange={onValueChange} />);
+    await userEvent.click(screen.getByRole('button', { name: /Выберите/ }));
+    // фокус при открытии — на первой опции
+    expect(screen.getByRole('option', { name: 'Все участники' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getByRole('option', { name: 'Владелец и админы' })).toHaveFocus();
+    await userEvent.keyboard('{End}');
+    expect(screen.getByRole('option', { name: 'Только владельцы' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(screen.getByRole('option', { name: 'Владелец и админы' })).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
+    expect(onValueChange).toHaveBeenCalledWith(['owner']);
+  });
+
+  it('selects the focused option with Space', async () => {
+    const onValueChange = vi.fn();
+    render(<Select options={options} value={[]} onValueChange={onValueChange} />);
+    await userEvent.click(screen.getByRole('button', { name: /Выберите/ }));
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{Space}');
+    expect(onValueChange).toHaveBeenCalledWith(['owner']);
+  });
+
+  it('focuses the selected option when the dropdown opens', async () => {
+    render(<Select options={options} value={['only-owner']} onValueChange={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: /Только владельцы/ }));
+    expect(screen.getByRole('option', { name: 'Только владельцы' })).toHaveFocus();
+  });
+
   it('filters options by search query', async () => {
     render(<Select options={options} value={[]} onValueChange={vi.fn()} searchable />);
     await userEvent.click(screen.getByRole('button'));
