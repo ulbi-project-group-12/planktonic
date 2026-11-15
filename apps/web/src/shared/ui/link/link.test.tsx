@@ -13,11 +13,11 @@ describe('Link', () => {
 
   it('renders an external link with the ↗ icon', () => {
     render(
-      <Link variant="external" href="https://github.com/planktonic">
-        github.com/planktonic
+      <Link variant="external" href="https://example.com">
+        example.com
       </Link>,
     );
-    const link = screen.getByRole('link', { name: /github\.com\/planktonic/ });
+    const link = screen.getByRole('link', { name: /example\.com/ });
     expect(link).toHaveAttribute('data-variant', 'external');
     expect(link.querySelector('svg')).not.toBeNull();
   });

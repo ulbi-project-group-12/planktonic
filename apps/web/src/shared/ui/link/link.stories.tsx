@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { PRODUCT_SLUG } from '@app/config/product';
 import { Link, linkVariants, type LinkVariant } from './link';
 
 function Card({ label, children }: { label: string; children: ReactNode }) {
@@ -32,7 +33,7 @@ function Column({
 const navItems: { name: string; variant?: LinkVariant; active?: boolean; disabled?: boolean }[] = [
   { name: '# общий' },
   { name: '# дизайн' },
-  { name: '# planktonic', active: true },
+  { name: `# ${PRODUCT_SLUG}`, active: true },
   { name: '# рандом' },
   { name: 'архив', disabled: true },
 ];
@@ -50,7 +51,7 @@ function LinkSpec() {
           </Column>
           <Column label="External" caption="↗ открывается в новой вкладке">
             <Link variant="external" href="#">
-              github.com/planktonic
+              {`github.com/${PRODUCT_SLUG}`}
             </Link>
             <Link variant="external" href="#">
               PR #128

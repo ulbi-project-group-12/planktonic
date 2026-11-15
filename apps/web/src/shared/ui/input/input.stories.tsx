@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { Search } from 'lucide-react';
+import { PRODUCT_SLUG } from '@app/config/product';
 import { Input, inputStatuses } from './input';
 
 interface SpecRowConfig {
@@ -19,10 +20,10 @@ const stringRows: SpecRowConfig[] = [
     name: 'Базовое поле',
     spec: 'h 40 · radius 10 · 14/400',
     cells: {
-      default: <Input defaultValue="planktonic HQ" aria-label="Базовое поле" />,
+      default: <Input defaultValue={`${PRODUCT_SLUG} HQ`} aria-label="Базовое поле" />,
       error: (
         <Input
-          defaultValue="planktonic HQ!!"
+          defaultValue={`${PRODUCT_SLUG} HQ!!`}
           status="error"
           message="Недопустимые символы"
           aria-label="Базовое поле с ошибкой"
@@ -30,13 +31,15 @@ const stringRows: SpecRowConfig[] = [
       ),
       success: (
         <Input
-          defaultValue="planktonic HQ"
+          defaultValue={`${PRODUCT_SLUG} HQ`}
           status="success"
           message="Название доступно"
           aria-label="Базовое поле, успех"
         />
       ),
-      disabled: <Input defaultValue="planktonic HQ" disabled aria-label="Базовое поле отключено" />,
+      disabled: (
+        <Input defaultValue={`${PRODUCT_SLUG} HQ`} disabled aria-label="Базовое поле отключено" />
+      ),
     },
   },
   {
@@ -54,7 +57,7 @@ const stringRows: SpecRowConfig[] = [
       ),
       success: (
         <Input
-          defaultValue="planktonic HQ"
+          defaultValue={`${PRODUCT_SLUG} HQ`}
           status="success"
           message="Название доступно"
           aria-label="Плейсхолдер, успех"
@@ -71,7 +74,7 @@ const stringRows: SpecRowConfig[] = [
         <Input
           label="Название пространства"
           hint="От 3 до 50 символов"
-          defaultValue="planktonic HQ"
+          defaultValue={`${PRODUCT_SLUG} HQ`}
         />
       ),
       error: <Input label="Slug" status="error" message="Slug уже занят" defaultValue="hq" />,
@@ -82,7 +85,7 @@ const stringRows: SpecRowConfig[] = [
         <Input
           label="Название пространства"
           hint="Менять может владелец"
-          defaultValue="planktonic HQ"
+          defaultValue={`${PRODUCT_SLUG} HQ`}
           disabled
         />
       ),
@@ -281,7 +284,7 @@ export const Playground: Story = {
   },
   render: (args) => (
     <div className="w-80">
-      <Input {...args} defaultValue="planktonic HQ" />
+      <Input {...args} defaultValue={`${PRODUCT_SLUG} HQ`} />
     </div>
   ),
 };
