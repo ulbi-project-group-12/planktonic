@@ -1,0 +1,15 @@
+// Таблица сообщений
+model Message {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  sec       BigInt   @unique
+  channelId String   @db.Uuid
+  channel   Channel  @relation(fields: [channelId], references: [id])
+  authorId  String   @db.Uuid
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([channelId])
+  @@index([authorId])
+  @@map("message")
+}

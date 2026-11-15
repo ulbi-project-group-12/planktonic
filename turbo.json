@@ -16,7 +16,7 @@
       "dependsOn": ["transit"]
     },
     "test": {
-      "dependsOn": ["transit"],
+      "dependsOn": ["transit", "^build"],
       "outputs": []
     },
     "dev": {

@@ -1,0 +1,11 @@
+// Таблица каналов
+model Channel {
+  id          String  @id @default(uuid(7)) @db.Uuid
+  name        String
+  description String?
+  lastSeq     BigInt?
+
+  messages Message[]
+
+  @@map("channel")
+}

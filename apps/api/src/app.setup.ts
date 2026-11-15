@@ -1,4 +1,27 @@
-import type { INestApplication } from '@nestjs/common';
+import {
+  BadRequestException,
+  type INestApplication,
+  StandardSchemaValidationPipe,
+} from '@nestjs/common';
+
+type ValidationIssue = Parameters<
+  NonNullable<ConstructorParameters<typeof StandardSchemaValidationPipe>[0]>['exceptionFactory'] &
+    object
+>[0][number];
+
+/** 400 body: `{ message, issues: [{ path, message }] }`, `path` being dot-joined (`body`, `a.0.b`). */
+function validationException(issues: readonly ValidationIssue[]): BadRequestException {
+  return new BadRequestException({
+    statusCode: 400,
+    message: 'Validation failed',
+    issues: issues.map((issue) => ({
+      path: (issue.path ?? [])
+        .map((segment) => String(typeof segment === 'object' ? segment.key : segment))
+        .join('.'),
+      message: issue.message,
+    })),
+  });
+}
 
 /** App-wide HTTP setup, shared by main.ts and the e2e tests so both serve the same routes. */
 export function configureApp(app: INestApplication): INestApplication {
@@ -6,6 +29,9 @@ export function configureApp(app: INestApplication): INestApplication {
   const server = app.getHttpAdapter().getInstance() as { disable(setting: string): unknown };
   server.disable('x-powered-by');
   app.setGlobalPrefix('api');
+  // Validates every `@Body({ schema })` / `@Param(..., { schema })` against its zod schema (zod 4
+  // implements Standard Schema); parameters without a schema pass through untouched.
+  app.useGlobalPipes(new StandardSchemaValidationPipe({ exceptionFactory: validationException }));
   app.enableShutdownHooks();
   return app;
 }

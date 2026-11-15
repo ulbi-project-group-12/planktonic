@@ -4,6 +4,7 @@ import { mayReadEnvFile, ROOT_ENV_FILE } from './core/config/env-file.js';
 import { validateEnv } from './core/config/env.js';
 import { PrismaModule } from './core/prisma/prisma.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { MessagesModule } from './modules/messages/messages.module.js';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { HealthModule } from './modules/health/health.module.js';
     }),
     PrismaModule,
     HealthModule,
+    MessagesModule,
   ],
 })
 export class AppModule {}

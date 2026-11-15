@@ -16,12 +16,15 @@
     "dev": "prisma generate && nest start --watch",
     "generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "db:migrate:dev": "prisma migrate dev"
+    "db:migrate:dev": "prisma migrate dev",
+    "db:seed": "prisma db seed"
   },
   "dependencies": {
+    "@app/contracts": "workspace:*",
     "@nestjs/common": "catalog:",
     "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",
+    "@nestjs/mapped-types": "*",
     "@nestjs/platform-express": "catalog:",
     "@nestjs/terminus": "catalog:",
     "@prisma/adapter-pg": "catalog:",
@@ -39,6 +42,7 @@
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "prisma": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "unplugin-swc": "catalog:",
     "vite": "catalog:",
