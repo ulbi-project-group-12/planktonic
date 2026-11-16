@@ -1,0 +1,16 @@
+/* Breakpoints for media queries. In Tailwind v4 each --breakpoint-* key
+   generates a same-named variant (mobile-s:, mobile-m:, ..., desktop-l:).
+   Project rule: below 1024 (desktop-s) is the mobile version, 1024 and up is desktop.
+   Plain @theme (not inline) so media queries get literal pixel values.
+   The CSS variables themselves cannot be used in @media conditions — in plain
+   CSS use the generated variants or these same values. */
+
+@theme {
+  --breakpoint-mobile-s: 320px;
+  --breakpoint-mobile-m: 360px;
+  --breakpoint-mobile-l: 540px;
+  --breakpoint-mobile-xl: 768px;
+  --breakpoint-desktop-s: 1024px;
+  --breakpoint-desktop-m: 1280px;
+  --breakpoint-desktop-l: 1440px;
+}
