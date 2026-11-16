@@ -25,7 +25,8 @@ function Toaster() {
           title={record.title}
           description={record.description}
           action={record.action}
-          duration={record.duration}
+          // автозакрытие держит стор; таймер Radix в контролируемом режиме отключён
+          duration={Infinity}
         />
       ))}
     </ToastProvider>

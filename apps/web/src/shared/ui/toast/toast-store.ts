@@ -6,7 +6,7 @@ interface ToastInput {
   title: string;
   description?: string;
   action?: ToastAction;
-  /** Автозакрытие, мс — по умолчанию 5000. */
+  /** Автозакрытие, мс — по умолчанию 15000 (DEFAULT_TOAST_DURATION_MS). */
   duration?: number;
 }
 
@@ -23,6 +23,9 @@ const listeners = new Set<() => void>();
 /** Длительность анимации скрытия — после неё тост удаляется из стора. */
 const TOAST_EXIT_MS = 180;
 
+/** Автозакрытие по умолчанию: тост исчезает сам, если его явно не закрыли. */
+const DEFAULT_TOAST_DURATION_MS = 15000;
+
 function emit() {
   listeners.forEach((listener) => {
     listener();
@@ -35,6 +38,11 @@ function toast(input: ToastInput): string {
   const id = String(counter);
   toasts = [...toasts, { ...input, id, open: true }];
   emit();
+  // собственный таймер автозакрытия: таймер Radix в контролируемом режиме ненадёжен,
+  // поэтому в Toaster он отключён (duration={Infinity}) и тост закрывает только стор
+  window.setTimeout(() => {
+    dismissToast(id);
+  }, input.duration ?? DEFAULT_TOAST_DURATION_MS);
   return id;
 }
 
@@ -70,6 +78,7 @@ function getServerToasts(): ToastRecord[] {
 }
 
 export {
+  DEFAULT_TOAST_DURATION_MS,
   dismissToast,
   getServerToasts,
   getToasts,

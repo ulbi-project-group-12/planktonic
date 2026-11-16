@@ -3,7 +3,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Toast, ToastProvider } from './toast';
-import { dismissToast, toast } from './toast-store';
+import { dismissToast, DEFAULT_TOAST_DURATION_MS, toast } from './toast-store';
 import { Toaster } from './toaster';
 
 function renderToast(ui: ReactElement) {
@@ -69,6 +69,93 @@ describe('Toaster (императивный)', () => {
     await waitFor(() => {
       expect(screen.queryByText('Императивный тост')).toBeNull();
     });
+  });
+});
+
+describe('Toaster (автозакрытие)', () => {
+  it('auto-dismisses a toast after the default duration', () => {
+    vi.useFakeTimers();
+    try {
+      render(<Toaster />);
+      act(() => {
+        toast({ title: 'Автотост' });
+      });
+      expect(screen.getByText('Автотост')).toBeInTheDocument();
+      // +300 с запасом: 180 мс анимация скрытия + удаление из стора
+      act(() => {
+        vi.advanceTimersByTime(DEFAULT_TOAST_DURATION_MS + 300);
+      });
+      expect(screen.queryByText('Автотост')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('respects a custom duration', () => {
+    vi.useFakeTimers();
+    try {
+      render(<Toaster />);
+      act(() => {
+        toast({ title: 'Быстрый тост', duration: 1000 });
+      });
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(screen.getByText('Быстрый тост')).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      expect(screen.queryByText('Быстрый тост')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('keeps auto-dismiss working for the rest after a manual close', () => {
+    vi.useFakeTimers();
+    try {
+      render(<Toaster />);
+      let firstId = '';
+      act(() => {
+        firstId = toast({ title: 'Первый тост' });
+        toast({ title: 'Второй тост' });
+      });
+      // явно закрываем первый — удаление после анимации
+      act(() => {
+        dismissToast(firstId);
+      });
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      expect(screen.queryByText('Первый тост')).toBeNull();
+      // второй всё равно исчезает по своему таймеру
+      act(() => {
+        vi.advanceTimersByTime(DEFAULT_TOAST_DURATION_MS + 300);
+      });
+      expect(screen.queryByText('Второй тост')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('auto-dismisses remaining toasts after closing the last one', () => {
+    vi.useFakeTimers();
+    try {
+      render(<Toaster />);
+      let secondId = '';
+      act(() => {
+        toast({ title: 'Тост А' });
+        secondId = toast({ title: 'Тост Б' });
+      });
+      act(() => {
+        dismissToast(secondId);
+      });
+      act(() => {
+        vi.advanceTimersByTime(DEFAULT_TOAST_DURATION_MS + 300);
+      });
+      expect(screen.queryByText('Тост А')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
