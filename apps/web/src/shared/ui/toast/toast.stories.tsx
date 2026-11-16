@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { fn } from 'storybook/test';
 import { Button } from '@/shared/ui/button';
 import { Toast, toastPalettes, ToastProvider } from './toast';
-import { toast } from './toast-store';
+import { DEFAULT_TOAST_DURATION_MS, toast } from './toast-store';
 import { Toaster } from './toaster';
 
 /** Карточка темы с кнопкой: по клику тост улетает в общий фиксированный viewport внизу справа. */
@@ -44,6 +44,10 @@ function ToastSpecDemo() {
     counterRef.current += 1;
     const id = counterRef.current;
     setItems((prev) => [...prev, { id, open: true, dark }]);
+    // как в приложении: тост исчезает сам, если его явно не закрыли
+    window.setTimeout(() => {
+      dismiss(id);
+    }, DEFAULT_TOAST_DURATION_MS);
   };
 
   const dismiss = (id: number) => {
