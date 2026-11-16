@@ -104,16 +104,24 @@ function Toast({
 /** Toast provider: viewport fixed bottom-right (z 60), stacked in a column. */
 function ToastProvider({
   viewportClassName,
+  viewportLabel = 'Уведомления',
   children,
   ...props
 }: ToastPrimitive.ToastProviderProps & {
   /** Overrides the viewport positioning (e.g. static display in stories). */
   viewportClassName?: string;
+  /** Viewport landmark label — must be unique per page when several providers render. */
+  viewportLabel?: string;
 }) {
   return (
-    <ToastPrimitive.Provider {...props}>
+    <ToastPrimitive.Provider label="Уведомление" {...props}>
       {children}
+      {/*
+        Radix Viewport takes its own `label` prop (default "Notifications (F8)") and renders
+        it as aria-label on the region — a plain aria-label prop would be overridden.
+      */}
       <ToastPrimitive.Viewport
+        label={viewportLabel}
         className={cn(
           'fixed right-0 bottom-0 z-60 flex w-96 max-w-full flex-col gap-2 p-4 outline-none',
           viewportClassName,

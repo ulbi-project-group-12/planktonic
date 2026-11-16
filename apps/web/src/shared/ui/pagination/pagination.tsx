@@ -29,6 +29,8 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
   /** numbers — desktop/lists · compact — mobile ("Back 3 / 12 Forward"). */
   variant?: PaginationVariant;
+  /** Nav landmark label — must be unique per page when several paginations render. */
+  ariaLabel?: string;
   className?: string;
 }
 
@@ -38,6 +40,7 @@ function Pagination({
   totalPages,
   onPageChange,
   variant = 'numbers',
+  ariaLabel = 'Пагинация',
   className,
 }: PaginationProps) {
   const goPrev = () => {
@@ -53,7 +56,7 @@ function Pagination({
   if (variant === 'compact') {
     return (
       <nav
-        aria-label="Пагинация"
+        aria-label={ariaLabel}
         data-slot="pagination"
         data-variant="compact"
         className={className}
@@ -88,7 +91,7 @@ function Pagination({
   }
 
   return (
-    <nav aria-label="Пагинация" data-slot="pagination" data-variant="numbers" className={className}>
+    <nav aria-label={ariaLabel} data-slot="pagination" data-variant="numbers" className={className}>
       <div className="inline-flex items-center gap-1">
         <button
           type="button"
@@ -160,7 +163,7 @@ function LoadMore({ onLoadMore, loading = false, batchSize, className }: LoadMor
         disabled={loading}
         className={cn(
           'inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface',
-          'px-4 text-caption font-bold text-brand-primary transition-colors',
+          'px-4 text-caption font-bold text-brand-primary dark:text-brand-text transition-colors',
           'hover:bg-sunken focus-visible:ring-3 focus-visible:ring-brand-primary/40 focus-visible:outline-none',
           loading && 'pointer-events-none text-fg-muted',
         )}

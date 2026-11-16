@@ -7,12 +7,15 @@ type BadgeVariant = (typeof badgeVariants)[number];
 const OVERFLOW_CAP = 99;
 
 const variantClasses: Record<BadgeVariant, string> = {
+  // Status solids take dark text where white fails AA (warning 3.86 in light;
+  // 2.9-3.4 on the light status fills of the dark theme); muted uses fg-secondary
+  // (fg-muted gives 4.43 on sunken).
   brand: 'bg-brand-primary text-on-brand',
-  success: 'bg-success text-on-brand',
-  warning: 'bg-warning text-on-brand',
-  danger: 'bg-danger text-on-brand',
-  info: 'bg-info text-on-brand',
-  muted: 'bg-sunken text-fg-muted',
+  success: 'bg-success text-on-brand dark:text-on-status',
+  warning: 'bg-warning text-on-status',
+  danger: 'bg-danger text-on-brand dark:text-on-status',
+  info: 'bg-info text-on-brand dark:text-on-status',
+  muted: 'bg-sunken text-fg-secondary',
 };
 
 const dotClasses: Record<BadgeVariant, string> = {

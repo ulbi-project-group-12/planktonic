@@ -42,7 +42,9 @@ export {
   type DropdownItemProps,
   type DropdownProps,
 } from './dropdown';
+export { Field, type FieldProps } from './field';
 export { Input } from './input';
+export { Label, type LabelProps } from './label';
 export { Link, linkVariants, type LinkProps, type LinkVariant } from './link';
 export {
   LoadMore,
@@ -61,6 +63,7 @@ export { Skeleton } from './skeleton';
 export { Spinner, spinnerSizes, type SpinnerSize } from './spinner';
 export { Switch, type SwitchProps } from './switch';
 export { Tabs, tabVariants, type TabItem, type TabsProps, type TabVariant } from './tabs';
+export { Textarea, textareaStatuses, type TextareaProps, type TextareaStatus } from './textarea';
 export {
   Toast,
   toastPalettes,

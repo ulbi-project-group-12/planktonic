@@ -71,7 +71,7 @@ function ToastSpecDemo() {
           show(true);
         }}
       />
-      <ToastProvider>
+      <ToastProvider viewportLabel="Уведомления — живой пример">
         {items.map((item) => (
           <div key={item.id} className={item.dark ? 'dark' : undefined}>
             <Toast
@@ -101,7 +101,7 @@ function ToastStates() {
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-[120px_1fr] items-center gap-4">
         <span className="text-[11px] text-fg-muted">Базовый</span>
-        <ToastProvider viewportClassName={statesViewport}>
+        <ToastProvider viewportClassName={statesViewport} viewportLabel="Уведомления — базовый">
           {toastPalettes.map((palette) => (
             <Toast
               key={palette}
@@ -123,7 +123,7 @@ function ToastStates() {
       </div>
       <div className="grid grid-cols-[120px_1fr] items-center gap-4">
         <span className="text-[11px] text-fg-muted">С описанием</span>
-        <ToastProvider viewportClassName={statesViewport}>
+        <ToastProvider viewportClassName={statesViewport} viewportLabel="Уведомления — с описанием">
           {toastPalettes.map((palette) => (
             <Toast
               key={palette}

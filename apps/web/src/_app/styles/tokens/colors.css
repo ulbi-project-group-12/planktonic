@@ -3,13 +3,21 @@
    Raw layer: mockup token names kept verbatim (brand.primary -> --brand-primary),
    so the CSS stays comparable with the design file; :root holds the light theme, .dark
    the dark one. Utility layer (@theme inline): the same tokens as Tailwind color
-   utilities (bg-brand-primary, text-fg-muted, border-line, ...) — .dark switches them. */
+   utilities (bg-brand-primary, text-fg-muted, border-line, ...) — .dark switches them.
+
+   AA pass (axe color-contrast, UL-209): base status hues are shifted one step down the
+   mockup's own scale — the raw hues fail 4.5:1 as 12-14 px text (danger 4.37, success
+   3.2, warning 2.9, info 3.9 on white). Base values below meet 4.5:1 on surface/app
+   backgrounds in both themes; the subtle tints keep the raw mockup hues on purpose. */
 
 :root {
   --brand-primary: #6c5ce7;
   --brand-hover: #5a4bd1;
   --brand-active: #4838b0;
   --brand-subtle: #6c5ce71f;
+  /* Brand text on the subtle tint: base --brand-primary gives only 3.91 on the blended
+     subtle bg, so text uses one step darker; 5.05:1 on #e6e5f8. */
+  --brand-text: #5a4bd1;
 
   --bg-app: #f7f8fa;
   --bg-surface: #ffffff;
@@ -18,51 +26,80 @@
 
   --text-primary: #171a21;
   --text-secondary: #5b6472;
-  --text-muted: #6b7686;
+  --text-muted: #66707f; /* 4.68:1 on bg-app / 5.01:1 on surface (12 px hint text) */
 
   --border-default: #e3e6eb;
   --border-strong: #c9cfd8;
 
   --on-brand: #ffffff;
+  /* Text on solid status fills: white fails on warning (#bc6f21, 3.86), so status
+     solids carry dark text; #0e1015 gives 4.85:1 on the lightest status bg. */
+  --on-status: #0e1015;
 
-  --success: #2fa36b;
-  --success-hover: #268a59;
-  --success-active: #1e7048;
+  --success: #1e7048; /* mockup success-active: 6.05:1 on surface */
+  --success-hover: #185c3a;
+  --success-active: #11472d;
   --success-subtle: #2fa36b1a;
 
-  --warning: #d9822b;
-  --warning-hover: #bc6f21;
-  --warning-active: #9c5a1b;
+  --warning: #bc6f21; /* mockup warning-hover: 5.4:1 on surface */
+  --warning-hover: #9c5a1b;
+  --warning-active: #7c4915;
   --warning-subtle: #d9822b1a;
 
-  --danger: #de3b40;
-  --danger-hover: #c22f34;
-  --danger-active: #a02529;
+  --danger: #c22f34; /* mockup danger-hover: 5.6:1 on surface */
+  --danger-hover: #a02529;
+  --danger-active: #841d21;
   --danger-subtle: #de3b401a;
 
-  --info: #3b82d6;
-  --info-hover: #2f6cb4;
-  --info-active: #265893;
+  --info: #2f6cb4; /* mockup info-hover: 5.35:1 on surface */
+  --info-hover: #265893;
+  --info-active: #1c4575;
   --info-subtle: #3b82d61a;
 }
 
 .dark {
-  --brand-primary: #8577ff;
-  --brand-hover: #9c90ff;
-  --brand-active: #6c5ce7;
-  --brand-subtle: #8577ff29;
+  /* Solid primary button carries white on-brand text: needs 4.5:1, so the dark brand
+     scale takes the same deep violet steps as the light one (the mockup's #8577ff
+     gives only 3.45:1). */
+  --brand-primary: #6c5ce7;
+  --brand-hover: #5a4bd1;
+  --brand-active: #4838b0;
+  --brand-subtle: #6c5ce729;
+  /* Light brand text for the dark theme: base #6c5ce7 gives 3.24 on the subtle bg,
+     so text uses the mockup's light violet scale; 5.8:1 on #20203b. */
+  --brand-text: #9c90ff;
 
   --bg-app: #12141a;
   --bg-surface: #1b1f28;
   --bg-sunken: #232836;
   --bg-overlay: #00000099;
 
+  /* Dark status fills are light (tuned for 4.5:1 on surface as text), so solid
+     status buttons in the dark theme also carry dark text; 6.6-7.0:1. */
+  --on-status: #0e1015;
+
   --text-primary: #edeff3;
   --text-secondary: #a6adba;
-  --text-muted: #8a93a3;
+  --text-muted: #8a93a3; /* 5.33:1 on surface */
 
   --border-default: #2c3242;
   --border-strong: #3a4256;
+
+  --success: #2fa36b; /* 5.16:1 on surface — unchanged */
+  --success-hover: #3cb57e;
+  --success-active: #2fa36b;
+
+  --warning: #d9822b; /* 5.64:1 on surface — unchanged */
+  --warning-hover: #d9822b;
+  --warning-active: #d9822b;
+
+  --danger: #e85d61; /* 4.83:1 on surface */
+  --danger-hover: #ee7b7e;
+  --danger-active: #e85d61;
+
+  --info: #5a97de; /* 5.43:1 on surface */
+  --info-hover: #7fabe4;
+  --info-active: #5a97de;
 
   --success-subtle: #2fa36b24;
   --warning-subtle: #d9822b24;
@@ -75,6 +112,7 @@
   --color-brand-hover: var(--brand-hover);
   --color-brand-active: var(--brand-active);
   --color-brand-subtle: var(--brand-subtle);
+  --color-brand-text: var(--brand-text);
 
   --color-app: var(--bg-app);
   --color-surface: var(--bg-surface);
@@ -89,6 +127,7 @@
   --color-line-strong: var(--border-strong);
 
   --color-on-brand: var(--on-brand);
+  --color-on-status: var(--on-status);
 
   --color-success: var(--success);
   --color-success-hover: var(--success-hover);

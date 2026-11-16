@@ -176,19 +176,21 @@ function Select({
             <input key={optionValue} type="hidden" name={name} value={optionValue} />
           ))
         : null}
-      <PopoverPrimitive.Trigger asChild>
-        {multiple ? (
-          // The field is a wrapper: a stretched real button opens the dropdown, the chip
-          // remove buttons live in a layer above it — no interactive elements are nested.
-          <div
-            data-slot="select"
-            className={cn(
-              'relative flex w-full items-center rounded-xl border border-line bg-surface text-caption outline-none transition-shadow',
-              chipsWrap ? 'min-h-10' : 'h-10 overflow-hidden',
-              disabled && 'pointer-events-none opacity-60',
-              className,
-            )}
-          >
+      {multiple ? (
+        // The field is a wrapper: a stretched real button opens the dropdown, the chip
+        // remove buttons live in a layer above it — no interactive elements are nested.
+        // (The trigger must wrap the button itself, not the wrapper: Radix would put
+        // aria-haspopup="dialog" on a plain div, which axe flags as aria-allowed-attr.)
+        <div
+          data-slot="select"
+          className={cn(
+            'relative flex w-full items-center rounded-xl border border-line bg-surface text-caption outline-none transition-shadow',
+            chipsWrap ? 'min-h-10' : 'h-10 overflow-hidden',
+            disabled && 'pointer-events-none opacity-60',
+            className,
+          )}
+        >
+          <PopoverPrimitive.Trigger asChild>
             <button
               type="button"
               tabIndex={disabled ? -1 : 0}
@@ -205,40 +207,42 @@ function Select({
               ) : null}
               <ChevronDown className="ml-auto size-4 shrink-0 text-fg-muted transition-transform [[data-state=open]_&]:rotate-180" />
             </button>
-            {value.length > 0 ? (
-              <div className="pointer-events-none z-10 flex min-w-0 flex-1 items-center gap-1.5 px-3 py-1.5 pr-9">
-                <div
-                  ref={chipsRef}
-                  data-slot="select-chips"
-                  className={cn(
-                    'flex min-w-0 flex-1 items-center gap-1.5',
-                    chipsWrap ? 'flex-wrap' : 'overflow-hidden',
-                  )}
-                >
-                  {value.map((optionValue) => (
-                    <span
-                      key={optionValue}
-                      className="pointer-events-auto shrink-0"
-                      onClick={stopPropagation}
+          </PopoverPrimitive.Trigger>
+          {value.length > 0 ? (
+            <div className="pointer-events-none z-10 flex min-w-0 flex-1 items-center gap-1.5 px-3 py-1.5 pr-9">
+              <div
+                ref={chipsRef}
+                data-slot="select-chips"
+                className={cn(
+                  'flex min-w-0 flex-1 items-center gap-1.5',
+                  chipsWrap ? 'flex-wrap' : 'overflow-hidden',
+                )}
+              >
+                {value.map((optionValue) => (
+                  <span
+                    key={optionValue}
+                    className="pointer-events-auto shrink-0"
+                    onClick={stopPropagation}
+                  >
+                    <Chip
+                      palette="brand"
+                      onRemove={() => {
+                        removeOption(optionValue);
+                      }}
                     >
-                      <Chip
-                        palette="brand"
-                        onRemove={() => {
-                          removeOption(optionValue);
-                        }}
-                      >
-                        {labelOf(optionValue)}
-                      </Chip>
-                    </span>
-                  ))}
-                </div>
-                {chipsOverflow ? (
-                  <span className="shrink-0 text-caption text-fg-muted">…</span>
-                ) : null}
+                      {labelOf(optionValue)}
+                    </Chip>
+                  </span>
+                ))}
               </div>
-            ) : null}
-          </div>
-        ) : (
+              {chipsOverflow ? (
+                <span className="shrink-0 text-caption text-fg-muted">…</span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <PopoverPrimitive.Trigger asChild>
           <button
             type="button"
             disabled={disabled}
@@ -251,14 +255,17 @@ function Select({
             className={cn(triggerClass, 'h-10', className)}
           >
             <span
-              className={cn('flex-1 truncate text-left', value[0] === undefined && 'text-fg-muted')}
+              className={cn(
+                'flex-1 truncate text-left',
+                value[0] === undefined ? 'text-fg-muted' : 'text-fg-primary',
+              )}
             >
               {value[0] !== undefined ? labelOf(value[0]) : placeholder}
             </span>
             <ChevronDown className="size-4 shrink-0 text-fg-muted transition-transform [[data-state=open]_&]:rotate-180" />
           </button>
-        )}
-      </PopoverPrimitive.Trigger>
+        </PopoverPrimitive.Trigger>
+      )}
 
       <PopoverPrimitive.Portal container={portalContainer ?? undefined}>
         <PopoverPrimitive.Content

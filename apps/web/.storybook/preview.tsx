@@ -23,6 +23,16 @@ const ThemeDecorator: Decorator = (Story, context) => {
 const preview: Preview = {
   parameters: {
     layout: 'centered',
+    a11y: {
+      // Stories render fragments of UI, not pages — the real app provides the landmarks
+      // and the h1, so these page-level rules cannot pass inside the canvas by design.
+      config: {
+        rules: [
+          { id: 'landmark-one-main', enabled: false },
+          { id: 'page-has-heading-one', enabled: false },
+        ],
+      },
+    },
   },
   globalTypes: {
     theme: {

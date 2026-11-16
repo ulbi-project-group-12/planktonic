@@ -46,19 +46,23 @@ function Tabs({ tabs, value, onValueChange, variant = 'underline', className }: 
             key={tab.value}
             value={tab.value}
             disabled={tab.disabled}
+            // The atom renders only the tab bar (panels live in the page), so the
+            // auto-generated aria-controls would dangle — axe flags it as a broken
+            // IDREF. Drop it; aria-selected + roving tabindex carry the semantics.
+            aria-controls={undefined}
             className={cn(
               'inline-flex cursor-pointer items-center gap-2 font-bold outline-none transition-all select-none',
               'focus-visible:ring-3 focus-visible:ring-brand-primary/40',
               isPill
                 ? 'rounded-md px-4 py-2 text-base text-fg-secondary hover:bg-surface/60 hover:text-fg-primary active:bg-surface data-[state=active]:bg-surface data-[state=active]:text-fg-primary data-[state=active]:shadow-sm'
-                : 'relative rounded-t-lg px-4 py-2.5 text-base text-fg-secondary hover:bg-sunken/70 hover:text-fg-primary active:bg-sunken data-[state=active]:text-brand-primary',
+                : 'relative rounded-t-lg px-4 py-2.5 text-base text-fg-secondary hover:bg-sunken/70 hover:text-fg-primary active:bg-sunken data-[state=active]:text-brand-text',
               tab.disabled && 'pointer-events-none text-fg-muted',
             )}
           >
             {tab.icon}
             {tab.label}
             {tab.count !== undefined ? (
-              <span className="text-micro font-bold text-fg-muted [[data-state=active]_&]:text-brand-primary">
+              <span className="text-micro font-bold text-fg-muted [[data-state=active]_&]:text-brand-text">
                 {tab.count}
               </span>
             ) : null}

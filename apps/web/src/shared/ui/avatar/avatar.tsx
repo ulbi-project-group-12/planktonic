@@ -23,12 +23,14 @@ const sizePixels: Record<AvatarSize, number> = {
   xl: 48,
 };
 
+/** Initials on status fills: white fails AA on warning in the light theme (3.86) and on
+ *  all light status fills of the dark theme (2.9-3.4) — status avatars take dark text. */
 const colorClasses: Record<AvatarColor, string> = {
   brand: 'bg-brand-primary text-on-brand',
-  success: 'bg-success text-on-brand',
-  warning: 'bg-warning text-on-brand',
-  danger: 'bg-danger text-on-brand',
-  info: 'bg-info text-on-brand',
+  success: 'bg-success text-on-brand dark:text-on-status',
+  warning: 'bg-warning text-on-status',
+  danger: 'bg-danger text-on-brand dark:text-on-status',
+  info: 'bg-info text-on-brand dark:text-on-status',
 };
 
 const presenceClasses: Record<Presence, string> = {
