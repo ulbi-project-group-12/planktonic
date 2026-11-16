@@ -273,7 +273,7 @@ function Select({
           sideOffset={4}
           onOpenAutoFocus={onContentOpenAutoFocus}
           data-slot="select-content"
-          className="z-50 flex max-h-72 w-[var(--radix-popover-trigger-width)] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-md"
+          className="z-50 flex max-h-72 w-[var(--radix-popover-trigger-width)] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-elevation-2"
         >
           {searchable ? (
             <div className="border-b border-line p-2">

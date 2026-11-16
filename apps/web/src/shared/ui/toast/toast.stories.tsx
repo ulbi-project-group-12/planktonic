@@ -94,14 +94,18 @@ function ToastSpecDemo() {
 /** Static viewport in flow: toasts are shown next to the row caption. */
 const statesViewport = 'static z-auto w-full max-w-full flex-row flex-wrap gap-2 p-0';
 
-/** All states — static, no auto-dismiss. */
-function ToastStates() {
+/** All states — static, no auto-dismiss. Landmark labels need a suffix: the States story
+ *  renders this block in both theme blocks, and viewport labels must stay unique per page. */
+function ToastStates({ labelSuffix = '' }: { labelSuffix?: string }) {
   const noop = () => undefined;
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-[120px_1fr] items-center gap-4">
         <span className="text-[11px] text-fg-muted">Базовый</span>
-        <ToastProvider viewportClassName={statesViewport} viewportLabel="Уведомления — базовый">
+        <ToastProvider
+          viewportClassName={statesViewport}
+          viewportLabel={`Уведомления — базовый${labelSuffix}`}
+        >
           {toastPalettes.map((palette) => (
             <Toast
               key={palette}
@@ -123,7 +127,10 @@ function ToastStates() {
       </div>
       <div className="grid grid-cols-[120px_1fr] items-center gap-4">
         <span className="text-[11px] text-fg-muted">С описанием</span>
-        <ToastProvider viewportClassName={statesViewport} viewportLabel="Уведомления — с описанием">
+        <ToastProvider
+          viewportClassName={statesViewport}
+          viewportLabel={`Уведомления — с описанием${labelSuffix}`}
+        >
           {toastPalettes.map((palette) => (
             <Toast
               key={palette}
@@ -164,16 +171,22 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const States: Story = {
+  // renders the light and dark blocks itself, so the toolbar theme is locked to light
+  globals: { theme: 'light' },
   args: { open: true, onOpenChange: fn(), title: 'Задача создана' },
   parameters: { layout: 'fullscreen' },
   render: () => (
     <div className="flex flex-col gap-10 bg-app p-8 font-sans">
-      <div>
-        <div className="rounded-2xl border border-line bg-surface p-6">
-          <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — тосты · состояния</h3>
-          <ToastStates />
+      {(['light', 'dark'] as const).map((theme) => (
+        <div key={theme} className={theme === 'dark' ? 'dark' : undefined}>
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <h3 className="mb-4 text-body-l font-bold text-fg-primary">
+              Атомы — тосты · состояния · {theme === 'dark' ? 'Dark' : 'Light'}
+            </h3>
+            <ToastStates labelSuffix={theme === 'dark' ? ' · Dark' : ''} />
+          </div>
         </div>
-      </div>
+      ))}
       <ToastSpecDemo />
     </div>
   ),

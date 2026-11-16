@@ -146,6 +146,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const States: Story = {
+  // renders the light and dark blocks itself, so the toolbar theme is locked to light
+  globals: { theme: 'light' },
   parameters: { layout: 'fullscreen' },
   args: { label: 'Email', children: <Input /> },
   render: () => (
@@ -157,6 +159,8 @@ export const States: Story = {
 };
 
 export const Form: Story = {
+  // renders the light and dark form itself, so the toolbar theme is locked to light
+  globals: { theme: 'light' },
   parameters: { layout: 'fullscreen' },
   args: { label: 'Email', children: <Input /> },
   render: () => (

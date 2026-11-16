@@ -44,7 +44,7 @@ function Tooltip({
           style={{ maxWidth }}
           data-slot="tooltip"
           className={cn(
-            'z-50 rounded-lg border border-line bg-surface px-3 py-2 text-caption text-fg-primary shadow-md',
+            'z-50 rounded-lg border border-line bg-surface px-3 py-2 text-caption text-fg-primary shadow-elevation-2',
             className,
           )}
         >

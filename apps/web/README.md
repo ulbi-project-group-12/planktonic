@@ -64,7 +64,7 @@ All design tokens live in `src/_app/styles/tokens/` — one file per group, impo
 | `radii.css`       | `--radius-*` scale from the mockup cornerRadius                                                  |
 | `breakpoints.css` | `--breakpoint-*` — mobile is below 1024 (`desktop-s`), desktop from 1024 up                      |
 | `spacings.css`    | adaptive `--space-*` scale — mobile value below 1024, desktop from 1024; `-fix` = same on both   |
-| `shadows.css`     | elevation scale `shadow-sm … shadow-3xl` from the mockup                                         |
+| `shadows.css`     | elevation scale `shadow-elevation-1 … 6` from the mockup; Tailwind's `shadow-*` stays default    |
 
 To add a token:
 
@@ -81,6 +81,8 @@ token — Tailwind has `ml-auto` / `mr-auto` / … natively.
 
 The Storybook toolbar has a global **Theme** switch (light/dark): it toggles `.dark` on
 `<html>`, so portals (modal, dropdown, select, tooltip) follow it too.
+The `States` stories (and the color and type scales) render light and dark side by side
+themselves, so they set `globals: { theme: 'light' }` and the switch is locked there.
 
 ## Tests and stories
 
