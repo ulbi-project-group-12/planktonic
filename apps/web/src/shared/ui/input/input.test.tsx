@@ -42,6 +42,20 @@ describe('Input', () => {
     expect(screen.queryByText('Подсказка')).not.toBeInTheDocument();
   });
 
+  it('marks the error state and describes the field with its message', () => {
+    render(<Input label="Slug" status="error" message="Slug уже занят" />);
+    const input = screen.getByLabelText('Slug');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveAccessibleDescription('Slug уже занят');
+  });
+
+  it('describes the field with its hint and is not invalid by default', () => {
+    render(<Input label="Название" hint="От 3 до 50 символов" />);
+    const input = screen.getByLabelText('Название');
+    expect(input).not.toHaveAttribute('aria-invalid');
+    expect(input).toHaveAccessibleDescription('От 3 до 50 символов');
+  });
+
   it('disables the input', () => {
     render(<Input disabled aria-label="Поле" />);
     expect(screen.getByLabelText('Поле')).toBeDisabled();
