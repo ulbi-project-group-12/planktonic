@@ -26,22 +26,22 @@ interface ToastAction {
 }
 
 interface ToastProps {
-  /** Без open — неконтролируемый (radix сам держит состояние); с open — контролируемый. */
+  /** Without open — uncontrolled (radix keeps the state); with open — controlled. */
   open?: boolean;
-  /** Неконтролируемое начальное состояние. */
+  /** Uncontrolled initial state. */
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   palette?: ToastPalette;
   title: string;
   description?: string;
-  /** Ссылка-действие справа (например «Повторить»). */
+  /** Action link on the right (e.g. "Retry"). */
   action?: ToastAction;
-  /** Автозакрытие, мс — по умолчанию 5000. */
+  /** Auto-dismiss, ms — defaults to 5000. */
   duration?: number;
   className?: string;
 }
 
-/** Тост по макету «Атомы — тосты»: surface + border, иконка палитры, действие, закрытие. */
+/** Toast per the "Atoms — toasts" mockup: surface + border, palette icon, action, close. */
 function Toast({
   open,
   defaultOpen,
@@ -101,13 +101,13 @@ function Toast({
   );
 }
 
-/** Провайдер тостов: viewport фиксирован снизу справа (z 60), стек колонкой. */
+/** Toast provider: viewport fixed bottom-right (z 60), stacked in a column. */
 function ToastProvider({
   viewportClassName,
   children,
   ...props
 }: ToastPrimitive.ToastProviderProps & {
-  /** Переопределяет позиционирование viewport (например, статичный показ в сторис). */
+  /** Overrides the viewport positioning (e.g. static display in stories). */
   viewportClassName?: string;
 }) {
   return (

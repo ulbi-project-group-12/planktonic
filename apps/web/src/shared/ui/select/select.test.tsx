@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Select, type SelectOption } from './select';
@@ -45,7 +45,7 @@ describe('Select (одиночный)', () => {
     const onValueChange = vi.fn();
     render(<Select options={options} value={[]} onValueChange={onValueChange} />);
     await userEvent.click(screen.getByRole('button', { name: /Выберите/ }));
-    // фокус при открытии — на первой опции
+    // focus on open goes to the first option
     expect(screen.getByRole('option', { name: 'Все участники' })).toHaveFocus();
     await userEvent.keyboard('{ArrowDown}');
     expect(screen.getByRole('option', { name: 'Владелец и админы' })).toHaveFocus();
@@ -108,7 +108,7 @@ describe('Select (множественный)', () => {
     await userEvent.click(screen.getByRole('button', { name: /PR открыт/ }));
     await userEvent.click(screen.getByRole('checkbox', { name: 'Merge' }));
     expect(screen.getByRole('checkbox', { name: 'Merge' })).toBeChecked();
-    // дропдаун не закрывается — счётчик обновился до 3
+    // the dropdown stays open — the counter updated to 3
     expect(screen.getByText('Выбрано: 3 из 5')).toBeInTheDocument();
   });
 
@@ -122,23 +122,23 @@ describe('Select (множественный)', () => {
     render(<ControlledMultiple />);
     await userEvent.click(screen.getByRole('button', { name: /PR открыт/ }));
     const listbox = screen.getByRole('listbox');
-    // клик по тексту (лейблу чекбокса) внутри строки опции, а не по самому чекбоксу
+    // click on the text (checkbox label) inside the option row, not the checkbox itself
     await userEvent.click(within(listbox).getByText('Merge'));
     expect(screen.getByRole('checkbox', { name: 'Merge' })).toBeChecked();
     expect(screen.getByText('Выбрано: 3 из 5')).toBeInTheDocument();
-    // повторный клик по тексту снимает выбор (а не переключает дважды)
+    // a second click on the text removes the selection (instead of toggling twice)
     await userEvent.click(within(listbox).getByText('Merge'));
     expect(screen.getByRole('checkbox', { name: 'Merge' })).not.toBeChecked();
     expect(screen.getByText('Выбрано: 2 из 5')).toBeInTheDocument();
   });
 
-  it('toggles the dropdown with Enter and Space on the trigger', () => {
+  it('toggles the dropdown with Enter and Space on the trigger', async () => {
     render(<ControlledMultiple />);
     const trigger = screen.getByRole('button', { name: /PR открыт/ });
-    // preventDefault у Space отменяет стандартное поведение браузера (fireEvent вернул бы true)
-    expect(fireEvent.keyDown(trigger, { key: ' ' })).toBe(false);
+    trigger.focus();
+    await userEvent.keyboard('{Enter}');
     expect(screen.getByRole('listbox')).toBeInTheDocument();
-    fireEvent.keyDown(trigger, { key: 'Enter' });
+    await userEvent.keyboard(' ');
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 
@@ -164,16 +164,36 @@ describe('Select (множественный)', () => {
       <Select multiple options={many} value={['pr', 'review']} onValueChange={vi.fn()} />,
     );
     const trigger = screen.getByRole('button', { name: /PR открыт/ });
-    const chipsBox = trigger.querySelector('.flex-1');
-    expect(trigger.className).toContain('overflow-hidden');
+    const field = trigger.parentElement;
+    const chipsBox = field?.querySelector('[data-slot="select-chips"]');
+    expect(field?.className).toContain('overflow-hidden');
     expect(chipsBox?.className).toContain('overflow-hidden');
     expect(chipsBox?.className).not.toContain('flex-wrap');
 
     rerender(
       <Select multiple chipsWrap options={many} value={['pr', 'review']} onValueChange={vi.fn()} />,
     );
-    expect(trigger.className).toContain('min-h-10');
+    expect(field?.className).toContain('min-h-10');
     expect(chipsBox?.className).toContain('flex-wrap');
     expect(chipsBox?.className).not.toContain('overflow-hidden');
+  });
+
+  it('exposes id, name and aria-label for form usage', () => {
+    render(
+      <Select
+        id="role"
+        name="role"
+        aria-label="Роль"
+        options={many}
+        value={['pr', 'review']}
+        onValueChange={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole('button', { name: 'Роль' });
+    expect(trigger).toHaveAttribute('id', 'role');
+    const hidden = document.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="role"]');
+    expect(hidden).toHaveLength(2);
+    expect(hidden[0]).toHaveValue('pr');
+    expect(hidden[1]).toHaveValue('review');
   });
 });

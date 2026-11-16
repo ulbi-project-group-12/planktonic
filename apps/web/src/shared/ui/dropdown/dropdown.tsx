@@ -9,7 +9,7 @@ interface DropdownProps {
   children: ReactNode;
 }
 
-/** Контролируемый корень дропдауна. */
+/** Controlled dropdown root. */
 function Dropdown({ open, onOpenChange, children }: DropdownProps) {
   return (
     <DropdownPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -26,7 +26,7 @@ const contentClass = cn(
   'z-50 min-w-44 overflow-hidden rounded-button border border-line bg-surface p-1 shadow-[0_4px_16px_rgba(15,18,28,0.12)]',
 );
 
-/** Контент меню: radius 10 · shadow 0/4/16 · z/menu 50. */
+/** Menu content: radius 10 · shadow 0/4/16 · z/menu 50. */
 function DropdownContent({
   className,
   sideOffset = 4,
@@ -34,7 +34,7 @@ function DropdownContent({
   children,
   ...props
 }: DropdownPrimitive.DropdownMenuContentProps & {
-  /** Контейнер для портала (например, тёмная тема сторис); по умолчанию — body. */
+  /** Portal container (e.g. a dark-themed story block); defaults to body. */
   portalContainer?: HTMLElement | null;
 }) {
   return (
@@ -59,11 +59,11 @@ const dangerItemClass =
   'text-danger data-[highlighted]:bg-danger-subtle data-[highlighted]:text-danger';
 
 interface DropdownItemProps extends DropdownPrimitive.DropdownMenuItemProps {
-  /** Опасное действие — текст danger, подложка danger.subtle. */
+  /** Dangerous action — danger text, danger.subtle background. */
   danger?: boolean;
 }
 
-/** Пункт меню: h 28 · hover bg.sunken. */
+/** Menu item: h 28 · hover bg.sunken. */
 function DropdownItem({ className, danger = false, ...props }: DropdownItemProps) {
   return (
     <DropdownPrimitive.Item
@@ -75,7 +75,7 @@ function DropdownItem({ className, danger = false, ...props }: DropdownItemProps
 
 type DropdownCheckboxItemProps = DropdownPrimitive.DropdownMenuCheckboxItemProps;
 
-/** Пункт с выбором: галочка слева (сортировка «Сначала новые»). */
+/** Item with choice: checkmark on the left (sorting "Newest first"). */
 function DropdownCheckboxItem({
   className,
   children,
@@ -96,7 +96,7 @@ function DropdownCheckboxItem({
   );
 }
 
-/** Заголовок секции («Сортировка», «Перенести в»). */
+/** Section header ("Sorting", "Move to"). */
 function DropdownLabel({ className, ...props }: DropdownPrimitive.DropdownMenuLabelProps) {
   return (
     <DropdownPrimitive.Label
@@ -113,7 +113,7 @@ function DropdownSeparator({ className, ...props }: DropdownPrimitive.DropdownMe
   return <DropdownPrimitive.Separator className={cn('my-1 h-px bg-line', className)} {...props} />;
 }
 
-/** Вложенное меню («Перенести в →» открывается справа). */
+/** Nested menu ("Move to →" opens on the right). */
 function DropdownSub(props: DropdownPrimitive.DropdownMenuSubProps) {
   return <DropdownPrimitive.Sub {...props} />;
 }

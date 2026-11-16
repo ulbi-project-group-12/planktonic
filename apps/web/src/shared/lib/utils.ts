@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 
-/** Имена размеров текста из tokens/text-sizes.css (роли макета). */
+/** Text size names from tokens/text-sizes.css (mockup roles). */
 const textSizes = [
   'micro-s',
   'micro',
@@ -19,7 +19,7 @@ const textSizes = [
   'h6',
 ];
 
-/** Имена цветов палитры из tokens/colors.css (группа/роль дизайн-токена). */
+/** Palette color names from tokens/colors.css (design token group/role). */
 const palette = [
   'brand-primary',
   'brand-hover',
@@ -54,8 +54,8 @@ const palette = [
 ];
 
 /**
- * twMerge с нашей темой: без этого кастомные `text-caption` / `text-fg-muted`
- * выглядят для слияния одинаково и вытесняют друг друга.
+ * twMerge with our theme: without this, custom `text-caption` / `text-fg-muted`
+ * look identical to the merge and evict each other.
  */
 const twMerge = extendTailwindMerge({
   extend: {

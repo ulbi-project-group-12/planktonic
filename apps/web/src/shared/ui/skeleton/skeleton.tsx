@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react';
 import { cn } from '@/shared/lib';
 
-/** Скелетон по макету «Атомы — загрузка»: bg.sunken · radius 4 · импульс. */
+/** Skeleton per the "Atoms — loading" mockup: bg.sunken · radius 4 · pulse. */
 function Skeleton({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div

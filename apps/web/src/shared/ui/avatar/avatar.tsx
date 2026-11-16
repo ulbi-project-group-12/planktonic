@@ -1,25 +1,25 @@
 import Image from 'next/image';
 import { cn } from '@/shared/lib';
 
-const avatarSizes = ['sm', 'md', 'lg', 'xl'] as const;
+const avatarSizes = ['s', 'm', 'l', 'xl'] as const;
 type AvatarSize = (typeof avatarSizes)[number];
 
 const avatarColors = ['brand', 'success', 'warning', 'danger', 'info'] as const;
 type AvatarColor = (typeof avatarColors)[number];
 
-/** Размеры по макету: 24 инициалы 10 · 32 списки/сообщения · 40 шапка/presence · 48 профиль. */
+/** Mockup sizes: 24 initials 10 · 32 lists/messages · 40 header/presence · 48 profile. */
 const sizeClasses: Record<AvatarSize, string> = {
-  sm: 'size-6 text-micro-s',
-  md: 'size-8 text-caption',
-  lg: 'size-10 text-body-s',
+  s: 'size-6 text-micro-s',
+  m: 'size-8 text-caption',
+  l: 'size-10 text-body-s',
   xl: 'size-12 text-body',
 };
 
-/** Размеры в px — для next/image. */
+/** Sizes in px — for next/image. */
 const sizePixels: Record<AvatarSize, number> = {
-  sm: 24,
-  md: 32,
-  lg: 40,
+  s: 24,
+  m: 32,
+  l: 40,
   xl: 48,
 };
 
@@ -45,7 +45,7 @@ const presenceLabels: Record<Presence, string> = {
   offline: 'Не в сети',
 };
 
-/** Детерминированный цвет аватара по имени. */
+/** Deterministic avatar color from the name. */
 function colorByName(name: string): AvatarColor {
   let hash = 0;
   for (const char of name) hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 997;
@@ -53,7 +53,7 @@ function colorByName(name: string): AvatarColor {
   return avatarColors[index] ?? 'brand';
 }
 
-/** До двух инициалов: первая буква первых двух слов; без имени — «?». */
+/** Up to two initials: first letter of the first two words; no name — "?". */
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
@@ -67,17 +67,17 @@ const presenceList = ['online', 'away', 'dnd', 'offline'] as const;
 type Presence = (typeof presenceList)[number];
 
 interface AvatarProps {
-  /** Имя: генерирует инициалы и цвет. */
+  /** Name: generates initials and color. */
   name: string;
   src?: string;
   size?: AvatarSize;
-  /** Индикатор присутствия: dot 12 · кольцо surface 2 px. */
+  /** Presence indicator: dot 12 · surface ring 2 px. */
   presence?: Presence;
   className?: string;
 }
 
-/** Аватар по макету «Атомы — аватары»: круг, инициалы 10–16, цвет по имени. */
-function Avatar({ name, src, size = 'md', presence, className }: AvatarProps) {
+/** Avatar per the "Atoms — avatars" mockup: circle, initials 10–16, color by name. */
+function Avatar({ name, src, size = 'm', presence, className }: AvatarProps) {
   return (
     <span
       data-slot="avatar"
@@ -126,14 +126,14 @@ interface AvatarUser {
 
 interface AvatarGroupProps {
   users: AvatarUser[];
-  /** Сколько аватаров показать; остальное — «+N». */
+  /** How many avatars to show; the rest collapses into "+N". */
   max?: number;
   size?: AvatarSize;
   className?: string;
 }
 
-/** Группа по макету: overlap 10 · «+N» при переполнении. */
-function AvatarGroup({ users, max = 3, size = 'md', className }: AvatarGroupProps) {
+/** Group per the mockup: overlap 10 · "+N" on overflow. */
+function AvatarGroup({ users, max = 3, size = 'm', className }: AvatarGroupProps) {
   const shown = users.slice(0, max);
   const rest = users.length - shown.length;
 

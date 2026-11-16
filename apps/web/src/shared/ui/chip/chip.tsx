@@ -5,7 +5,7 @@ import { cn } from '@/shared/lib';
 const chipPalettes = ['brand', 'success', 'warning', 'danger', 'info'] as const;
 type ChipPalette = (typeof chipPalettes)[number];
 
-/** neutral — bg.sunken · subtle — *.subtle + текст палитры · solid — заливка палитры, белый текст. */
+/** neutral — bg.sunken · subtle — *.subtle + palette text · solid — palette fill, white text. */
 const chipFills = ['neutral', 'subtle', 'solid'] as const;
 type ChipFill = (typeof chipFills)[number];
 
@@ -36,19 +36,19 @@ const dotClasses: Record<ChipPalette, string> = {
 };
 
 interface ChipProps {
-  /** Палитра — для fill «subtle» и «solid». */
+  /** Palette — for the "subtle" and "solid" fills. */
   palette?: ChipPalette;
-  /** Neutral — статусы без акцентов · subtle — мягкая подложка · solid — заливка. */
+  /** Neutral — no accents · subtle — soft background · solid — fill. */
   fill?: ChipFill;
-  /** Точка перед текстом (актуальна для fill «subtle»). */
+  /** Dot before the text (relevant for the "subtle" fill). */
   dot?: boolean;
-  /** Крестик справа — съёмное значение мультиселекта. */
+  /** Cross icon on the right — a removable multi-select value. */
   onRemove?: () => void;
   children: ReactNode;
   className?: string;
 }
 
-/** Чип по макету «Атомы — чипсы»: h 24 · radius full · 12 bold · крестик справа для съёма. */
+/** Chip per the "Atoms — chips" mockup: h 24 · radius full · 12 bold · cross on the right for removal. */
 function Chip({
   palette = 'brand',
   fill = 'subtle',

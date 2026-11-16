@@ -10,17 +10,17 @@ interface CheckboxProps extends Omit<
   ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
   'checked' | 'onCheckedChange'
 > {
-  /** Контролируемое состояние; вместе с onCheckedChange. */
+  /** Controlled state; together with onCheckedChange. */
   checked?: boolean;
-  /** Неконтролируемое начальное состояние. */
+  /** Uncontrolled initial state. */
   defaultChecked?: boolean;
-  /** Срабатывает при переключении; состояние снаружи не меняет (controlled). */
+  /** Fires on toggle; does not change the state itself (controlled). */
   onCheckedChange?: (checked: boolean) => void;
-  /** Подпись справа от бокса; клик по ней переключает чекбокс. */
+  /** Caption to the right of the box; clicking it toggles the checkbox. */
   label?: string;
 }
 
-/** Чекбокс по токенам дизайн-системы: бокс 20, radius/s 4, brand при отметке. */
+/** Checkbox per the design system tokens: 20 box, radius/s 4, brand when checked. */
 function Checkbox({
   checked,
   defaultChecked,
@@ -45,7 +45,7 @@ function Checkbox({
         onCheckedChange={(state) => {
           onCheckedChange?.(state === true);
         }}
-        // нативные пропсы кнопки (aria-label, aria-labelledby и т.д.) — на корень
+        // native button props (aria-label, aria-labelledby, etc.) go to the root
         {...rest}
         className={cn(
           'flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-line-strong bg-surface transition-colors outline-none',

@@ -46,7 +46,7 @@ function AiSkeleton() {
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
       <div className="flex items-center gap-2">
-        <Avatar name="Plankton AI" size="sm" />
+        <Avatar name="Plankton AI" size="s" />
         <span className="text-caption font-bold text-fg-primary">Plankton AI</span>
         <Badge dot variant="brand" />
       </div>

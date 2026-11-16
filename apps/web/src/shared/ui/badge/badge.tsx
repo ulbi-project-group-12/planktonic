@@ -3,7 +3,7 @@ import { cn } from '@/shared/lib';
 const badgeVariants = ['brand', 'success', 'warning', 'danger', 'info', 'muted'] as const;
 type BadgeVariant = (typeof badgeVariants)[number];
 
-/** Переполнение сверх лимита — 99+. */
+/** Overflow above the limit — 99+. */
 const OVERFLOW_CAP = 99;
 
 const variantClasses: Record<BadgeVariant, string> = {
@@ -25,17 +25,17 @@ const dotClasses: Record<BadgeVariant, string> = {
 };
 
 interface BadgeProps {
-  /** Число в бейдже; больше 99 показывается как «99+». */
+  /** Badge number; above 99 shown as "99+". */
   count?: number;
-  /** Упоминание: «@» + число. */
+  /** Mention: "@" + number. */
   mention?: boolean;
-  /** Точка 8 px без числа. */
+  /** 8 px dot without a number. */
   dot?: boolean;
   variant?: BadgeVariant;
   className?: string;
 }
 
-/** Бейдж по макету «Атомы — бейджи»: h 20 · radius full, на аватаре — кольцо surface 2 px. */
+/** Badge per the "Atoms — badges" mockup: h 20 · radius full, on an avatar — surface ring 2 px. */
 function Badge({ count, mention = false, dot = false, variant = 'brand', className }: BadgeProps) {
   if (dot) {
     return (

@@ -1,7 +1,7 @@
-/* Глобальная таблица стилей веб-приложения (TZ-FE-19): Tailwind плюс дизайн-токены
-   (макеты PlanctonicDesign — один файл на группу токенов в ./tokens, эта папка —
-   единый источник переменных). Оставшиеся кастомные варианты ниже используют
-   компоненты на radix-ui. */
+/* Global stylesheet of the web app (TZ-FE-19): Tailwind plus design tokens
+   (PlanctonicDesign mockups — one file per token group in ./tokens, this folder
+   is the single source of variables). The remaining custom variants below are
+   used by radix-ui components. */
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import './tokens/fonts.css';
@@ -10,7 +10,7 @@
 @import './tokens/radii.css';
 @import './tokens/breakpoints.css';
 
-/* Кастомные варианты для атрибутов состояния radix-ui (data-state / data-open / ...). */
+/* Custom variants for radix-ui state attributes (data-state / data-open / ...). */
 @custom-variant data-open {
   &:where([data-state='open']),
   &:where([data-open]:not([data-open='false'])) {
@@ -82,7 +82,7 @@
   }
 }
 
-/* Анимации тостов: появление снизу и плавное скрытие (см. shared/ui/toast). */
+/* Toast animations: slide in from below and smooth hide (see shared/ui/toast). */
 @keyframes toast-in {
   from {
     opacity: 0;

@@ -5,11 +5,11 @@ import { Toast, ToastProvider } from './toast';
 import { dismissToast, getServerToasts, getToasts, subscribeToasts } from './toast-store';
 
 /**
- * Рендерер тостов: один раз в корне приложения.
- * Показывает тосты, созданные императивным вызовом `toast({...})`.
+ * Toast renderer: once at the app root.
+ * Shows toasts created by the imperative `toast({...})` call.
  */
 function Toaster() {
-  // Серверный снимок пустой: на сервере тостов нет, гидрация подхватит стор на клиенте
+  // Server snapshot is empty: no toasts on the server, hydration picks up the store on the client
   const toasts = useSyncExternalStore(subscribeToasts, getToasts, getServerToasts);
 
   return (
@@ -25,7 +25,7 @@ function Toaster() {
           title={record.title}
           description={record.description}
           action={record.action}
-          // автозакрытие держит стор; таймер Radix в контролируемом режиме отключён
+          // auto-dismiss owns the store; the Radix timer is disabled in controlled mode
           duration={Infinity}
         />
       ))}

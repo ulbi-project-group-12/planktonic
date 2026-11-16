@@ -63,8 +63,8 @@ function ControlledSelect(props: {
 }
 
 function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
-  // Портал дропдауна рендерится в body — вне .dark-обёртки, поэтому темизируемый
-  // контейнер передаём явно, чтобы выпадашка наследовала токены темы блока.
+  // The dropdown portal renders in body — outside the .dark wrapper, so we pass the
+  // themed container explicitly so the dropdown inherits the block theme tokens.
   const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
   const containerRef = useCallback((node: HTMLDivElement | null) => {
     setPortalContainer(node);

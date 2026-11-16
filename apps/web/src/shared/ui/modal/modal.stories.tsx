@@ -17,7 +17,7 @@ function Card({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** Кнопка-триггер + управляемая модалка в одном примере. */
+/** Trigger button + controlled modal in a single example. */
 function ModalDemo({
   label,
   title,
@@ -198,8 +198,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const States: Story = {
-  // Демо-модалки управляют своим стейтом сами; args нужен только из-за
-  // обязательного isShown в типе истории.
+  // Demo modals manage their own state; args is only here because of the
+  // required isShown in the story type.
   args: { isShown: false },
   parameters: { layout: 'fullscreen' },
   render: () => (

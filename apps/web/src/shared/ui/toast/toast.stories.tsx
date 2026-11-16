@@ -6,7 +6,7 @@ import { Toast, toastPalettes, ToastProvider } from './toast';
 import { DEFAULT_TOAST_DURATION_MS, toast } from './toast-store';
 import { Toaster } from './toaster';
 
-/** Карточка темы с кнопкой: по клику тост улетает в общий фиксированный viewport внизу справа. */
+/** Theme card with a button: on click the toast flies to the shared fixed viewport bottom-right. */
 function ToastSpec({ theme, onShow }: { theme: 'light' | 'dark'; onShow: () => void }) {
   return (
     <div className={theme === 'dark' ? 'dark' : undefined}>
@@ -35,7 +35,7 @@ function ToastSpec({ theme, onShow }: { theme: 'light' | 'dark'; onShow: () => v
   );
 }
 
-/** Оба блока тем делят один фиксированный viewport; тема тоста задаётся обёрткой с классом dark. */
+/** Both theme blocks share one fixed viewport; the toast theme is set by the wrapper with the dark class. */
 function ToastSpecDemo() {
   const [items, setItems] = useState<{ id: number; open: boolean; dark: boolean }[]>([]);
   const counterRef = useRef(0);
@@ -44,7 +44,7 @@ function ToastSpecDemo() {
     counterRef.current += 1;
     const id = counterRef.current;
     setItems((prev) => [...prev, { id, open: true, dark }]);
-    // как в приложении: тост исчезает сам, если его явно не закрыли
+    // as in the app: the toast goes away on its own unless explicitly closed
     window.setTimeout(() => {
       dismiss(id);
     }, DEFAULT_TOAST_DURATION_MS);
@@ -91,10 +91,10 @@ function ToastSpecDemo() {
   );
 }
 
-/** Статичный viewport в потоке: тосты показываются рядом с подписью строки. */
+/** Static viewport in flow: toasts are shown next to the row caption. */
 const statesViewport = 'static z-auto w-full max-w-full flex-row flex-wrap gap-2 p-0';
 
-/** Все состояния — статично, без автозакрытия. */
+/** All states — static, no auto-dismiss. */
 function ToastStates() {
   const noop = () => undefined;
   return (
@@ -207,7 +207,7 @@ export const Playground: Story = {
   ],
 };
 
-/** Императивное использование, как в приложении: Toaster в корне + toast(). */
+/** Imperative usage, as in the app: Toaster at the root + toast(). */
 export const Imperative: StoryObj = {
   render: () => (
     <div className="flex flex-wrap items-center gap-3 bg-app p-10 font-sans">

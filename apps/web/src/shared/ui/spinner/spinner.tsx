@@ -2,19 +2,19 @@ import type { ComponentProps } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { cn } from '@/shared/lib';
 
-const spinnerSizes = ['sm', 'md', 'lg', 'xl'] as const;
+const spinnerSizes = ['s', 'm', 'l', 'xl'] as const;
 type SpinnerSize = (typeof spinnerSizes)[number];
 
 const sizeClasses: Record<SpinnerSize, string> = {
-  sm: 'size-4',
-  md: 'size-5',
-  lg: 'size-6',
+  s: 'size-4',
+  m: 'size-5',
+  l: 'size-6',
   xl: 'size-8',
 };
 
-/** Спиннер по макету «Атомы — загрузка»: LoaderCircle · spin 0.8 s linear · brand. */
+/** Spinner per the "Atoms — loading" mockup: LoaderCircle · spin 0.8 s linear · brand. */
 function Spinner({
-  size = 'md',
+  size = 'm',
   className,
   ...props
 }: ComponentProps<typeof LoaderCircle> & { size?: SpinnerSize }) {

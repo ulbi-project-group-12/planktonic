@@ -16,19 +16,27 @@ interface SelectOption {
 
 interface SelectProps {
   options: SelectOption[];
-  /** Выбранные значения; в одиночном режиме — массив из одного элемента. */
+  /** Selected values; in single mode — an array with one element. */
   value: string[];
   onValueChange: (value: string[]) => void;
-  /** Множественный выбор: чипсы в поле, чекбоксы в списке, дропдаун не закрывается при выборе. */
+  /** Multiple choice: chips in the field, checkboxes in the list, dropdown stays open on select. */
   multiple?: boolean;
-  /** Множественный выбор: переносить чипсы на несколько строк (поле растёт по высоте).
-   *  По умолчанию выключено — чипсы в одну строку, при нехватке места многоточие. */
+  /** Multiple choice: wrap chips onto several rows (the field grows in height).
+   *  Disabled by default — chips in one row, ellipsis when out of space. */
   chipsWrap?: boolean;
   placeholder?: string;
-  /** Поиск при длинных списках + футер «Показано N из M». */
+  /** Search for long lists + "Showing N of M" footer. */
   searchable?: boolean;
   disabled?: boolean;
-  /** Контейнер для портала дропдауна (например, тёмная тема сторис); по умолчанию — body. */
+  /** DOM id of the trigger — allows linking a label via htmlFor or aria-labelledby. */
+  id?: string;
+  /** Form field name: selected values are submitted through hidden inputs. */
+  name?: string;
+  /** Accessible label of the trigger (a visible label is not always present). */
+  'aria-label'?: string;
+  /** Id of the element labelling the trigger. */
+  'aria-labelledby'?: string;
+  /** Portal container for the dropdown (e.g. a dark-themed story block); defaults to body. */
   portalContainer?: HTMLElement | null;
   className?: string;
 }
@@ -40,7 +48,7 @@ const triggerClass = cn(
   'disabled:cursor-not-allowed disabled:bg-sunken',
 );
 
-/** Селект по макету «Атомы — селекты»: дропдаун под полем, опции 36 px, поиск и скролл при длинных списках. */
+/** Select per the "Atoms — selects" mockup: dropdown under the field, 36 px options, search and scroll for long lists. */
 function Select({
   options,
   value,
@@ -50,6 +58,10 @@ function Select({
   placeholder = 'Выберите…',
   searchable = false,
   disabled = false,
+  id,
+  name,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledby,
   portalContainer,
   className,
 }: SelectProps) {
@@ -57,7 +69,7 @@ function Select({
   const [query, setQuery] = useState('');
   const chipsRef = useRef<HTMLDivElement>(null);
   const listboxRef = useRef<HTMLDivElement>(null);
-  /** Чипсы не влезают в одну строку — показываем многоточие (режим без переноса). */
+  /** Chips overflow a single row — show ellipsis (no-wrap mode). */
   const [chipsOverflow, setChipsOverflow] = useState(false);
 
   useEffect(() => {
@@ -94,7 +106,7 @@ function Select({
           ? value.filter((item) => item !== optionValue)
           : [...value, optionValue],
       );
-      return; // в множественном режиме дропдаун не закрывается
+      return; // in multiple mode the dropdown does not close
     }
     onValueChange([optionValue]);
     setOpen(false);
@@ -108,24 +120,14 @@ function Select({
     event.stopPropagation();
   };
 
-  /** Клавиатура на div-триггере множественного режима: Enter/Space переключают открытие. */
-  const onTriggerKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (disabled) return;
-    // не перехватываем нажатия на вложенные элементы (кнопка удаления чипса)
-    if (event.target !== event.currentTarget) return;
-    if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Space') return;
-    event.preventDefault(); // Space иначе прокрутил бы страницу
-    setOpen((previous) => !previous);
-  };
-
-  /** Фокус на опцию одиночного списка по индексу (индексы выходят за край — гасим). */
+  /** Focus an option of the single list by index (out-of-range indexes are ignored). */
   const focusOption = (index: number) => {
     const items = listboxRef.current?.querySelectorAll<HTMLElement>('[role="option"]');
     if (!items || items.length === 0) return;
     items[Math.max(0, Math.min(index, items.length - 1))]?.focus();
   };
 
-  /** Клавиатура одиночного списка: стрелки/Home/End двигают фокус, Enter/Space выбирают. */
+  /** Single-list keyboard: arrows/Home/End move focus, Enter/Space select. */
   const onListboxKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (multiple) return;
     const target = event.target as HTMLElement;
@@ -145,65 +147,96 @@ function Select({
       return;
     }
     if (event.key === 'Enter' || event.key === ' ' || event.key === 'Space') {
-      event.preventDefault(); // Space иначе прокрутил бы страницу
+      event.preventDefault(); // otherwise Space would scroll the page
       const optionValue = target.dataset.value;
       if (optionValue !== undefined) toggle(optionValue);
     }
   };
 
-  /** При открытии фокус на выбранную опцию (иначе первую); в searchable — на поиск. */
+  /** On open: single mode focuses the selected option (else the first one), searchable — the search input. */
   const onContentOpenAutoFocus = (event: Event) => {
-    if (searchable || multiple) return; // дефолтный фокус Radix: поле поиска / триггер
+    if (searchable) return; // default Radix focus: the search input
+    if (multiple) {
+      // keep focus on the trigger so the chips stay reachable by keyboard
+      event.preventDefault();
+      return;
+    }
     event.preventDefault();
     const selectedIndex = options.findIndex((option) => option.value === value[0]);
     focusOption(selectedIndex === -1 ? 0 : selectedIndex);
   };
 
+  /** Accessible name of the multiple trigger: joined chip labels (a hidden label is not visible). */
+  const joinedLabels = value.length > 0 ? value.map(labelOf).join(', ') : undefined;
+
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+      {name
+        ? value.map((optionValue) => (
+            <input key={optionValue} type="hidden" name={name} value={optionValue} />
+          ))
+        : null}
       <PopoverPrimitive.Trigger asChild>
         {multiple ? (
+          // The field is a wrapper: a stretched real button opens the dropdown, the chip
+          // remove buttons live in a layer above it — no interactive elements are nested.
           <div
-            role="button"
-            tabIndex={disabled ? -1 : 0}
-            aria-haspopup="listbox"
-            aria-expanded={open}
-            aria-disabled={disabled || undefined}
-            onKeyDown={onTriggerKeyDown}
             data-slot="select"
             className={cn(
-              triggerClass,
-              chipsWrap ? 'min-h-10 py-1.5' : 'h-10 overflow-hidden',
+              'relative flex w-full items-center rounded-xl border border-line bg-surface text-caption outline-none transition-shadow',
+              chipsWrap ? 'min-h-10' : 'h-10 overflow-hidden',
               disabled && 'pointer-events-none opacity-60',
               className,
             )}
           >
-            {value.length === 0 ? (
-              <span className="flex-1 text-fg-muted">{placeholder}</span>
-            ) : (
-              <div
-                ref={chipsRef}
-                className={cn(
-                  'flex min-w-0 flex-1 items-center gap-1.5',
-                  chipsWrap ? 'flex-wrap' : 'overflow-hidden',
-                )}
-              >
-                {value.map((optionValue) => (
-                  <span key={optionValue} className="shrink-0" onClick={stopPropagation}>
-                    <Chip
-                      palette="brand"
-                      onRemove={() => {
-                        removeOption(optionValue);
-                      }}
+            <button
+              type="button"
+              tabIndex={disabled ? -1 : 0}
+              disabled={disabled}
+              aria-haspopup="listbox"
+              aria-expanded={open}
+              id={id}
+              aria-label={ariaLabel ?? joinedLabels}
+              aria-labelledby={ariaLabelledby}
+              className={cn(triggerClass, 'absolute inset-0 h-full')}
+            >
+              {value.length === 0 ? (
+                <span className="flex-1 text-left text-fg-muted">{placeholder}</span>
+              ) : null}
+              <ChevronDown className="ml-auto size-4 shrink-0 text-fg-muted transition-transform [[data-state=open]_&]:rotate-180" />
+            </button>
+            {value.length > 0 ? (
+              <div className="pointer-events-none z-10 flex min-w-0 flex-1 items-center gap-1.5 px-3 py-1.5 pr-9">
+                <div
+                  ref={chipsRef}
+                  data-slot="select-chips"
+                  className={cn(
+                    'flex min-w-0 flex-1 items-center gap-1.5',
+                    chipsWrap ? 'flex-wrap' : 'overflow-hidden',
+                  )}
+                >
+                  {value.map((optionValue) => (
+                    <span
+                      key={optionValue}
+                      className="pointer-events-auto shrink-0"
+                      onClick={stopPropagation}
                     >
-                      {labelOf(optionValue)}
-                    </Chip>
-                  </span>
-                ))}
+                      <Chip
+                        palette="brand"
+                        onRemove={() => {
+                          removeOption(optionValue);
+                        }}
+                      >
+                        {labelOf(optionValue)}
+                      </Chip>
+                    </span>
+                  ))}
+                </div>
+                {chipsOverflow ? (
+                  <span className="shrink-0 text-caption text-fg-muted">…</span>
+                ) : null}
               </div>
-            )}
-            {chipsOverflow ? <span className="shrink-0 text-caption text-fg-muted">…</span> : null}
-            <ChevronDown className="ml-auto size-4 shrink-0 text-fg-muted transition-transform [[data-state=open]_&]:rotate-180" />
+            ) : null}
           </div>
         ) : (
           <button
@@ -211,6 +244,9 @@ function Select({
             disabled={disabled}
             aria-haspopup="listbox"
             aria-expanded={open}
+            id={id}
+            aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledby}
             data-slot="select"
             className={cn(triggerClass, 'h-10', className)}
           >
@@ -267,8 +303,8 @@ function Select({
                     role="option"
                     aria-selected={selected}
                     onClick={(event) => {
-                      // preventDefault отменяет активацию лейбла чекбокса — иначе браузер
-                      // продублировал бы клик на сам чекбокс и строка переключилась бы дважды
+                      // preventDefault cancels the checkbox label activation — otherwise the browser
+                      // would duplicate the click onto the checkbox itself and the row would toggle twice
                       event.preventDefault();
                       toggle(option.value);
                     }}

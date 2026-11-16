@@ -6,7 +6,7 @@ import { cn } from '@/shared/lib';
 const alertPalettes = ['success', 'warning', 'danger', 'info'] as const;
 type AlertPalette = (typeof alertPalettes)[number];
 
-/** Плашки по макету: fill {pal}.subtle, обводка и заголовок в цвете палитры. */
+/** Banners per the mockup: fill {pal}.subtle, border and title in the palette color. */
 const paletteClasses: Record<AlertPalette, { box: string; title: string }> = {
   success: { box: 'border-success bg-success-subtle', title: 'text-success' },
   warning: { box: 'border-warning bg-warning-subtle', title: 'text-warning' },
@@ -22,27 +22,27 @@ const paletteIcons: Record<AlertPalette, typeof CircleCheck> = {
 };
 
 interface AlertAction {
-  /** Подпись ссылки-действия. */
+  /** Action link label. */
   label: string;
   onClick?: () => void;
 }
 
 interface AlertProps {
-  /** Семантика плашки: success / warning / danger / info. */
+  /** Banner semantics: success / warning / danger / info. */
   palette?: AlertPalette;
-  /** Заголовок одной строкой. */
+  /** One-line title. */
   title: string;
-  /** Текст под заголовком. */
+  /** Text under the title. */
   description?: string;
-  /** Ссылка-действие под текстом. */
+  /** Action link under the text. */
   action?: AlertAction;
-  /** Крестик справа; закрытие — через onClose. */
+  /** Cross icon on the right; closing is via onClose. */
   closable?: boolean;
   onClose?: () => void;
   className?: string;
 }
 
-/** Алерт по макету «Атомы — алерты»: иконка + заголовок (+ текст, действие, крестик). */
+/** Alert per the "Atoms — alerts" mockup: icon + title (+ text, action, cross). */
 function Alert({
   palette = 'success',
   title,

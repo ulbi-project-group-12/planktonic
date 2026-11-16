@@ -4,7 +4,7 @@ import { Avatar, AvatarGroup, avatarSizes, presenceList, type Presence } from '.
 
 function Card({ label, children }: { label: string; children: ReactNode }) {
   return (
-    // фон surface: кольцо 2 px у presence совпадает с подложкой и не читается как бордер
+    // surface background: the 2 px presence ring matches the canvas and does not read as a border
     <div className="rounded-xl border border-line bg-surface p-6">
       <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
         {label}
@@ -24,9 +24,9 @@ function SizeItem({ caption, children }: { caption: string; children: ReactNode 
 }
 
 const sizeCaptions: Record<string, string> = {
-  sm: '24 px — инициалы 10',
-  md: '32 px — списки, сообщения',
-  lg: '40 px — шапка, presence',
+  s: '24 px — инициалы 10',
+  m: '32 px — списки, сообщения',
+  l: '40 px — шапка, presence',
   xl: '48 px — профиль',
 };
 
@@ -57,7 +57,7 @@ function AvatarSpec() {
             </SizeItem>
           ))}
           <SizeItem caption="без имени — «?»">
-            <Avatar name="" size="lg" />
+            <Avatar name="" size="l" />
           </SizeItem>
         </div>
       </Card>
@@ -65,7 +65,7 @@ function AvatarSpec() {
         <div className="flex flex-wrap items-center gap-6">
           {presenceList.map((presence) => (
             <div key={presence} className="flex items-center gap-2.5">
-              <Avatar name={presenceNames[presence]} size="lg" presence={presence} />
+              <Avatar name={presenceNames[presence]} size="l" presence={presence} />
               <span className="text-caption text-fg-secondary">
                 {
                   { online: 'В сети', away: 'Отошёл', dnd: 'Не беспокоить', offline: 'Не в сети' }[
@@ -79,10 +79,10 @@ function AvatarSpec() {
       </Card>
       <Card label="Группы — overlap 10 · «+N»">
         <div className="flex flex-wrap items-center gap-8">
-          <AvatarGroup users={groupUsers.slice(0, 3)} size="sm" />
-          <AvatarGroup users={groupUsers} max={3} size="md" />
+          <AvatarGroup users={groupUsers.slice(0, 3)} size="s" />
+          <AvatarGroup users={groupUsers} max={3} size="m" />
           <div className="flex items-center gap-2.5">
-            <AvatarGroup users={groupUsers} max={1} size="lg" />
+            <AvatarGroup users={groupUsers} max={1} size="l" />
             <div className="flex flex-col">
               <span className="text-caption font-bold text-fg-primary">Иван Петров</span>
               <span className="text-micro text-fg-muted">В сети</span>
@@ -130,7 +130,7 @@ export const States: Story = {
 export const Playground: Story = {
   args: {
     name: 'Александр Кузнецов',
-    size: 'md',
+    size: 'm',
     src: '',
   },
   argTypes: {

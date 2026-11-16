@@ -57,11 +57,11 @@ describe('Button', () => {
       </Button>,
     );
     const button = screen.getByRole('button', { name: /Save/ });
-    // loading блокирует кнопку нативно — клик не вызывает onClick
+    // loading blocks the button natively — click does not fire onClick
     expect(button).toBeDisabled();
     await userEvent.click(button);
     expect(onClick).not.toHaveBeenCalled();
-    // по макету loading не приглушает кнопку (opacity 0.45 — только у disabled)
+    // per the mockup loading does not dim the button (opacity 0.45 is only for disabled)
     expect(button.className).toContain('[&:disabled:not([data-loading])]:opacity-45');
   });
 

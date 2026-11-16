@@ -4,9 +4,9 @@ import { Spinner, spinnerSizes, type SpinnerSize } from './spinner';
 
 function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
   const label: Record<SpinnerSize, string> = {
-    sm: '16 — инлайн в тексте',
-    md: '20 — кнопки',
-    lg: '24 — карточки',
+    s: '16 — инлайн в тексте',
+    m: '20 — кнопки',
+    l: '24 — карточки',
     xl: '32 — страницы',
   };
 
@@ -36,14 +36,14 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
               В кнопке — «Отправка…»
             </div>
             <Button disabled>
-              <Spinner size="sm" />
+              <Spinner size="s" />
               Отправка…
             </Button>
           </div>
           <p className="text-[11px] text-fg-muted">
             ИИ-генерация — spin 1.2 s (замедленный, через className)
           </p>
-          <Spinner className="animate-[spin_1.2s_linear_infinite]" size="lg" />
+          <Spinner className="animate-[spin_1.2s_linear_infinite]" size="l" />
         </div>
       </div>
     </div>
@@ -70,7 +70,7 @@ export const States: Story = {
 };
 
 export const Playground: Story = {
-  args: { size: 'md' },
+  args: { size: 'm' },
   argTypes: {
     size: { control: 'select', options: spinnerSizes },
   },

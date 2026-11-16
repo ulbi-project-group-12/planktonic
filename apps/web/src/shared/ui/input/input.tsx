@@ -7,26 +7,26 @@ const inputStatuses = ['default', 'error', 'success'] as const;
 type InputStatus = (typeof inputStatuses)[number];
 
 interface InputProps extends ComponentProps<'input'> {
-  /** Label над полем, 13/700; автоматически связывается с полем через htmlFor. */
+  /** Label above the field, 13/700; automatically linked to the field via htmlFor. */
   label?: string;
-  /** Подсказка под полем, 12 px muted; уступает место message. */
+  /** Hint under the field, 12 px muted; yields to message. */
   hint?: string;
-  /** Состояние поля: error — border $danger + иконка alert, success — border $success + иконка check. */
+  /** Field state: error — border $danger + alert icon, success — border $success + check icon. */
   status?: InputStatus;
-  /** Сообщение под полем в цвете состояния; без status выводится нейтральным цветом. */
+  /** Message under the field in the state color; without status it renders in a neutral color. */
   message?: string;
-  /** Иконка слева внутри поля (например, поиск). */
+  /** Icon on the left inside the field (e.g. search). */
   icon?: ReactNode;
-  /** Единицы справа внутри поля (например, «дн.»). */
+  /** Units on the right inside the field (e.g. "days"). */
   suffix?: ReactNode;
 }
 
 /**
- * Строковый и числовой инпут по макету: белый фон во всех активных состояниях,
- * серый sunken только у disabled; h 40, radius 10, текст 14/400.
+ * Text and number input per the mockup: white background in all active states,
+ * sunken gray only when disabled; h 40, radius 10, text 14/400.
  *
- * Состояния: focus — border brand + кольцо 3 px; error — border $danger + сообщение;
- * success — border $success + иконка; disabled — фон sunken + текст muted.
+ * States: focus — brand border + 3 px ring; error — $danger border + message;
+ * success — $success border + icon; disabled — sunken background + muted text.
  */
 function Input({
   className,
@@ -44,7 +44,7 @@ function Input({
   const inputId = id ?? autoId;
   const inputRef = useRef<HTMLInputElement>(null);
   const text = message !== undefined && message !== '' ? message : hint;
-  // Подсказка/сообщение связаны с полем для скринридеров; свой aria-describedby из props побеждает.
+  // Hint/message are linked to the field for screen readers; an aria-describedby from props wins.
   const textId = `${inputId}-text`;
   const textClass =
     status === 'error' ? 'text-danger' : status === 'success' ? 'text-success' : 'text-fg-muted';
@@ -60,7 +60,7 @@ function Input({
         data-slot="input"
         data-status={status}
         onClick={(event) => {
-          // Клик по любой части обводки (паддинги, иконки) фокусирует поле.
+          // Clicking any part of the outline (padding, icons) focuses the field.
           if (event.target !== inputRef.current) inputRef.current?.focus();
         }}
         className={cn(
@@ -68,7 +68,7 @@ function Input({
           'has-disabled:cursor-not-allowed',
           'focus-within:ring-3',
           'has-disabled:bg-sunken',
-          // Фокус сохраняет цвет статуса: error/success — их кольцо, иначе brand.
+          // Focus keeps the status color: error/success keep their ring, otherwise brand.
           status === 'error'
             ? 'border-danger focus-within:border-danger focus-within:ring-danger/40'
             : status === 'success'

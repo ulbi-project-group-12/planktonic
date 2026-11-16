@@ -11,7 +11,7 @@ type ButtonPalette = (typeof buttonPalettes)[number];
 const buttonSizes = ['s', 'm', 'l', 'icon'] as const;
 type ButtonSize = (typeof buttonSizes)[number];
 
-/** Solid — основное действие на экране, одна на форму (fill: {pal}). */
+/** Solid — primary action on the screen, one per form (fill: {pal}). */
 const solidClasses: Record<ButtonPalette, string> = {
   primary:
     'border-transparent bg-brand-primary text-on-brand hover:bg-brand-hover active:bg-brand-active focus-visible:ring-brand-primary/40',
@@ -24,11 +24,11 @@ const solidClasses: Record<ButtonPalette, string> = {
   info: 'border-transparent bg-info text-on-brand hover:bg-info-hover active:bg-info-active focus-visible:ring-info/40',
 };
 
-/** Secondary — нейтральные действия (отмена, фильтры): bg.sunken + border. */
+/** Secondary — neutral actions (cancel, filters): bg.sunken + border. */
 const secondaryClasses =
   'border-line bg-sunken text-fg-primary hover:border-line hover:bg-line active:border-line-strong active:bg-line-strong focus-visible:ring-brand-primary/40';
 
-/** Subtle — тихие действия в карточках и списках (fill: {pal}.subtle). */
+/** Subtle — quiet actions in cards and lists (fill: {pal}.subtle). */
 const subtleClasses: Record<ButtonPalette, string> = {
   primary:
     'border-transparent bg-brand-subtle text-brand-primary hover:border-brand-primary hover:text-brand-hover active:border-brand-active active:text-brand-active focus-visible:ring-brand-primary/40',
@@ -53,7 +53,7 @@ const variantClasses: Record<ButtonVariant, Record<ButtonPalette, string>> = {
   subtle: subtleClasses,
 };
 
-/** Mobile-first sizes: S 32→36, M 36→40, L 40→44, icon 36→40 (mockup geometry). Десктоп — от desktop-s (1024). */
+/** Mobile-first sizes: S 32→36, M 36→40, L 40→44, icon 36→40 (mockup geometry). Desktop — from desktop-s (1024). */
 const sizeClasses: Record<ButtonSize, string> = {
   s: 'h-8 gap-2 px-4 text-caption leading-5 desktop-s:h-9 desktop-s:text-body-xs [&_svg:not([class*=size-])]:size-3.5',
   m: 'h-9 gap-2 px-4 text-body-s leading-5 desktop-s:h-10',
@@ -62,15 +62,15 @@ const sizeClasses: Record<ButtonSize, string> = {
 };
 
 interface ButtonProps extends ComponentProps<'button'> {
-  /** Вид кнопки: solid — основное действие, secondary — нейтральная, subtle — тихая. */
+  /** Button variant: solid — primary action, secondary — neutral, subtle — quiet. */
   variant?: ButtonVariant;
-  /** Палитра заливки и текста; для secondary не используется. */
+  /** Fill and text palette; unused for secondary. */
   palette?: ButtonPalette;
-  /** Размер: высоты mobile → desktop, icon — квадратная кнопка только с иконкой. */
+  /** Size: heights mobile → desktop, icon — square icon-only button. */
   size?: ButtonSize;
-  /** Показывает спиннер и блокирует клики; подпись берётся из children или «Загрузка…». */
+  /** Shows a spinner and blocks clicks; the label comes from children or "Loading…". */
   loading?: boolean;
-  /** Растягивает кнопку на всю ширину контейнера (типично для мобильных). */
+  /** Stretches the button to the full container width (typical for mobile). */
   fullWidth?: boolean;
 }
 
@@ -99,8 +99,8 @@ function Button({
         fullWidth && 'w-full',
         className,
       )}
-      // loading блокирует активацию нативно (мышь, клавиатура, submit формы);
-      // по макету loading не приглушает кнопку — opacity 0.45 только у disabled (правило выше)
+      // loading blocks activation natively (mouse, keyboard, form submit);
+      // per the mockup loading does not dim the button — opacity 0.45 is only for disabled (rule above)
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...props}

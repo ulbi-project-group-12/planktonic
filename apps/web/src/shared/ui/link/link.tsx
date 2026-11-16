@@ -6,23 +6,23 @@ const linkVariants = ['inline', 'external', 'nav'] as const;
 type LinkVariant = (typeof linkVariants)[number];
 
 const variantClasses: Record<LinkVariant, string> = {
-  // В тексте сообщения: brand без подчёркивания, hover — underline, active — brand.active.
+  // In message text: brand without underline, hover — underline, active — brand.active.
   inline: 'text-brand-primary hover:underline active:text-brand-active',
-  // Внешняя: как inline, с иконкой ↗ (ссылка открывается в новой вкладке).
+  // External: like inline, with ↗ icon (the link opens in a new tab).
   external: 'text-brand-primary hover:underline active:text-brand-active',
-  // Навигационная: свободная, активный пункт — подложка brand.subtle.
+  // Nav: free-standing, active item — brand.subtle background.
   nav: 'rounded-md px-2 py-1 text-fg-secondary hover:bg-sunken hover:text-fg-primary',
 };
 
 interface LinkProps extends ComponentProps<'a'> {
-  /** Inline — в тексте, external — с иконкой ↗, nav — пункт навигации. */
+  /** inline — in text, external — with ↗ icon, nav — navigation item. */
   variant?: LinkVariant;
-  /** Только для nav: текущий пункт. */
+  /** nav only: the current item. */
   active?: boolean;
   disabled?: boolean;
 }
 
-/** Ссылка по макету «Атомы — ссылки»: hover:underline, внешние ↗, nav active — brand.subtle. */
+/** Link per the "Atoms — links" mockup: hover:underline, external ↗, nav active — brand.subtle. */
 function Link({
   variant = 'inline',
   active = false,

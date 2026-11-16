@@ -8,7 +8,7 @@ type TabVariant = (typeof tabVariants)[number];
 interface TabItem {
   value: string;
   label: string;
-  /** Счётчик справа от подписи — 10/700, в активном табе brand. */
+  /** Counter to the right of the label — 10/700, brand in the active tab. */
   count?: number;
   icon?: ReactNode;
   disabled?: boolean;
@@ -18,12 +18,12 @@ interface TabsProps {
   tabs: TabItem[];
   value: string;
   onValueChange: (value: string) => void;
-  /** underline — основной стиль (bar 2px brand.primary) · pill — сегмент-фильтр (surface на sunken). */
+  /** underline — main style (2px brand.primary bar) · pill — segment filter (surface on sunken). */
   variant?: TabVariant;
   className?: string;
 }
 
-/** Табы по макету «Атомы — табы»: underline с bar 2px · pill сегмент-фильтр · счётчики. */
+/** Tabs per the "Atoms — tabs" mockup: underline with 2px bar · pill segment filter · counters. */
 function Tabs({ tabs, value, onValueChange, variant = 'underline', className }: TabsProps) {
   const isPill = variant === 'pill';
 

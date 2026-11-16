@@ -81,7 +81,7 @@ describe('Toaster (автозакрытие)', () => {
         toast({ title: 'Автотост' });
       });
       expect(screen.getByText('Автотост')).toBeInTheDocument();
-      // +300 с запасом: 180 мс анимация скрытия + удаление из стора
+      // +300 as a margin: 180 ms hide animation + removal from the store
       act(() => {
         vi.advanceTimersByTime(DEFAULT_TOAST_DURATION_MS + 300);
       });
@@ -119,7 +119,7 @@ describe('Toaster (автозакрытие)', () => {
         firstId = toast({ title: 'Первый тост' });
         toast({ title: 'Второй тост' });
       });
-      // явно закрываем первый — удаление после анимации
+      // close the first one explicitly — removal happens after the animation
       act(() => {
         dismissToast(firstId);
       });
@@ -127,7 +127,7 @@ describe('Toaster (автозакрытие)', () => {
         vi.advanceTimersByTime(300);
       });
       expect(screen.queryByText('Первый тост')).toBeNull();
-      // второй всё равно исчезает по своему таймеру
+      // the second one still goes away on its own timer
       act(() => {
         vi.advanceTimersByTime(DEFAULT_TOAST_DURATION_MS + 300);
       });

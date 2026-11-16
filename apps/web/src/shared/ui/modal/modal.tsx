@@ -10,54 +10,54 @@ import { Button, type ButtonPalette, type ButtonVariant } from '@/shared/ui/butt
 const modalSizes = ['s', 'm', 'l'] as const;
 type ModalSize = (typeof modalSizes)[number];
 
-/** Ширина десктопного окна по макету: S 400 · M 560 · L 720; мобильная шторка — во всю ширину. */
+/** Desktop window width per the mockup: S 400 · M 560 · L 720; mobile sheet is full-width. */
 const sizeClasses: Record<ModalSize, string> = {
   s: 'desktop-s:w-[400px]',
   m: 'desktop-s:w-[560px]',
   l: 'desktop-s:w-[720px]',
 };
 
-/** Смахивание шторки ниже порога (px) закрывает модалку. */
+/** Dragging the sheet below the threshold (px) closes the modal. */
 const SWIPE_CLOSE_THRESHOLD = 80;
 
 interface ModalAction {
-  /** Подпись кнопки футера. */
+  /** Footer button label. */
   label: string;
-  /** Вид кнопки из атома Button; по умолчанию solid у основной, secondary у второй. */
+  /** Button variant from the Button atom; defaults to solid for primary, secondary for the second. */
   variant?: ButtonVariant;
-  /** Палитра кнопки (destructive-подтверждения — danger); по умолчанию primary. */
+  /** Button palette (destructive confirmations — danger); defaults to primary. */
   palette?: ButtonPalette;
-  /** Обработчик клика; модалка сама не закрывается — закрытие только через onClose. */
+  /** Click handler; the modal does not close itself — close only via onClose. */
   onClick?: () => void;
 }
 
 interface ModalProps {
-  /** Показ управляется внешним стейтом. */
+  /** Visibility is controlled by external state. */
   isShown: boolean;
-  /** Заголовок окна; без него рендерится скрытый заголовок для a11y. */
+  /** Window title; without it a visually hidden heading is rendered for a11y. */
   title?: string;
-  /** Ширина десктопного окна: S 400 · M 560 · L 720. */
+  /** Desktop window width: S 400 · M 560 · L 720. */
   size?: ModalSize;
-  /** Основная кнопка футера (справа). */
+  /** Primary footer button (right). */
   primaryAction?: ModalAction;
-  /** Вторая кнопка футера (слева от основной). */
+  /** Secondary footer button (left of the primary one). */
   secondaryAction?: ModalAction;
-  /** Тело модалки: описание, форма, настройки. */
+  /** Modal body: description, form, settings. */
   children?: ReactNode;
-  /** Запрос на открытие (radix). */
+  /** Open request (radix). */
   onOpen?: () => void;
-  /** Закрытие: Esc, клик по оверлею, крестик, смахивание шторки вниз. */
+  /** Close: Esc, overlay click, cross icon, swiping the sheet down. */
   onClose?: () => void;
   className?: string;
 }
 
 /**
- * Модалка по макету «Атомы — модалки»: overlay bg/overlay 48%, radius 16, z-50,
- * focus trap внутри; Esc и клик по оверлею закрывают.
- * До 1023 px — шторка снизу с областью захвата (смахивание вниз закрывает),
- * от 1024 px — окно по центру с крестиком.
- * Портал рендерится вне дерева, поэтому тема (.dark) ближайшего контейнера
- * переносится на оверлей и контент.
+ * Modal per the "Atoms — modals" mockup: overlay bg/overlay 48%, radius 16, z-50,
+ * focus trap inside; Esc and overlay click close it.
+ * Below 1023 px — a bottom sheet with a drag area (swipe down closes it),
+ * from 1024 px — a centered window with a cross icon.
+ * The portal renders outside the tree, so the theme (.dark) of the nearest container
+ * is carried over to the overlay and content.
  */
 function Modal({
   isShown,
@@ -72,7 +72,7 @@ function Modal({
 }: ModalProps) {
   const [dragOffset, setDragOffset] = useState(0);
   const dragStartYRef = useRef<number | null>(null);
-  // Сентинел стоит в точке дерева, где подключена модалка — по нему узнаём тему.
+  // The sentinel sits at the tree spot where the modal is mounted — the theme is read from it.
   const sentinelRef = useRef<HTMLSpanElement>(null);
   const [portalDark, setPortalDark] = useState(false);
 
@@ -105,7 +105,7 @@ function Modal({
 
   return (
     <DialogPrimitive.Root open={isShown} onOpenChange={handleOpenChange}>
-      {/* Скрытый якорь внутри темизированного дерева для переноса темы в портал. */}
+      {/* Hidden anchor inside the themed tree to carry the theme into the portal. */}
       <span ref={sentinelRef} className="hidden" aria-hidden />
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
@@ -121,9 +121,9 @@ function Modal({
           className={cn(
             'fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col rounded-t-xl bg-surface text-body-s text-fg-primary outline-none',
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
-            // Мобильная шторка (<1024): выезд снизу.
+            // Mobile sheet (<1024): slides in from below.
             'max-desktop-s:data-[state=open]:slide-in-from-bottom-16 max-desktop-s:data-[state=closed]:slide-out-to-bottom-16',
-            // Десктоп (>=1024): окно по центру, появление с масштабом.
+            // Desktop (>=1024): centered window, scale-in transition.
             'desktop-s:top-1/2 desktop-s:bottom-auto desktop-s:left-1/2 desktop-s:-translate-x-1/2 desktop-s:-translate-y-1/2 desktop-s:rounded-xl',
             'desktop-s:data-[state=open]:zoom-in-95 desktop-s:data-[state=closed]:zoom-out-95',
             sizeClasses[size],
@@ -131,7 +131,7 @@ function Modal({
             className,
           )}
         >
-          {/* Мобильная область захвата: тащим вниз, чтобы закрыть шторку. */}
+          {/* Mobile drag area: pull down to close the sheet. */}
           <div
             data-slot="modal-handle"
             className="flex touch-none justify-center pt-2.5 pb-1.5 desktop-s:hidden"

@@ -1,6 +1,6 @@
-/* Токены радиусов из шкалы cornerRadius макета: 3 — мелкие контролы (чекбоксы),
-   8 — поля ввода, 10 — кнопки (подпись геометрии в макете), 12 — карточки и бейджи,
-   16/24 — диалоги. Пилюли и аватары используют rounded-full. Радиусы не зависят от темы. */
+/* Radius tokens from the mockup cornerRadius scale: 3 — small controls (checkboxes),
+   8 — input fields, 10 — buttons (mockup geometry caption), 12 — cards and badges,
+   16/24 — dialogs. Pills and avatars use rounded-full. Radii are theme-independent. */
 
 @theme inline {
   --radius-xs: 3px;

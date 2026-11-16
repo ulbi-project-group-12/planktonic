@@ -6,23 +6,23 @@ const tooltipSides = ['top', 'right', 'bottom', 'left'] as const;
 type TooltipSide = (typeof tooltipSides)[number];
 
 interface TooltipProps {
-  /** Содержимое подсказки: текст, title + описание, kbd. */
+  /** Tooltip content: text, title + description, kbd. */
   content: ReactNode;
   side?: TooltipSide;
-  /** Задержка появления, мс — по умолчанию 0 (мгновенно). */
+  /** Open delay, ms — defaults to 0 (instant). */
   delayDuration?: number;
-  /** Максимальная ширина — по умолчанию 280 (wrap). */
+  /** Maximum width — defaults to 280 (wrap). */
   maxWidth?: number;
-  /** Контейнер для портала (например, тёмная тема сторис); по умолчанию — body. */
+  /** Portal container (e.g. a dark-themed story block); defaults to body. */
   portalContainer?: HTMLElement | null;
-  /** Управление извне; без него — по наведению. */
+  /** Controlled from outside; without it — on hover. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   children: ReactElement;
   className?: string;
 }
 
-/** Тултип по макету «Атомы — тултипы»: surface · radius 8 · pad 6/10 · мгновенно. */
+/** Tooltip per the "Atoms — tooltips" mockup: surface · radius 8 · pad 6/10 · instant. */
 function Tooltip({
   content,
   side = 'top',
@@ -55,7 +55,7 @@ function Tooltip({
   );
 }
 
-/** Провайдер тултипов: общая задержка для всех подсказок приложения. */
+/** Tooltip provider: shared delay for all app tooltips. */
 function TooltipProvider({ children, ...props }: TooltipPrimitive.TooltipProviderProps) {
   return (
     <TooltipPrimitive.Provider delayDuration={0} {...props}>

@@ -122,8 +122,8 @@ function TooltipSpec({ portalContainer }: { portalContainer?: HTMLElement | null
 }
 
 function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
-  // Портал подсказки рендерится в body — вне .dark-обёртки, поэтому темизируемый
-  // контейнер передаём явно, чтобы облако наследовало токены темы блока.
+  // The tooltip portal renders in body — outside the .dark wrapper, so we pass the
+  // themed container explicitly so the cloud inherits the block theme tokens.
   const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
   const containerRef = useCallback((node: HTMLDivElement | null) => {
     setPortalContainer(node);

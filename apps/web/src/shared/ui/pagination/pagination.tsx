@@ -4,7 +4,7 @@ import { cn } from '@/shared/lib';
 const paginationVariants = ['numbers', 'compact'] as const;
 type PaginationVariant = (typeof paginationVariants)[number];
 
-/** Номера страниц с разрывами: всегда первая, последняя и соседи текущей. */
+/** Page numbers with gaps: always first, last and neighbors of the current one. */
 function buildPages(page: number, totalPages: number): (number | 'ellipsis')[] {
   const wanted = new Set<number>([1, totalPages, page - 1, page, page + 1]);
   const numbers = [...wanted].filter((n) => n >= 1 && n <= totalPages).sort((a, b) => a - b);
@@ -27,12 +27,12 @@ interface PaginationProps {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-  /** numbers — десктоп/списки · compact — мобайл («Назад 3 / 12 Вперёд»). */
+  /** numbers — desktop/lists · compact — mobile ("Back 3 / 12 Forward"). */
   variant?: PaginationVariant;
   className?: string;
 }
 
-/** Пагинация по макету «Атомы — пагинация»: элементы 28×28 · radius 8 · активная — fill brand. */
+/** Pagination per the "Atoms — pagination" mockup: 28×28 items · radius 8 · active — brand fill. */
 function Pagination({
   page,
   totalPages,
@@ -145,12 +145,12 @@ function Pagination({
 interface LoadMoreProps {
   onLoadMore: () => void;
   loading?: boolean;
-  /** Сколько элементов подгрузится — подпись под кнопкой. */
+  /** How many items will be loaded — caption under the button. */
   batchSize?: number;
   className?: string;
 }
 
-/** «Загрузить ещё» по макету: кнопка истории чата · при загрузке — спиннер и «Загружаем…». */
+/** "Load more" per the mockup: chat history button · spinner and "Loading…" while loading. */
 function LoadMore({ onLoadMore, loading = false, batchSize, className }: LoadMoreProps) {
   return (
     <div data-slot="load-more" className={cn('flex flex-col items-center gap-2', className)}>
@@ -187,7 +187,7 @@ interface PaginationStatusProps {
   className?: string;
 }
 
-/** Статус выдачи по макету: «Показано 20 из 134» + тонкий прогресс-бар. */
+/** Result status per the mockup: "Showing 20 of 134" + thin progress bar. */
 function PaginationStatus({ shown, total, className }: PaginationStatusProps) {
   const percent = total > 0 ? Math.min(100, Math.round((shown / total) * 100)) : 0;
   return (

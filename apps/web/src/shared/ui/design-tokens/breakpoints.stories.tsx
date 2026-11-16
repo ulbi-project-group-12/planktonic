@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/shared/ui/button';
 
 interface BreakpointToken {
-  /** Имя токена и одноимённый вариант в Tailwind (mobile-s:, desktop-s: …). */
+  /** Token name and the same-named Tailwind variant (mobile-s:, desktop-s: …). */
   name: string;
-  /** CSS-переменная из tokens/breakpoints.css. */
+  /** CSS variable from tokens/breakpoints.css. */
   cssVar: string;
   px: number;
-  /** Для чего используется. */
+  /** What it is used for. */
   usage: string;
 }
 
@@ -33,7 +33,7 @@ const breakpointTokens: BreakpointToken[] = [
 
 const DESKTOP_L = 1440;
 
-/** Текущая ширина preview-iframe, обновляется при ресайзе. */
+/** Current preview iframe width, updated on resize. */
 function useViewportWidth(): number {
   const [width, setWidth] = useState(() => window.innerWidth);
 
@@ -50,7 +50,7 @@ function useViewportWidth(): number {
   return width;
 }
 
-/** Самый крупный токен, уже достигнутый текущей шириной (mobile-first). */
+/** The largest token already reached by the current width (mobile-first). */
 function activeToken(width: number): BreakpointToken {
   const matched = [...breakpointTokens].reverse().find((token) => width >= token.px);
   if (matched) return matched;

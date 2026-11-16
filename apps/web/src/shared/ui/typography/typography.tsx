@@ -59,18 +59,18 @@ type TypographyWeight = (typeof typographyWeights)[number];
 type TypographyElement = 'span' | 'p' | 'div' | 'h1' | 'h2' | 'h3' | 'h4' | 'label' | 'li';
 
 interface TypographyProps extends HTMLAttributes<HTMLElement> {
-  /** HTML-тег, которым рендерится текст: span, p, div, h1–h4, label, li. */
+  /** HTML tag to render the text with: span, p, div, h1–h4, label, li. */
   as?: TypographyElement;
-  /** Токен шкалы из макета: micro-s–body-xl или семантические h1–h6 (всегда с weight 700). */
+  /** Scale token from the mockup: micro-s–body-xl or semantic h1–h6 (always weight 700). */
   size?: TypographySize;
-  /** Цвет по имени дизайн-токена (см. Design Tokens/Colors); по умолчанию text-primary. */
+  /** Color by design token name (see Design Tokens/Colors); defaults to text-primary. */
   color?: TypographyColor;
-  /** Начертание Onest: 200 (extralight), 400 (regular), 700 (bold). */
+  /** Onest weight: 200 (extralight), 400 (regular), 700 (bold). */
   weight?: TypographyWeight;
 }
 
-/** Токены размеров из типографической шкалы макета (см. shared/Atoms/Typography).
-   h1–h6 — семантические заголовки, всегда парные с начертанием 700. */
+/** Size tokens from the mockup type scale (see shared/Atoms/Typography):
+ *  h1–h6 — semantic headings, always paired with weight 700. */
 const sizeClasses: Record<TypographySize, string> = {
   'micro-s': 'text-micro-s',
   micro: 'text-micro',
@@ -88,7 +88,7 @@ const sizeClasses: Record<TypographySize, string> = {
   h6: 'text-h6',
 };
 
-/** Цвета палитры по именам дизайн-токенов (см. Design Tokens/Colors). */
+/** Palette colors by design token names (see Design Tokens/Colors). */
 const colorClasses: Record<TypographyColor, string> = {
   'brand-primary': 'text-brand-primary',
   'brand-hover': 'text-brand-hover',
@@ -122,7 +122,7 @@ const colorClasses: Record<TypographyColor, string> = {
   'info-subtle': 'text-info-subtle',
 };
 
-/** Начертания Onest, загружаемые дизайн-системой (см. tokens/fonts.css). */
+/** Onest weights loaded by the design system (see tokens/fonts.css). */
 const weightClasses: Record<TypographyWeight, string> = {
   '200': 'font-extralight',
   '400': 'font-normal',
@@ -130,8 +130,8 @@ const weightClasses: Record<TypographyWeight, string> = {
 };
 
 /**
- * Текст по макету: размер из токенов шкалы, цвет из палитры токенов,
- * начертание из загруженных начертаний Onest (200/400/700).
+ * Text per the mockup: size from the scale tokens, color from the palette tokens,
+ * weight from the loaded Onest weights (200/400/700).
  */
 function Typography({
   as = 'span',

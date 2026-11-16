@@ -9,20 +9,20 @@ interface SwitchProps extends Omit<
   ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>,
   'checked' | 'onCheckedChange'
 > {
-  /** Контролируемое состояние; вместе с onCheckedChange. */
+  /** Controlled state; together with onCheckedChange. */
   checked?: boolean;
-  /** Неконтролируемое начальное состояние. */
+  /** Uncontrolled initial state. */
   defaultChecked?: boolean;
-  /** Срабатывает при переключении; состояние снаружи не меняет (controlled). */
+  /** Fires on toggle; does not change the state itself (controlled). */
   onCheckedChange?: (checked: boolean) => void;
-  /** Подпись слева от переключателя; клик по ней переключает свитч. */
+  /** Label to the left of the switch; clicking it toggles the switch. */
   label?: string;
   disabled?: boolean;
   id?: string;
   className?: string;
 }
 
-/** Переключатель по макету модалки «Настройки»: трек 40×24, brand во включённом. */
+/** Switch per the "Settings" modal mockup: 40×24 track, brand when on. */
 function Switch({
   checked,
   defaultChecked,
@@ -45,7 +45,7 @@ function Switch({
         defaultChecked={defaultChecked}
         disabled={disabled}
         onCheckedChange={onCheckedChange}
-        // нативные пропсы кнопки (aria-label, aria-labelledby и т.д.) — на корень
+        // native button props (aria-label, aria-labelledby, etc.) go to the root
         {...rest}
         className={cn(
           'inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border p-0.5 transition-colors outline-none',
