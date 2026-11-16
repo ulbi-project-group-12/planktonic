@@ -49,6 +49,18 @@ describe('Input', () => {
     expect(input).toHaveAccessibleDescription('Slug уже занят');
   });
 
+  it('keeps an external description next to the error message', () => {
+    render(
+      <>
+        <p id="slug-help">Латиница и цифры</p>
+        <Input label="Slug" status="error" message="Slug уже занят" aria-describedby="slug-help" />
+      </>,
+    );
+    expect(screen.getByLabelText('Slug')).toHaveAccessibleDescription(
+      'Латиница и цифры Slug уже занят',
+    );
+  });
+
   it('describes the field with its hint and is not invalid by default', () => {
     render(<Input label="Название" hint="От 3 до 50 символов" />);
     const input = screen.getByLabelText('Название');

@@ -38,14 +38,16 @@ function Input({
   suffix,
   id,
   disabled,
+  'aria-describedby': describedBy,
   ...props
 }: InputProps) {
   const autoId = useId();
   const inputId = id ?? autoId;
   const inputRef = useRef<HTMLInputElement>(null);
   const text = message !== undefined && message !== '' ? message : hint;
-  // Hint/message are linked to the field for screen readers; an aria-describedby from props wins.
+  // Hint/message are linked to the field for screen readers; an external aria-describedby is kept too.
   const textId = `${inputId}-text`;
+  const describedByIds = [describedBy, text ? textId : undefined].filter(Boolean).join(' ');
   const textClass =
     status === 'error' ? 'text-danger' : status === 'success' ? 'text-success' : 'text-fg-muted';
 
@@ -87,7 +89,7 @@ function Input({
           id={inputId}
           disabled={disabled}
           aria-invalid={status === 'error' || undefined}
-          aria-describedby={text ? textId : undefined}
+          aria-describedby={describedByIds || undefined}
           className="h-full w-full min-w-0 flex-1 bg-transparent text-body-s leading-5 text-fg-primary outline-none placeholder:text-fg-muted disabled:cursor-not-allowed disabled:text-fg-muted"
           {...props}
         />
