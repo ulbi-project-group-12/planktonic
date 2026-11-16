@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 interface ShadowToken {
-  /** Token name — the utility: shadow-sm … shadow-3xl. */
+  /** Token name — the utility: shadow-elevation-1 … shadow-elevation-6. */
   name: string;
   /** Raw CSS variable from tokens/shadows.css. */
   cssVar: string;
@@ -10,12 +10,12 @@ interface ShadowToken {
 }
 
 const shadowTokens: ShadowToken[] = [
-  { name: 'shadow-sm', cssVar: '--shadow-sm', usage: 'меню дропдауна, мелкие контролы' },
-  { name: 'shadow-md', cssVar: '--shadow-md', usage: 'селект, тост, тултип' },
-  { name: 'shadow-lg', cssVar: '--shadow-lg', usage: 'крупные оверлеи' },
-  { name: 'shadow-xl', cssVar: '--shadow-xl', usage: '—' },
-  { name: 'shadow-2xl', cssVar: '--shadow-2xl', usage: '—' },
-  { name: 'shadow-3xl', cssVar: '--shadow-3xl', usage: '—' },
+  { name: 'shadow-elevation-1', cssVar: '--shadow-elevation-1', usage: 'меню дропдауна' },
+  { name: 'shadow-elevation-2', cssVar: '--shadow-elevation-2', usage: 'селект, тост, тултип' },
+  { name: 'shadow-elevation-3', cssVar: '--shadow-elevation-3', usage: 'крупные оверлеи' },
+  { name: 'shadow-elevation-4', cssVar: '--shadow-elevation-4', usage: '—' },
+  { name: 'shadow-elevation-5', cssVar: '--shadow-elevation-5', usage: '—' },
+  { name: 'shadow-elevation-6', cssVar: '--shadow-elevation-6', usage: '—' },
 ];
 
 /** Reads the rendered box-shadow of every demo card after paint. */
@@ -74,8 +74,9 @@ function ShadowsScale() {
         <p className="max-w-3xl text-caption text-fg-secondary">
           Токены лежат в <code>tokens/shadows.css</code> — это шкала высот из макета: каждая ступень
           поднимает смещение на 4 px и наращивает размытие и непрозрачность. Утилиты:{' '}
-          <code>shadow-sm</code> … <code>shadow-3xl</code> (дефолтная шкала Tailwind намеренно
-          заменена макетной). Тени не зависят от темы.
+          <code>shadow-elevation-1</code> … <code>shadow-elevation-6</code>. Дефолтная шкала
+          Tailwind (<code>shadow-xs</code> … <code>shadow-2xl</code>) не тронута. Тени не зависят от
+          темы.
         </p>
       </div>
 

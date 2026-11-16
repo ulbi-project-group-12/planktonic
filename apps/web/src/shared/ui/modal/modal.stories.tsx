@@ -198,6 +198,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const States: Story = {
+  // renders the light and dark blocks itself, so the toolbar theme is locked to light
+  globals: { theme: 'light' },
   // Demo modals manage their own state; args is only here because of the
   // required isShown in the story type.
   args: { isShown: false },

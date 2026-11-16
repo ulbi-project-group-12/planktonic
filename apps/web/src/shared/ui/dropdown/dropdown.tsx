@@ -23,10 +23,10 @@ function DropdownTrigger({ children }: { children: ReactElement }) {
 }
 
 const contentClass = cn(
-  'z-50 min-w-44 overflow-hidden rounded-button border border-line bg-surface p-1 shadow-sm',
+  'z-50 min-w-44 overflow-hidden rounded-button border border-line bg-surface p-1 shadow-elevation-1',
 );
 
-/** Menu content: radius 10 · shadow-sm (elevation token) · z/menu 50. */
+/** Menu content: radius 10 · shadow-elevation-1 · z/menu 50. */
 function DropdownContent({
   className,
   sideOffset = 4,

@@ -53,12 +53,24 @@ const palette = [
   'info-subtle',
 ];
 
+/** Elevation shadow names from tokens/shadows.css (shadow-elevation-1 … 6). */
+const shadows = [
+  'elevation-1',
+  'elevation-2',
+  'elevation-3',
+  'elevation-4',
+  'elevation-5',
+  'elevation-6',
+];
+
 /**
  * twMerge with our theme: without this, custom `text-caption` / `text-fg-muted`
  * look identical to the merge and evict each other.
  */
 const twMerge = extendTailwindMerge({
   extend: {
+    // without it `shadow-elevation-1` reads as a shadow color and evicts `shadow-<color>`
+    theme: { shadow: shadows },
     classGroups: {
       'font-size': [{ text: textSizes }],
       'text-color': [{ text: palette }],

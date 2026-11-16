@@ -10,7 +10,7 @@ const ThemeDecorator: Decorator = (Story, context) => {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
-    document.body.style.backgroundColor = dark ? '#12141a' : '';
+    document.body.style.backgroundColor = dark ? 'var(--bg-app)' : '';
     return () => {
       document.documentElement.classList.remove('dark');
       document.body.style.backgroundColor = '';
