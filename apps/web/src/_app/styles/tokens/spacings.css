@@ -1,0 +1,70 @@
+/* Spacing tokens — adaptive scale: below desktop-s (1024 px) the mobile value applies,
+   from desktop-s up the desktop one does. Raw layer: --space-* variables switch inside
+   @media (CSS variables cannot be used in @media conditions — the 1024 px literal mirrors
+   --breakpoint-desktop-s in tokens/breakpoints.css). Utility layer (@theme inline): the
+   same tokens feed every spacing utility behind the sp- prefix — p-sp-s, gap-sp-m,
+   m-sp-1xl, w-sp-7xl, …
+   The prefix is not decorative: bare names (max-w-2xl, max-w-xl, …) keep resolving to
+   the default Tailwind container scale — squatting them with spacing values would break
+   every consumer that expects the defaults.
+   Tokens with the -fix suffix keep one value on both breakpoints.
+   "auto" is not a token: Tailwind has ml-auto / mr-auto / … natively. */
+
+:root {
+  --space-zero: 0px;
+  --space-nano: 0px;
+  --space-nano-fix: 2px;
+  --space-micro: 4px;
+  --space-s: 4px;
+  --space-m: 8px;
+  --space-l: 12px;
+  --space-xl: 16px;
+  --space-s-fix: 8px;
+  --space-m-fix: 12px;
+  --space-l-fix: 16px;
+  --space-1xl: 8px;
+  --space-2xl: 20px;
+  --space-3xl: 24px;
+  --space-4xl: 28px;
+  --space-5xl: 32px;
+  --space-6xl: 24px;
+  --space-7xl: 40px;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --space-nano: 2px;
+    --space-s: 8px;
+    --space-m: 12px;
+    --space-l: 16px;
+    --space-xl: 20px;
+    --space-1xl: 20px;
+    --space-2xl: 24px;
+    --space-3xl: 28px;
+    --space-4xl: 32px;
+    --space-5xl: 36px;
+    --space-6xl: 40px;
+    --space-7xl: 80px;
+  }
+}
+
+@theme inline {
+  --spacing-sp-zero: var(--space-zero);
+  --spacing-sp-nano: var(--space-nano);
+  --spacing-sp-nano-fix: var(--space-nano-fix);
+  --spacing-sp-micro: var(--space-micro);
+  --spacing-sp-s: var(--space-s);
+  --spacing-sp-m: var(--space-m);
+  --spacing-sp-l: var(--space-l);
+  --spacing-sp-xl: var(--space-xl);
+  --spacing-sp-s-fix: var(--space-s-fix);
+  --spacing-sp-m-fix: var(--space-m-fix);
+  --spacing-sp-l-fix: var(--space-l-fix);
+  --spacing-sp-1xl: var(--space-1xl);
+  --spacing-sp-2xl: var(--space-2xl);
+  --spacing-sp-3xl: var(--space-3xl);
+  --spacing-sp-4xl: var(--space-4xl);
+  --spacing-sp-5xl: var(--space-5xl);
+  --spacing-sp-6xl: var(--space-6xl);
+  --spacing-sp-7xl: var(--space-7xl);
+}

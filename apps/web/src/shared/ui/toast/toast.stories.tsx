@@ -164,16 +164,22 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const States: Story = {
+  // renders the light and dark blocks itself, so the toolbar theme is locked to light
+  globals: { theme: 'light' },
   args: { open: true, onOpenChange: fn(), title: 'Задача создана' },
   parameters: { layout: 'fullscreen' },
   render: () => (
     <div className="flex flex-col gap-10 bg-app p-8 font-sans">
-      <div>
-        <div className="rounded-2xl border border-line bg-surface p-6">
-          <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — тосты · состояния</h3>
-          <ToastStates />
+      {(['light', 'dark'] as const).map((theme) => (
+        <div key={theme} className={theme === 'dark' ? 'dark' : undefined}>
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <h3 className="mb-4 text-body-l font-bold text-fg-primary">
+              Атомы — тосты · состояния · {theme === 'dark' ? 'Dark' : 'Light'}
+            </h3>
+            <ToastStates />
+          </div>
         </div>
-      </div>
+      ))}
       <ToastSpecDemo />
     </div>
   ),

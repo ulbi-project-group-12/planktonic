@@ -193,6 +193,8 @@ export default {
 };
 
 export const TypeScaleStory = {
+  // renders the light and dark blocks itself, so the toolbar theme is locked to light
+  globals: { theme: 'light' },
   name: 'Type Scale',
   parameters: { layout: 'fullscreen' },
   render: () => (

@@ -187,7 +187,7 @@ function DropdownSpec({ portalContainer }: { portalContainer?: HTMLElement | nul
         </Card>
       </div>
       <p className="text-[11px] text-fg-muted">
-        radius 10 · item 28 · hover bg.sunken · shadow 0/4/16 · z/menu 50
+        radius 10 · item 28 · hover bg.sunken · shadow-elevation-1 · z/menu 50
       </p>
     </div>
   );
@@ -223,6 +223,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const States: Story = {
+  // renders the light and dark blocks itself, so the toolbar theme is locked to light
+  globals: { theme: 'light' },
   args: { children: null },
   parameters: { layout: 'fullscreen' },
   render: () => (
