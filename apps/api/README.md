@@ -12,6 +12,16 @@ Run these commands from the repo root after installing dependencies and copying
 ```sh
 pnpm services:up
 pnpm db:migrate
+pnpm db:seed
+```
+
+`pnpm db:seed` (`prisma db seed`, run by `tsx`) upserts one test user and one test channel,
+`00000000-0000-7000-8000-000000000001`, so you can try the messages endpoints:
+
+```sh
+curl -X POST -H 'content-type: application/json' -d '{"body":"hello"}' \
+  http://127.0.0.1:3001/api/channels/00000000-0000-7000-8000-000000000001/messages
+curl http://127.0.0.1:3001/api/channels/00000000-0000-7000-8000-000000000001/messages
 ```
 
 Then `pnpm dev` (web + api) or `pnpm --filter @app/api dev` (api only) runs it in watch mode on
@@ -90,6 +100,12 @@ host's `DATABASE_URL` and `API_PORT` values.
   migration after a schema change; it is interactive, so run it in a terminal.
 - The first migration, `init`, only runs `CREATE EXTENSION IF NOT EXISTS vector`. Product tables
   arrive with their features.
+- Models live in `prisma/schema/*.prisma` (one file per model). Names are `camelCase` in Prisma and
+  `snake_case` in Postgres through `@@map`/`@map` (`channels.last_seq`), so raw SQL in a
+  repository needs no quotes. Sequence counters (`seq`, `last_seq`) are `BigInt` and go over the
+  wire as decimal strings (UL-212).
+- Seed: `prisma/seed.ts`, run with `tsx`. Node 26's own TypeScript runner cannot load it: the
+  generated client imports its siblings as `.js`, which exist only as `.ts`.
 
 ## Health endpoints
 
@@ -110,19 +126,22 @@ An `unhealthy` status alone does not trigger `restart: unless-stopped`. Phase 4 
 
 ## Scripts
 
-| Script           | What it does                                        |
-| ---------------- | --------------------------------------------------- |
-| `dev`            | `prisma generate`, then `nest start --watch`        |
-| `build`          | `tsc -p tsconfig.build.json` into `dist/`           |
-| `start`          | `node dist/main.js`                                 |
-| `generate`       | `prisma generate`                                   |
-| `db:migrate`     | `prisma migrate deploy` (committed migrations)      |
-| `db:migrate:dev` | `prisma migrate dev` (new migration, interactive)   |
-| `typecheck`      | `tsc --noEmit`                                      |
-| `lint`           | ESLint with the `nest()` preset, `--max-warnings=0` |
-| `test`           | `vitest run`                                        |
+| Script             | What it does                                                    |
+| ------------------ | --------------------------------------------------------------- |
+| `dev`              | `prisma generate`, then `nest start --watch`                    |
+| `build`            | `tsc -p tsconfig.build.json` into `dist/`                       |
+| `start`            | `node dist/main.js`                                             |
+| `generate`         | `prisma generate`                                               |
+| `db:migrate`       | `prisma migrate deploy` (committed migrations)                  |
+| `db:migrate:dev`   | `prisma migrate dev` (new migration, interactive)               |
+| `db:seed`          | `prisma db seed` (test user and channel)                        |
+| `typecheck`        | `tsc --noEmit`                                                  |
+| `lint`             | ESLint with the `nest()` preset, `--max-warnings=0`             |
+| `test`             | `vitest run`                                                    |
+| `test:integration` | `vitest run` on `vitest.integration.config.ts` (needs Postgres) |
 
-The root scripts `pnpm db:migrate` and `pnpm db:migrate:dev` forward to the two migrate scripts.
+The root scripts `pnpm db:migrate`, `pnpm db:migrate:dev` and `pnpm db:seed` forward to the api
+scripts.
 
 ## Tests
 
@@ -141,6 +160,24 @@ Run only these tests from the repo root with:
 pnpm --filter @app/api generate
 pnpm --filter @app/api exec vitest run test/health.e2e-spec.ts
 ```
+
+### Integration tests (real Postgres)
+
+Specs in `test/integration/` as `*.int-spec.ts` boot the whole `AppModule` against a real,
+migrated database. `vitest.integration.config.ts` runs them; `pnpm test` never does, so CI (no
+database yet) skips them. `test/integration/messages.int-spec.ts` sends 20 parallel POSTs to one
+channel and expects `seq` 1..20 with no gaps and no duplicates (UL-125).
+
+```sh
+pnpm services:up
+pnpm db:migrate
+DATABASE_URL=postgresql://app:app_dev_password@127.0.0.1:55432/app pnpm --filter @app/api test:integration
+```
+
+`DATABASE_URL` must be exported (the URL above is the `.env.example` default): under `NODE_ENV`
+`test` nothing reads `.env`, and a missing URL fails the run rather than skipping it. Each test
+creates its own channel and deletes it afterwards. UL-132 adds Postgres to CI as a service
+container and can run this config there.
 
 ## Image
 
