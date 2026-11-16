@@ -134,20 +134,20 @@ function Modal({
           {/* Мобильная область захвата: тащим вниз, чтобы закрыть шторку. */}
           <div
             data-slot="modal-handle"
-            className="flex touch-none justify-center pt-2.5 pb-1.5 lg:hidden"
+            className="flex touch-none justify-center pt-2.5 pb-1.5 desktop-s:hidden"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
           >
-            <div className="h-1 w-10 rounded-full bg-border-strong" />
+            <div className="h-1 w-10 rounded-full bg-line-strong" />
           </div>
 
-          <div className="flex items-start justify-between gap-4 pr-12 pl-4 lg:pr-14 lg:pl-6">
+          <div className="flex items-start justify-between gap-4 pr-12 pl-4 desktop-s:pr-14 desktop-s:pl-6">
             {title ? (
               <DialogPrimitive.Title
                 data-slot="modal-title"
-                className="pt-4 pb-1 text-body font-bold lg:pt-5"
+                className="pt-4 pb-1 text-body font-bold desktop-s:pt-5"
               >
                 {title}
               </DialogPrimitive.Title>
@@ -159,7 +159,7 @@ function Modal({
                 type="button"
                 data-slot="modal-close"
                 aria-label="Закрыть"
-                className="absolute top-4 right-4 hidden size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-fg-muted transition-colors outline-none hover:bg-sunken hover:text-fg-primary focus-visible:ring-3 focus-visible:ring-brand-primary/40 lg:inline-flex"
+                className="absolute top-4 right-4 hidden size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-fg-muted transition-colors outline-none hover:bg-sunken hover:text-fg-primary focus-visible:ring-3 focus-visible:ring-brand-primary/40 desktop-s:inline-flex"
               >
                 <X className="size-4" />
               </button>
@@ -168,7 +168,7 @@ function Modal({
 
           <div
             data-slot="modal-body"
-            className="flex-1 overflow-y-auto px-4 pb-4 leading-5 text-fg-secondary lg:px-6 lg:pb-5"
+            className="flex-1 overflow-y-auto px-4 pb-4 leading-5 text-fg-secondary desktop-s:px-6 desktop-s:pb-5"
           >
             {children}
           </div>
@@ -176,7 +176,7 @@ function Modal({
           {primaryAction || secondaryAction ? (
             <div
               data-slot="modal-footer"
-              className="flex justify-end gap-2 border-t border-line px-4 py-3 lg:px-6"
+              className="flex justify-end gap-2 border-t border-line px-4 py-3 desktop-s:px-6"
             >
               {secondaryAction ? (
                 <Button

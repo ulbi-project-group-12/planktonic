@@ -44,6 +44,8 @@ function Input({
   const inputId = id ?? autoId;
   const inputRef = useRef<HTMLInputElement>(null);
   const text = message !== undefined && message !== '' ? message : hint;
+  // Подсказка/сообщение связаны с полем для скринридеров; свой aria-describedby из props побеждает.
+  const textId = `${inputId}-text`;
   const textClass =
     status === 'error' ? 'text-danger' : status === 'success' ? 'text-success' : 'text-fg-muted';
 
@@ -84,6 +86,8 @@ function Input({
           ref={inputRef}
           id={inputId}
           disabled={disabled}
+          aria-invalid={status === 'error' || undefined}
+          aria-describedby={text ? textId : undefined}
           className="h-full w-full min-w-0 flex-1 bg-transparent text-body-s leading-5 text-fg-primary outline-none placeholder:text-fg-muted disabled:cursor-not-allowed disabled:text-fg-muted"
           {...props}
         />
@@ -95,7 +99,11 @@ function Input({
           <span className="shrink-0 text-body-s leading-5 text-fg-muted">{suffix}</span>
         ) : null}
       </div>
-      {text ? <p className={cn('text-caption', textClass)}>{text}</p> : null}
+      {text ? (
+        <p id={textId} className={cn('text-caption', textClass)}>
+          {text}
+        </p>
+      ) : null}
     </div>
   );
 }
