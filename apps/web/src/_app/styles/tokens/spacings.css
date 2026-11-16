@@ -2,7 +2,11 @@
    from desktop-s up the desktop one does. Raw layer: --space-* variables switch inside
    @media (CSS variables cannot be used in @media conditions — the 1024 px literal mirrors
    --breakpoint-desktop-s in tokens/breakpoints.css). Utility layer (@theme inline): the
-   same tokens feed every spacing utility — p-s, gap-m, m-1xl, w-7xl, …
+   same tokens feed every spacing utility behind the sp- prefix — p-sp-s, gap-sp-m,
+   m-sp-1xl, w-sp-7xl, …
+   The prefix is not decorative: bare names (max-w-2xl, max-w-xl, …) keep resolving to
+   the default Tailwind container scale — squatting them with spacing values would break
+   every consumer that expects the defaults.
    Tokens with the -fix suffix keep one value on both breakpoints.
    "auto" is not a token: Tailwind has ml-auto / mr-auto / … natively. */
 
@@ -45,22 +49,22 @@
 }
 
 @theme inline {
-  --spacing-zero: var(--space-zero);
-  --spacing-nano: var(--space-nano);
-  --spacing-nano-fix: var(--space-nano-fix);
-  --spacing-micro: var(--space-micro);
-  --spacing-s: var(--space-s);
-  --spacing-m: var(--space-m);
-  --spacing-l: var(--space-l);
-  --spacing-xl: var(--space-xl);
-  --spacing-s-fix: var(--space-s-fix);
-  --spacing-m-fix: var(--space-m-fix);
-  --spacing-l-fix: var(--space-l-fix);
-  --spacing-1xl: var(--space-1xl);
-  --spacing-2xl: var(--space-2xl);
-  --spacing-3xl: var(--space-3xl);
-  --spacing-4xl: var(--space-4xl);
-  --spacing-5xl: var(--space-5xl);
-  --spacing-6xl: var(--space-6xl);
-  --spacing-7xl: var(--space-7xl);
+  --spacing-sp-zero: var(--space-zero);
+  --spacing-sp-nano: var(--space-nano);
+  --spacing-sp-nano-fix: var(--space-nano-fix);
+  --spacing-sp-micro: var(--space-micro);
+  --spacing-sp-s: var(--space-s);
+  --spacing-sp-m: var(--space-m);
+  --spacing-sp-l: var(--space-l);
+  --spacing-sp-xl: var(--space-xl);
+  --spacing-sp-s-fix: var(--space-s-fix);
+  --spacing-sp-m-fix: var(--space-m-fix);
+  --spacing-sp-l-fix: var(--space-l-fix);
+  --spacing-sp-1xl: var(--space-1xl);
+  --spacing-sp-2xl: var(--space-2xl);
+  --spacing-sp-3xl: var(--space-3xl);
+  --spacing-sp-4xl: var(--space-4xl);
+  --spacing-sp-5xl: var(--space-5xl);
+  --spacing-sp-6xl: var(--space-6xl);
+  --spacing-sp-7xl: var(--space-7xl);
 }

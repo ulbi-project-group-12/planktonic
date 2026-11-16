@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 interface SpacingToken {
-  /** Token name — the utility suffix: p-s, gap-m, m-1xl, … */
+  /** Token name — the utility suffix: p-sp-s, gap-sp-m, m-sp-1xl, … */
   name: string;
   /** Raw CSS variable from tokens/spacings.css. */
   cssVar: string;
@@ -12,24 +12,24 @@ interface SpacingToken {
 }
 
 const spacingTokens: SpacingToken[] = [
-  { name: 'zero', cssVar: '--space-zero', barClass: 'w-zero', fixed: true },
-  { name: 'nano', cssVar: '--space-nano', barClass: 'w-nano', fixed: false },
-  { name: 'nano-fix', cssVar: '--space-nano-fix', barClass: 'w-nano-fix', fixed: true },
-  { name: 'micro', cssVar: '--space-micro', barClass: 'w-micro', fixed: true },
-  { name: 's', cssVar: '--space-s', barClass: 'w-s', fixed: false },
-  { name: 'm', cssVar: '--space-m', barClass: 'w-m', fixed: false },
-  { name: 'l', cssVar: '--space-l', barClass: 'w-l', fixed: false },
-  { name: 'xl', cssVar: '--space-xl', barClass: 'w-xl', fixed: false },
-  { name: 's-fix', cssVar: '--space-s-fix', barClass: 'w-s-fix', fixed: true },
-  { name: 'm-fix', cssVar: '--space-m-fix', barClass: 'w-m-fix', fixed: true },
-  { name: 'l-fix', cssVar: '--space-l-fix', barClass: 'w-l-fix', fixed: true },
-  { name: '1xl', cssVar: '--space-1xl', barClass: 'w-1xl', fixed: false },
-  { name: '2xl', cssVar: '--space-2xl', barClass: 'w-2xl', fixed: false },
-  { name: '3xl', cssVar: '--space-3xl', barClass: 'w-3xl', fixed: false },
-  { name: '4xl', cssVar: '--space-4xl', barClass: 'w-4xl', fixed: false },
-  { name: '5xl', cssVar: '--space-5xl', barClass: 'w-5xl', fixed: false },
-  { name: '6xl', cssVar: '--space-6xl', barClass: 'w-6xl', fixed: false },
-  { name: '7xl', cssVar: '--space-7xl', barClass: 'w-7xl', fixed: false },
+  { name: 'zero', cssVar: '--space-zero', barClass: 'w-sp-zero', fixed: true },
+  { name: 'nano', cssVar: '--space-nano', barClass: 'w-sp-nano', fixed: false },
+  { name: 'nano-fix', cssVar: '--space-nano-fix', barClass: 'w-sp-nano-fix', fixed: true },
+  { name: 'micro', cssVar: '--space-micro', barClass: 'w-sp-micro', fixed: true },
+  { name: 's', cssVar: '--space-s', barClass: 'w-sp-s', fixed: false },
+  { name: 'm', cssVar: '--space-m', barClass: 'w-sp-m', fixed: false },
+  { name: 'l', cssVar: '--space-l', barClass: 'w-sp-l', fixed: false },
+  { name: 'xl', cssVar: '--space-xl', barClass: 'w-sp-xl', fixed: false },
+  { name: 's-fix', cssVar: '--space-s-fix', barClass: 'w-sp-s-fix', fixed: true },
+  { name: 'm-fix', cssVar: '--space-m-fix', barClass: 'w-sp-m-fix', fixed: true },
+  { name: 'l-fix', cssVar: '--space-l-fix', barClass: 'w-sp-l-fix', fixed: true },
+  { name: '1xl', cssVar: '--space-1xl', barClass: 'w-sp-1xl', fixed: false },
+  { name: '2xl', cssVar: '--space-2xl', barClass: 'w-sp-2xl', fixed: false },
+  { name: '3xl', cssVar: '--space-3xl', barClass: 'w-sp-3xl', fixed: false },
+  { name: '4xl', cssVar: '--space-4xl', barClass: 'w-sp-4xl', fixed: false },
+  { name: '5xl', cssVar: '--space-5xl', barClass: 'w-sp-5xl', fixed: false },
+  { name: '6xl', cssVar: '--space-6xl', barClass: 'w-sp-6xl', fixed: false },
+  { name: '7xl', cssVar: '--space-7xl', barClass: 'w-sp-7xl', fixed: false },
 ];
 
 /** Measures the rendered width of every demo bar (depends on the breakpoint). */
@@ -96,11 +96,11 @@ function SpacingsScale() {
         <h2 className="mb-1 text-body-s font-bold text-fg-primary">Отступы</h2>
         <p className="max-w-3xl text-caption text-fg-secondary">
           Токены лежат в <code>tokens/spacings.css</code> и работают как обычные утилиты Tailwind:{' '}
-          <code>p-s</code>, <code>gap-m</code>, <code>m-1xl</code>, <code>w-7xl</code> и так далее.
-          Шкала адаптивная: до <code>desktop-s</code> (1024 px) применяется мобильное значение, от
-          1024 px — десктопное. Токены с суффиксом <code>-fix</code> держат одно значение на обоих
-          брейкпоинтах. <code>auto</code> не токен — отступы-auto даёт Tailwind нативно (
-          <code>ml-auto</code> и т.п.). Сужайте окно — значения пересчитываются.
+          <code>p-sp-s</code>, <code>gap-sp-m</code>, <code>m-sp-1xl</code>, <code>w-sp-7xl</code> и
+          так далее. Шкала адаптивная: до <code>desktop-s</code> (1024 px) применяется мобильное
+          значение, от 1024 px — десктопное. Токены с суффиксом <code>-fix</code> держат одно
+          значение на обоих брейкпоинтах. <code>auto</code> не токен — отступы-auto даёт Tailwind
+          нативно (<code>ml-auto</code> и т.п.). Сужайте окно — значения пересчитываются.
         </p>
       </div>
 

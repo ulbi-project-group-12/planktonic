@@ -74,9 +74,10 @@ To add a token:
    `--color-accent: var(--accent);` gives `bg-accent` / `text-accent` automatically.
 3. Show it on the matching `shared/Design Tokens/*` Storybook page so the scale stays reviewable.
 
-Spacing utilities (`p-s`, `gap-m`, `m-1xl`, …) resolve through the `--spacing-*` namespace, so
-every Tailwind spacing utility accepts the token names. `auto` is not a token — Tailwind has
-`ml-auto` / `mr-auto` / … natively.
+Spacing utilities carry an `sp-` prefix (`p-sp-s`, `gap-sp-m`, `m-sp-1xl`, …) and resolve
+through the `--spacing-sp-*` namespace. The prefix keeps bare Tailwind names intact —
+`max-w-2xl` / `max-w-xl` keep resolving to the default container scale. `auto` is not a
+token — Tailwind has `ml-auto` / `mr-auto` / … natively.
 
 The Storybook toolbar has a global **Theme** switch (light/dark): it toggles `.dark` on
 `<html>`, so portals (modal, dropdown, select, tooltip) follow it too.
