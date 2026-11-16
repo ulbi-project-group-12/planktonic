@@ -12,6 +12,10 @@ interface TabItem {
   count?: number;
   icon?: ReactNode;
   disabled?: boolean;
+  /** Id of the tab's panel rendered by the page; sets aria-controls on the trigger.
+   *  The atom draws only the tab bar, so panel wiring is explicit — a tab without
+   *  a rendered panel must NOT get a dangling aria-controls (axe broken IDREF). */
+  panelId?: string;
 }
 
 interface TabsProps {
@@ -46,10 +50,11 @@ function Tabs({ tabs, value, onValueChange, variant = 'underline', className }: 
             key={tab.value}
             value={tab.value}
             disabled={tab.disabled}
-            // The atom renders only the tab bar (panels live in the page), so the
-            // auto-generated aria-controls would dangle — axe flags it as a broken
-            // IDREF. Drop it; aria-selected + roving tabindex carry the semantics.
-            aria-controls={undefined}
+            // Radix points aria-controls at a content id that does not exist while the
+            // atom renders only the tab bar — axe flags that as a broken IDREF. Override
+            // it: a trigger gets aria-controls only when the page really renders a panel
+            // with that id (tab.panelId), otherwise the attribute is dropped entirely.
+            aria-controls={tab.panelId}
             className={cn(
               'inline-flex cursor-pointer items-center gap-2 font-bold outline-none transition-all select-none',
               'focus-visible:ring-3 focus-visible:ring-brand-primary/40',

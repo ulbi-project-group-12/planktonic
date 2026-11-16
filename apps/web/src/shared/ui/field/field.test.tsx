@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { Input } from '@/shared/ui/input';
+import { Select } from '@/shared/ui/select';
 import { Field } from './field';
 
 describe('Field', () => {
@@ -102,5 +103,20 @@ describe('Field', () => {
     const select = screen.getByRole('combobox', { name: 'Направление' });
     expect(select).toHaveAttribute('aria-invalid', 'true');
     expect(select).toHaveAccessibleDescription('Выберите направление');
+  });
+
+  it('wires aria-invalid and aria-describedby into the Select trigger', () => {
+    const options = [
+      { value: 'dev', label: 'Разработка' },
+      { value: 'design', label: 'Дизайн' },
+    ];
+    render(
+      <Field label="Направление" hint="Покажем подходящие шаблоны" error="Выберите направление">
+        <Select options={options} value={[]} onValueChange={() => {}} />
+      </Field>,
+    );
+    const trigger = screen.getByRole('button', { name: 'Направление' });
+    expect(trigger).toHaveAttribute('aria-invalid', 'true');
+    expect(trigger).toHaveAccessibleDescription('Покажем подходящие шаблоны Выберите направление');
   });
 });

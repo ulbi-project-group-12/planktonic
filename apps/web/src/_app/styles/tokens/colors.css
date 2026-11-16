@@ -5,10 +5,17 @@
    the dark one. Utility layer (@theme inline): the same tokens as Tailwind color
    utilities (bg-brand-primary, text-fg-muted, border-line, ...) — .dark switches them.
 
-   AA pass (axe color-contrast, UL-209): base status hues are shifted one step down the
-   mockup's own scale — the raw hues fail 4.5:1 as 12-14 px text (danger 4.37, success
-   3.2, warning 2.9, info 3.9 on white). Base values below meet 4.5:1 on surface/app
-   backgrounds in both themes; the subtle tints keep the raw mockup hues on purpose. */
+   Status colors are split into two single-responsibility scales (AA, axe color-contrast):
+   - --success / --warning / --danger / --info (+ -hover/-active/-subtle) — a FOREGROUND
+     scale bound to the theme: text, icons and dots on surface/subtle backgrounds.
+     The hues are shifted one step down the mockup's own scale where the raw values
+     fail 4.5:1 as 12-14 px text (danger 4.37, success 3.2, warning 2.9, info 3.9 on
+     white); the subtle tints keep the raw mockup hues on purpose.
+   - --success-fill / ... (+ -fill-hover/-fill-active) — a SOLID-FILL scale with the
+     same values in BOTH themes. Solid surfaces (Button/Chip/Badge/Avatar) always carry
+     white text, so their fills must stay dark enough for white (4.5:1+); white on the
+     fills below is 5.35-9.13:1. The theme-bound light hues of .dark would give only
+     2.9-3.4:1, so solid surfaces never use the foreground scale as a background. */
 
 :root {
   --brand-primary: #6c5ce7;
@@ -32,18 +39,15 @@
   --border-strong: #c9cfd8;
 
   --on-brand: #ffffff;
-  /* Text on solid status fills: white fails on warning (#bc6f21, 3.86), so status
-     solids carry dark text; #0e1015 gives 4.85:1 on the lightest status bg. */
-  --on-status: #0e1015;
 
   --success: #1e7048; /* mockup success-active: 6.05:1 on surface */
   --success-hover: #185c3a;
   --success-active: #11472d;
   --success-subtle: #2fa36b1a;
 
-  --warning: #bc6f21; /* mockup warning-hover: 5.4:1 on surface */
-  --warning-hover: #9c5a1b;
-  --warning-active: #7c4915;
+  --warning: #9c5a1b; /* 5.40:1 on surface, 4.88:1 on the subtle/app blend */
+  --warning-hover: #7c4915;
+  --warning-active: #6b3d10;
   --warning-subtle: #d9822b1a;
 
   --danger: #c22f34; /* mockup danger-hover: 5.6:1 on surface */
@@ -51,10 +55,26 @@
   --danger-active: #841d21;
   --danger-subtle: #de3b401a;
 
-  --info: #2f6cb4; /* mockup info-hover: 5.35:1 on surface */
+  --info: #2c65aa; /* 5.92:1 on surface, 4.97:1 on the subtle/app blend */
   --info-hover: #265893;
   --info-active: #1c4575;
   --info-subtle: #3b82d61a;
+
+  /* Solid status fills — the same values in both themes (see the file header):
+     white text on the base fills is 6.06 / 5.40 / 5.60 / 5.35:1 for
+     success / warning / danger / info (warning-hover is 7.44, the rest darker). */
+  --success-fill: #1e7048;
+  --success-fill-hover: #185c3a;
+  --success-fill-active: #11472d;
+  --warning-fill: #9c5a1b;
+  --warning-fill-hover: #7c4915;
+  --warning-fill-active: #6b3d10;
+  --danger-fill: #c22f34;
+  --danger-fill-hover: #a02529;
+  --danger-fill-active: #841d21;
+  --info-fill: #2f6cb4;
+  --info-fill-hover: #265893;
+  --info-fill-active: #1c4575;
 }
 
 .dark {
@@ -74,10 +94,6 @@
   --bg-sunken: #232836;
   --bg-overlay: #00000099;
 
-  /* Dark status fills are light (tuned for 4.5:1 on surface as text), so solid
-     status buttons in the dark theme also carry dark text; 6.6-7.0:1. */
-  --on-status: #0e1015;
-
   --text-primary: #edeff3;
   --text-secondary: #a6adba;
   --text-muted: #8a93a3; /* 5.33:1 on surface */
@@ -85,17 +101,18 @@
   --border-default: #2c3242;
   --border-strong: #3a4256;
 
-  --success: #2fa36b; /* 5.16:1 on surface — unchanged */
-  --success-hover: #3cb57e;
-  --success-active: #2fa36b;
+  --success: #35b578; /* 6.31:1 on surface, 5.19:1 on the subtle/surface blend */
+  --success-hover: #43c488;
+  --success-active: #35b578;
 
   --warning: #d9822b; /* 5.64:1 on surface — unchanged */
   --warning-hover: #d9822b;
   --warning-active: #d9822b;
 
-  --danger: #e85d61; /* 4.83:1 on surface */
+  --danger: #f2696c; /* 5.51:1 on surface, 4.70:1 on the danger-subtle blend
+     (#de3b402e over surface; 4.13 with the previous #e85d61) */
   --danger-hover: #ee7b7e;
-  --danger-active: #e85d61;
+  --danger-active: #f2696c;
 
   --info: #5a97de; /* 5.43:1 on surface */
   --info-hover: #7fabe4;
@@ -127,7 +144,19 @@
   --color-line-strong: var(--border-strong);
 
   --color-on-brand: var(--on-brand);
-  --color-on-status: var(--on-status);
+
+  --color-success-fill: var(--success-fill);
+  --color-success-fill-hover: var(--success-fill-hover);
+  --color-success-fill-active: var(--success-fill-active);
+  --color-warning-fill: var(--warning-fill);
+  --color-warning-fill-hover: var(--warning-fill-hover);
+  --color-warning-fill-active: var(--warning-fill-active);
+  --color-danger-fill: var(--danger-fill);
+  --color-danger-fill-hover: var(--danger-fill-hover);
+  --color-danger-fill-active: var(--danger-fill-active);
+  --color-info-fill: var(--info-fill);
+  --color-info-fill-hover: var(--info-fill-hover);
+  --color-info-fill-active: var(--info-fill-active);
 
   --color-success: var(--success);
   --color-success-hover: var(--success-hover);

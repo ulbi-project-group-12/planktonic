@@ -24,10 +24,30 @@ const solidRows: SpecRowConfig[] = [
     palette: 'primary',
     tokenCaption: 'fill: $light.brand.primary',
   },
-  { name: 'Success', label: 'Подтвердить', palette: 'success', tokenCaption: 'fill: $success' },
-  { name: 'Warning', label: 'Отложить', palette: 'warning', tokenCaption: 'fill: $warning' },
-  { name: 'Danger', label: 'Удалить', palette: 'danger', tokenCaption: 'fill: $danger' },
-  { name: 'Info', label: 'Подробнее', palette: 'info', tokenCaption: 'fill: $info' },
+  {
+    name: 'Success',
+    label: 'Подтвердить',
+    palette: 'success',
+    tokenCaption: 'fill: --success-fill (одинаков в темах)',
+  },
+  {
+    name: 'Warning',
+    label: 'Отложить',
+    palette: 'warning',
+    tokenCaption: 'fill: --warning-fill (одинаков в темах)',
+  },
+  {
+    name: 'Danger',
+    label: 'Удалить',
+    palette: 'danger',
+    tokenCaption: 'fill: --danger-fill (одинаков в темах)',
+  },
+  {
+    name: 'Info',
+    label: 'Подробнее',
+    palette: 'info',
+    tokenCaption: 'fill: --info-fill (одинаков в темах)',
+  },
 ];
 
 const secondaryRows: SpecRowConfig[] = [

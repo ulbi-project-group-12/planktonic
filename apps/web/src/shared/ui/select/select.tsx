@@ -36,6 +36,10 @@ interface SelectProps {
   'aria-label'?: string;
   /** Id of the element labelling the trigger. */
   'aria-labelledby'?: string;
+  /** Ids of the elements describing the trigger (Field wires hint/error ids here). */
+  'aria-describedby'?: string;
+  /** Marks the field invalid; Field sets it when an error is present. */
+  'aria-invalid'?: boolean;
   /** Portal container for the dropdown (e.g. a dark-themed story block); defaults to body. */
   portalContainer?: HTMLElement | null;
   className?: string;
@@ -62,6 +66,8 @@ function Select({
   name,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledby,
+  'aria-describedby': ariaDescribedby,
+  'aria-invalid': ariaInvalid,
   portalContainer,
   className,
 }: SelectProps) {
@@ -200,6 +206,10 @@ function Select({
               id={id}
               aria-label={ariaLabel ?? joinedLabels}
               aria-labelledby={ariaLabelledby}
+              aria-describedby={ariaDescribedby}
+              // spread: jsx-a11y-x mistakenly reports aria-invalid as unsupported on
+              // role=button, though it is a global ARIA attribute (Field error wiring)
+              {...(ariaInvalid !== undefined ? { 'aria-invalid': ariaInvalid } : null)}
               className={cn(triggerClass, 'absolute inset-0 h-full')}
             >
               {value.length === 0 ? (
@@ -219,11 +229,11 @@ function Select({
                 )}
               >
                 {value.map((optionValue) => (
-                  <span
-                    key={optionValue}
-                    className="pointer-events-auto shrink-0"
-                    onClick={stopPropagation}
-                  >
+                  // No pointer-events here: a click on the chip text falls through to the
+                  // trigger button and toggles the dropdown; only the remove button inside
+                  // the chip re-enables pointer events. stopPropagation keeps the remove
+                  // click from bubbling up to that same trigger.
+                  <span key={optionValue} className="shrink-0" onClick={stopPropagation}>
                     <Chip
                       palette="brand"
                       onRemove={() => {
@@ -251,6 +261,10 @@ function Select({
             id={id}
             aria-label={ariaLabel}
             aria-labelledby={ariaLabelledby}
+            aria-describedby={ariaDescribedby}
+            // spread: jsx-a11y-x mistakenly reports aria-invalid as unsupported on
+            // role=button, though it is a global ARIA attribute (Field error wiring)
+            {...(ariaInvalid !== undefined ? { 'aria-invalid': ariaInvalid } : null)}
             data-slot="select"
             className={cn(triggerClass, 'h-10', className)}
           >

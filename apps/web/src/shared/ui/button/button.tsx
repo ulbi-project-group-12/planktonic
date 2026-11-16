@@ -12,18 +12,19 @@ const buttonSizes = ['s', 'm', 'l', 'icon'] as const;
 type ButtonSize = (typeof buttonSizes)[number];
 
 /** Solid — primary action on the screen, one per form (fill: {pal}).
- *  Status solids carry dark text: white fails AA on warning in the light theme
- *  (3.86) and on all light status fills of the dark theme (2.9-3.4). */
+ *  Status solids sit on the constant --*-fill scale: white on-fill text is 5.35-7.44:1
+ *  in BOTH themes, so every solid keeps text-on-brand (white) unlike the theme-bound
+ *  foreground hues, which are light in .dark and would give only 2.9-3.4:1. */
 const solidClasses: Record<ButtonPalette, string> = {
   primary:
     'border-transparent bg-brand-primary text-on-brand hover:bg-brand-hover active:bg-brand-active focus-visible:ring-brand-primary/40',
   success:
-    'border-transparent bg-success text-on-brand hover:bg-success-hover active:bg-success-active focus-visible:ring-success/40 dark:text-on-status',
+    'border-transparent bg-success-fill text-on-brand hover:bg-success-fill-hover active:bg-success-fill-active focus-visible:ring-success-fill/40',
   warning:
-    'border-transparent bg-warning text-on-status hover:bg-warning-hover active:bg-warning-active focus-visible:ring-warning/40',
+    'border-transparent bg-warning-fill text-on-brand hover:bg-warning-fill-hover active:bg-warning-fill-active focus-visible:ring-warning-fill/40',
   danger:
-    'border-transparent bg-danger text-on-brand hover:bg-danger-hover active:bg-danger-active focus-visible:ring-danger/40 dark:text-on-status',
-  info: 'border-transparent bg-info text-on-brand hover:bg-info-hover active:bg-info-active focus-visible:ring-info/40 dark:text-on-status',
+    'border-transparent bg-danger-fill text-on-brand hover:bg-danger-fill-hover active:bg-danger-fill-active focus-visible:ring-danger-fill/40',
+  info: 'border-transparent bg-info-fill text-on-brand hover:bg-info-fill-hover active:bg-info-fill-active focus-visible:ring-info-fill/40',
 };
 
 /** Secondary — neutral actions (cancel, filters): bg.sunken + border. */

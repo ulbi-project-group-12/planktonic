@@ -23,10 +23,10 @@ const subtleClasses: Record<ChipPalette, string> = {
 
 const solidClasses: Record<ChipPalette, string> = {
   brand: 'bg-brand-primary text-on-brand',
-  success: 'bg-success text-on-brand dark:text-on-status',
-  warning: 'bg-warning text-on-status',
-  danger: 'bg-danger text-on-brand dark:text-on-status',
-  info: 'bg-info text-on-brand dark:text-on-status',
+  success: 'bg-success-fill text-on-brand',
+  warning: 'bg-warning-fill text-on-brand',
+  danger: 'bg-danger-fill text-on-brand',
+  info: 'bg-info-fill text-on-brand',
 };
 
 const dotClasses: Record<ChipPalette, string> = {
@@ -85,7 +85,7 @@ function Chip({
           type="button"
           aria-label="Убрать"
           onClick={onRemove}
-          className="-mr-1 inline-flex cursor-pointer items-center justify-center rounded-full p-px opacity-60 transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:outline-none"
+          className="-mr-1 pointer-events-auto inline-flex cursor-pointer items-center justify-center rounded-full p-px opacity-60 transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:outline-none"
         >
           <X className="size-3" />
         </button>

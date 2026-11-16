@@ -42,6 +42,38 @@ const projectTabs: TabItem[] = [
   { value: 'archive', label: 'Архив', disabled: true },
 ];
 
+function TabsWithPanels() {
+  const [value, setValue] = useState('tasks');
+  const panels = [
+    { value: 'tasks', panelId: 'tabs-demo-tasks', text: 'Список задач канала…' },
+    { value: 'board', panelId: 'tabs-demo-board', text: 'Карточки канбан-доски…' },
+  ];
+  return (
+    <div className="flex flex-col gap-3">
+      <Tabs
+        tabs={panels.map((panel) => ({
+          value: panel.value,
+          label: panel.value === 'tasks' ? 'Задачи' : 'Канбан',
+          panelId: panel.panelId,
+        }))}
+        value={value}
+        onValueChange={setValue}
+      />
+      {panels.map((panel) => (
+        <div
+          key={panel.value}
+          id={panel.panelId}
+          role="tabpanel"
+          hidden={value !== panel.value}
+          className="rounded-lg bg-sunken p-4 text-caption text-fg-secondary"
+        >
+          {panel.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function TabsSpec() {
   return (
     <div className="flex flex-col gap-6">
@@ -101,6 +133,15 @@ function TabsSpec() {
               { value: 'tasks', label: 'Задачи', count: 4 },
             ]}
           />
+        </div>
+      </Card>
+      <Card label="Связь с панелями">
+        <div className="flex flex-col gap-6">
+          <TabsWithPanels />
+          <p className="text-[11px] text-fg-muted">
+            панель задаётся на странице: tab.panelId → aria-controls на вкладке, у панели — тот же
+            id · без панели aria-controls не рендерится (нет битой ссылки)
+          </p>
         </div>
       </Card>
     </div>

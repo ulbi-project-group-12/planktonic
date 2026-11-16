@@ -42,4 +42,23 @@ describe('Tabs', () => {
     expect(list.parentElement).toHaveAttribute('data-variant', 'pill');
     expect(list).toHaveClass('bg-sunken');
   });
+
+  it('links a tab to its panel via aria-controls only when a panelId is given', () => {
+    const withPanels: TabItem[] = [
+      { value: 'tasks', label: 'Задачи', panelId: 'panel-tasks' },
+      { value: 'board', label: 'Канбан' },
+    ];
+    render(
+      <>
+        <Tabs tabs={withPanels} value="tasks" onValueChange={vi.fn()} />
+        <div id="panel-tasks">Список задач</div>
+      </>,
+    );
+    expect(screen.getByRole('tab', { name: 'Задачи' })).toHaveAttribute(
+      'aria-controls',
+      'panel-tasks',
+    );
+    // no panel — no dangling aria-controls (axe broken IDREF)
+    expect(screen.getByRole('tab', { name: 'Канбан' })).not.toHaveAttribute('aria-controls');
+  });
 });

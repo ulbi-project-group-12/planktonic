@@ -14,26 +14,26 @@ function Card({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function LabelSpec() {
+function LabelSpec({ idPrefix }: { idPrefix: string }) {
   return (
     <div className="flex flex-col gap-6">
       <Card label="Состояния">
         <div className="grid max-w-2xl grid-cols-2 gap-6">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="label-default">По умолчанию</Label>
-            <Input id="label-default" placeholder="Введите email" />
+            <Label htmlFor={`${idPrefix}-default`}>По умолчанию</Label>
+            <Input id={`${idPrefix}-default`} placeholder="Введите email" />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="label-required" required>
+            <Label htmlFor={`${idPrefix}-required`} required>
               Обязательное
             </Label>
-            <Input id="label-required" placeholder="Введите пароль" />
+            <Input id={`${idPrefix}-required`} placeholder="Введите пароль" />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="label-disabled" disabled>
+            <Label htmlFor={`${idPrefix}-disabled`} disabled>
               Отключённое поле
             </Label>
-            <Input id="label-disabled" placeholder="Недоступно" disabled />
+            <Input id={`${idPrefix}-disabled`} placeholder="Недоступно" disabled />
           </div>
         </div>
       </Card>
@@ -53,7 +53,9 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
         <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — подписи</h3>
-        <LabelSpec />
+        {/* a unique prefix per theme block — the story renders both blocks at once,
+            and duplicate label/control ids would clash (htmlFor would point at two fields) */}
+        <LabelSpec idPrefix={`label-${theme}`} />
       </div>
     </div>
   );

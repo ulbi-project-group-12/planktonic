@@ -42,7 +42,7 @@ function FieldSpec({ portalContainer }: { portalContainer: HTMLElement | null })
       <Card label="Обязательность и разные контролы">
         <div className="grid max-w-3xl gap-6 desktop-s:grid-cols-2">
           <Field label="Имя" required>
-            <Input placeholder="Как к вам обращаться" />
+            <Input required placeholder="Как к вам обращаться" />
           </Field>
           <Field label="Направление" hint="Покажем подходящие шаблоны">
             <Select
@@ -103,13 +103,19 @@ function SignupForm() {
         }}
       >
         <Field label="Имя" required>
-          <Input placeholder="Как к вам обращаться" autoComplete="name" />
+          <Input required placeholder="Как к вам обращаться" autoComplete="name" />
         </Field>
         <Field label="Email" required error="Этот адрес уже занят">
-          <Input type="email" placeholder="user@example.com" status="error" autoComplete="email" />
+          <Input
+            required
+            type="email"
+            placeholder="user@example.com"
+            status="error"
+            autoComplete="email"
+          />
         </Field>
         <Field label="Пароль" required hint="Минимум 8 символов">
-          <Input type="password" placeholder="••••••••" autoComplete="new-password" />
+          <Input required type="password" placeholder="••••••••" autoComplete="new-password" />
         </Field>
         <Field label="О себе">
           <Textarea placeholder="Пара слов о вашем опыте (необязательно)" />
