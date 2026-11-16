@@ -159,6 +159,16 @@ describe('Select (множественный)', () => {
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 
+  it('renders no chip remove buttons when disabled', () => {
+    render(
+      <Select multiple disabled options={many} value={['pr', 'review']} onValueChange={vi.fn()} />,
+    );
+    // the wrapper dims and ignores the mouse, but the cross would stay keyboard-reachable —
+    // so disabled must drop onRemove entirely (the Chip then renders no button at all)
+    expect(screen.queryAllByRole('button', { name: 'Убрать' })).toHaveLength(0);
+    expect(screen.getByText('PR открыт')).toBeInTheDocument();
+  });
+
   it('keeps chips on one line with ellipsis by default, wraps when chipsWrap is on', () => {
     const { rerender } = render(
       <Select multiple options={many} value={['pr', 'review']} onValueChange={vi.fn()} />,

@@ -236,9 +236,15 @@ function Select({
                   <span key={optionValue} className="shrink-0" onClick={stopPropagation}>
                     <Chip
                       palette="brand"
-                      onRemove={() => {
-                        removeOption(optionValue);
-                      }}
+                      // no remove when disabled: pointer-events on the wrapper only stops
+                      // the mouse — the cross button would stay keyboard-reachable
+                      onRemove={
+                        disabled
+                          ? undefined
+                          : () => {
+                              removeOption(optionValue);
+                            }
+                      }
                     >
                       {labelOf(optionValue)}
                     </Chip>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { fn } from 'storybook/test';
@@ -42,19 +42,19 @@ const projectTabs: TabItem[] = [
   { value: 'archive', label: 'Архив', disabled: true },
 ];
 
-function TabsWithPanels() {
+function TabsWithPanels({ idPrefix }: { idPrefix: string }) {
   const [value, setValue] = useState('tasks');
   const panels = [
-    { value: 'tasks', panelId: 'tabs-demo-tasks', text: 'Список задач канала…' },
-    { value: 'board', panelId: 'tabs-demo-board', text: 'Карточки канбан-доски…' },
+    { value: 'tasks', label: 'Задачи', text: 'Список задач канала…' },
+    { value: 'board', label: 'Канбан', text: 'Карточки канбан-доски…' },
   ];
   return (
     <div className="flex flex-col gap-3">
       <Tabs
         tabs={panels.map((panel) => ({
           value: panel.value,
-          label: panel.value === 'tasks' ? 'Задачи' : 'Канбан',
-          panelId: panel.panelId,
+          label: panel.label,
+          panelId: `${idPrefix}-panel-${panel.value}`,
         }))}
         value={value}
         onValueChange={setValue}
@@ -62,8 +62,12 @@ function TabsWithPanels() {
       {panels.map((panel) => (
         <div
           key={panel.value}
-          id={panel.panelId}
+          id={`${idPrefix}-panel-${panel.value}`}
           role="tabpanel"
+          // the panel holds text only — tabIndex keeps it in the focus sequence,
+          // aria-label gives it an accessible name (the matching tab's label)
+          tabIndex={0}
+          aria-label={panel.label}
           hidden={value !== panel.value}
           className="rounded-lg bg-sunken p-4 text-caption text-fg-secondary"
         >
@@ -74,7 +78,7 @@ function TabsWithPanels() {
   );
 }
 
-function TabsSpec() {
+function TabsSpec({ idPrefix }: { idPrefix: string }) {
   return (
     <div className="flex flex-col gap-6">
       <Card label="Underline — основной стиль">
@@ -137,7 +141,7 @@ function TabsSpec() {
       </Card>
       <Card label="Связь с панелями">
         <div className="flex flex-col gap-6">
-          <TabsWithPanels />
+          <TabsWithPanels idPrefix={idPrefix} />
           <p className="text-[11px] text-fg-muted">
             панель задаётся на странице: tab.panelId → aria-controls на вкладке, у панели — тот же
             id · без панели aria-controls не рендерится (нет битой ссылки)
@@ -149,6 +153,9 @@ function TabsSpec() {
 }
 
 function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
+  // unique panel-id prefix — the States story renders both theme blocks at once,
+  // and the light and dark TabsWithPanels instances would otherwise share panel ids
+  const idPrefix = `tabs-${theme}-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
     <div className={theme === 'dark' ? 'dark' : undefined}>
       <div className="rounded-2xl border border-line bg-surface p-6">
@@ -156,7 +163,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
         <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — табы</h3>
-        <TabsSpec />
+        <TabsSpec idPrefix={idPrefix} />
       </div>
     </div>
   );
