@@ -14,7 +14,7 @@ export function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
       <body>
-        {/* Radix Tooltip падает без провайдера — один на всё приложение. */}
+        {/* Radix Tooltip throws outside a provider: one for the whole app. */}
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
       </body>
