@@ -2,6 +2,7 @@ import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Toaster } from '@/shared/ui/toast';
+import { TooltipProvider } from '@/shared/ui/tooltip';
 import '../styles/globals.css';
 
 export const metadata: Metadata = {
@@ -13,7 +14,8 @@ export function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
       <body>
-        {children}
+        {/* Radix Tooltip падает без провайдера — один на всё приложение. */}
+        <TooltipProvider>{children}</TooltipProvider>
         <Toaster />
       </body>
     </html>
