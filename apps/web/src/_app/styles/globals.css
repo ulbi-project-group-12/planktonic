@@ -6,6 +6,7 @@
 @import 'tw-animate-css';
 @import './tokens/fonts.css';
 @import './tokens/colors.css';
+@import './tokens/shadcn-aliases.css';
 @import './tokens/text-sizes.css';
 @import './tokens/radii.css';
 @import './tokens/breakpoints.css';
