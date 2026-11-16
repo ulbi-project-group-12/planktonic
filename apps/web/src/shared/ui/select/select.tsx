@@ -309,7 +309,7 @@ function Select({
           </div>
 
           {searchable || multiple ? (
-            <div className="flex flex-col gap-0.5 border-t border-line px-3 py-2 text-[11px] text-fg-muted">
+            <div className="flex flex-col gap-0.5 border-t border-line px-3 py-2 text-xs text-fg-muted">
               {multiple ? (
                 <span>
                   Выбрано: {value.length} из {options.length}

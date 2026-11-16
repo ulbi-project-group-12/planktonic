@@ -23,7 +23,7 @@ function DropdownTrigger({ children }: { children: ReactElement }) {
 }
 
 const contentClass = cn(
-  'z-50 min-w-44 overflow-hidden rounded-[10px] border border-line bg-surface p-1 shadow-[0_4px_16px_rgba(15,18,28,0.12)]',
+  'z-50 min-w-44 overflow-hidden rounded-button border border-line bg-surface p-1 shadow-[0_4px_16px_rgba(15,18,28,0.12)]',
 );
 
 /** Контент меню: radius 10 · shadow 0/4/16 · z/menu 50. */
@@ -101,7 +101,7 @@ function DropdownLabel({ className, ...props }: DropdownPrimitive.DropdownMenuLa
   return (
     <DropdownPrimitive.Label
       className={cn(
-        'px-2 pt-1.5 pb-1 text-[10px] font-bold tracking-wider text-fg-muted uppercase',
+        'px-2 pt-1.5 pb-1 text-2xs font-bold tracking-wider text-fg-muted uppercase',
         className,
       )}
       {...props}

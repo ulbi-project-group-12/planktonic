@@ -175,7 +175,7 @@ function LoadMore({ onLoadMore, loading = false, batchSize, className }: LoadMor
         )}
       </button>
       {batchSize !== undefined && !loading ? (
-        <span className="text-[11px] text-fg-muted">подгрузит {batchSize} сообщений</span>
+        <span className="text-xs text-fg-muted">подгрузит {batchSize} сообщений</span>
       ) : null}
     </div>
   );

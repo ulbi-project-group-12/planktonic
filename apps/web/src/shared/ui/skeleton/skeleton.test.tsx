@@ -8,6 +8,6 @@ describe('Skeleton', () => {
     const skeleton = container.firstChild;
     expect(skeleton).toHaveAttribute('data-slot', 'skeleton');
     expect(skeleton).toHaveAttribute('aria-hidden', 'true');
-    expect(skeleton).toHaveClass('bg-sunken', 'rounded-[4px]', 'h-4', 'w-32');
+    expect(skeleton).toHaveClass('bg-sunken', 'rounded-sm', 'h-4', 'w-32');
   });
 });
