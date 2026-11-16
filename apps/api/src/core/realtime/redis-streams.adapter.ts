@@ -5,11 +5,13 @@ import type { RedisClientType } from 'redis';
 import type { Server, ServerOptions } from 'socket.io';
 
 export class RedisStreamsAdapter extends IoAdapter {
-  private readonly streamsAdapter: ReturnType<typeof createAdapter>;
+  private streamsAdapter?: ReturnType<typeof createAdapter>;
 
-  constructor(app: INestApplicationContext, redisClient: RedisClientType) {
+  constructor(
+    app: INestApplicationContext,
+    private readonly redisClient: RedisClientType,
+  ) {
     super(app);
-    this.streamsAdapter = createAdapter(redisClient);
   }
 
   override createIOServer(port: number, options?: Partial<ServerOptions>): Server {
@@ -18,6 +20,7 @@ export class RedisStreamsAdapter extends IoAdapter {
     delete serverOptions.connectionStateRecovery;
     const server = super.createIOServer(port, serverOptions as ServerOptions);
 
+    this.streamsAdapter ??= createAdapter(this.redisClient);
     server.adapter(this.streamsAdapter);
     return server;
   }

@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { configureRealtime } from './realtime.setup.js';
+import { RedisStreamsAdapter } from './redis-streams.adapter.js';
 import { RedisConnectionLifecycle } from './redis-connection.lifecycle.js';
 
 const { client, createAdapter } = vi.hoisted(() => ({
@@ -42,8 +43,10 @@ describe('configureRealtime', () => {
 
     await configureRealtime(app);
 
-    expect(createAdapter).toHaveBeenCalledWith(client);
+    expect(client.connect).toHaveBeenCalledOnce();
+    expect(createAdapter).not.toHaveBeenCalled();
     expect(useWebSocketAdapter).toHaveBeenCalledOnce();
+    expect(useWebSocketAdapter).toHaveBeenCalledWith(expect.any(RedisStreamsAdapter));
     expect(register).toHaveBeenCalledWith(client);
     expect(client.destroy).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
