@@ -8,5 +8,6 @@ import { instanceIdProvider } from './instance-id.provider.js';
   imports: [TerminusModule],
   controllers: [HealthController],
   providers: [HealthService, instanceIdProvider],
+  exports: [instanceIdProvider],
 })
 export class HealthModule {}

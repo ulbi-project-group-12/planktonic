@@ -1,0 +1,53 @@
+import { Logger, type INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createClient } from 'redis';
+import type { Env } from '../config/env.js';
+import { RedisStreamsAdapter } from './redis-streams.adapter.js';
+import { RedisConnectionLifecycle } from './redis-connection.lifecycle.js';
+
+const REDIS_STARTUP_TIMEOUT_MS = 10_000;
+
+export async function configureRealtime(app: INestApplication): Promise<void> {
+  const logger = new Logger('Realtime');
+
+  const config = app.get<ConfigService<Env, true>>(ConfigService);
+  const lifecycle = app.get(RedisConnectionLifecycle);
+
+  const redisUrl = config.get('REDIS_URL', { infer: true });
+
+  const redisClient = createClient({
+    url: redisUrl,
+  });
+
+  redisClient.on('error', (error: Error) => {
+    logger.error('Redis error', error.stack);
+  });
+
+  let startupTimer: NodeJS.Timeout | undefined;
+  try {
+    await Promise.race([
+      redisClient.connect(),
+      new Promise<never>((_, reject) => {
+        startupTimer = setTimeout(() => {
+          reject(new Error('Redis startup connection timed out'));
+        }, REDIS_STARTUP_TIMEOUT_MS);
+      }),
+    ]);
+
+    const adapter = new RedisStreamsAdapter(app, redisClient);
+
+    app.useWebSocketAdapter(adapter);
+
+    lifecycle.register(redisClient);
+
+    logger.log('Redis Streams adapter configured');
+  } catch (error) {
+    if (redisClient.isOpen) {
+      redisClient.destroy();
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(startupTimer);
+  }
+}

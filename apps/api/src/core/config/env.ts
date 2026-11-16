@@ -17,6 +17,7 @@ export const envSchema = z.object({
   API_HOST: z.preprocess(emptyAsUnset, z.string().trim().min(1).default('127.0.0.1')),
   // Required: the app has no database default. Only postgres:// and postgresql:// URLs pass.
   DATABASE_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^postgres(ql)?$/ })),
+  REDIS_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^rediss?$/ })),
 });
 
 export type Env = z.output<typeof envSchema>;

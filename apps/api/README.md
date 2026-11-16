@@ -29,6 +29,8 @@ src/app.module.ts         root module: ConfigModule, PrismaModule, feature modul
 src/app.setup.ts          configureApp(): global prefix `api`, shutdown hooks (also used by e2e)
 src/core/config/          env schema (zod) and validation
 src/core/prisma/          PrismaService, PrismaHealthIndicator, global PrismaModule
+src/core/realtime/        Redis Streams IoAdapter and Redis connection lifecycle
+src/modules/realtime/     Socket.IO gateway and server-managed debug room
 src/modules/<feature>/    feature modules: controller, service, repository, specs
 src/generated/prisma/     generated Prisma client (git-ignored)
 prisma/                   schema.prisma and migrations/
@@ -55,12 +57,13 @@ A database health ping goes controller → service → an indicator in `src/core
 `src/core/config/env.ts` validates the environment with zod at startup. A failure names the
 variable and the rule, never the value, and the process exits 1.
 
-| Variable       | Rule                                  | Default       |
-| -------------- | ------------------------------------- | ------------- |
-| `NODE_ENV`     | `development`, `test` or `production` | `development` |
-| `API_PORT`     | integer 1–65535                       | `3001`        |
-| `API_HOST`     | interface to bind; image: `0.0.0.0`   | `127.0.0.1`   |
-| `DATABASE_URL` | `postgres://` or `postgresql://` URL  | required      |
+| Variable       | Rule                                             | Default       |
+| -------------- | ------------------------------------------------ | ------------- |
+| `NODE_ENV`     | `development`, `test` or `production`            | `development` |
+| `API_PORT`     | integer 1–65535                                  | `3001`        |
+| `API_HOST`     | interface to bind; image: `0.0.0.0`              | `127.0.0.1`   |
+| `DATABASE_URL` | `postgres://` or `postgresql://` URL             | required      |
+| `REDIS_URL`    | Redis connection URL (`redis://` or `rediss://`) | required      |
 
 An empty value counts as unset. In development the api reads the repo-root `.env` only, found from
 the module's location rather than the current directory, so it works however the api is started.
@@ -73,6 +76,14 @@ pointing to `127.0.0.1:55432`. Compose explicitly sets the Docker API's `API_HOS
 `API_PORT=3001` and `DATABASE_URL` using the `POSTGRES_*` credentials and `postgres:5432`.
 The Docker API runs with `NODE_ENV=production`; it does not load `.env` itself or use the
 host's `DATABASE_URL` and `API_PORT` values.
+
+The API uses `REDIS_URL` to connect to Redis Streams for cross-instance Socket.IO event delivery.
+In Docker Compose, the API replicas use `redis://redis:6379`, while host-based development and
+integration tests connect through `redis://127.0.0.1:56379`.
+
+The Redis Streams adapter is configured before the HTTP server starts. Socket.IO uses the
+`/socket.io` path, which is not affected by the global `/api` prefix. Connection State Recovery
+remains disabled; missed messages will be retrieved through REST.
 
 ## Prisma 7
 
@@ -121,6 +132,7 @@ An `unhealthy` status alone does not trigger `restart: unless-stopped`. Phase 4 
 | `typecheck`      | `tsc --noEmit`                                      |
 | `lint`           | ESLint with the `nest()` preset, `--max-warnings=0` |
 | `test`           | `vitest run`                                        |
+| `test:redis`     | Redis Streams integration tests (requires Redis)    |
 
 The root scripts `pnpm db:migrate` and `pnpm db:migrate:dev` forward to the two migrate scripts.
 
@@ -141,6 +153,35 @@ Run only these tests from the repo root with:
 pnpm --filter @app/api generate
 pnpm --filter @app/api exec vitest run test/health.e2e-spec.ts
 ```
+
+### Redis Streams integration tests (UL-124)
+
+Redis integration tests run separately from the default Vitest suite because they require a running Redis instance.
+
+Start the development services:
+
+```sh
+pnpm services:up
+```
+
+Then run:
+
+```sh
+REDIS_URL=redis://127.0.0.1:56379 pnpm --filter @app/api test:redis
+```
+
+The integration suite creates two independent NestJS applications with explicitly assigned instance IDs (`test-api-1` and `test-api-2`) and connects a Socket.IO client to each application.
+
+The tests verify that:
+
+- Without the Redis Streams adapter, a room broadcast does not reach the client connected to the other application.
+- Clients outside the target room do not receive its broadcasts.
+- Events emitted from either application reach clients connected to both applications.
+- Each debug event includes the sender's `instanceId`.
+
+The server assigns clients to the diagnostic room; clients cannot choose rooms themselves. Diagnostic broadcasts are enabled only when `NODE_ENV=test`.
+
+The default `pnpm test` suite does not require Redis.
 
 ## Image
 

@@ -16,19 +16,25 @@
     "dev": "prisma generate && nest start --watch",
     "generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "db:migrate:dev": "prisma migrate dev"
+    "db:migrate:dev": "prisma migrate dev",
+    "test:redis": "vitest run --config vitest.redis.config.ts"
   },
   "dependencies": {
     "@nestjs/common": "catalog:",
     "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",
     "@nestjs/platform-express": "catalog:",
+    "@nestjs/platform-socket.io": "catalog:",
     "@nestjs/terminus": "catalog:",
+    "@nestjs/websockets": "catalog:",
     "@prisma/adapter-pg": "catalog:",
     "@prisma/client": "catalog:",
+    "@socket.io/redis-streams-adapter": "catalog:",
     "pg": "catalog:",
+    "redis": "catalog:",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:",
+    "socket.io": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -42,6 +48,7 @@
     "typescript": "catalog:",
     "unplugin-swc": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "socket.io-client": "catalog:"
   }
 }

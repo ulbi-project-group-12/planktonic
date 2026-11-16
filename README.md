@@ -76,7 +76,7 @@ folder (usually `planktonic`), so your old database and bucket live in volumes l
 | Service     | Image (pinned by digest)         | Host port                 | Purpose                                                       |
 | ----------- | -------------------------------- | ------------------------- | ------------------------------------------------------------- |
 | `postgres`  | `pgvector/pgvector:0.8.6-pg18`   | `55432` (`POSTGRES_PORT`) | Postgres 18 with the `vector` extension (init SQL)            |
-| `redis`     | `redis:8.10.2`                   | `56379` (`REDIS_PORT`)    | Redis 8, append-only; no consumer until Phase 2 realtime      |
+| `redis`     | `redis:8.10.2`                   | `56379` (`REDIS_PORT`)    | Redis 8, append-only; Socket.IO Streams adapter               |
 | `seaweedfs` | `chrislusf/seaweedfs:4.51`       | `58333` (`S3_PORT`)       | S3-compatible object storage (`server -s3`)                   |
 | `s3-init`   | `chrislusf/seaweedfs:4.51`       | none                      | One-shot job: creates the dev bucket, safe to re-run          |
 | `api`       | Built from `apps/api/Dockerfile` | none                      | Profile `realtime`: two NestJS replicas, internal port `3001` |
@@ -94,8 +94,9 @@ bucket), so run `pnpm db:migrate` again afterwards.
 
 Traefik discovers the API containers through the Docker socket and routes `/api` and
 `/socket.io` to their internal port `3001`. The `io_srv` sticky cookie keeps a client on the
-same replica. The `/socket.io` routing rule prepares the proxy for realtime; it does not add a
-Socket.IO server to the API. Access logs are enabled, and the entrypoint idle timeout is 60 seconds.
+same replica. The API serves Socket.IO through the Redis Streams adapter (UL-124); diagnostic
+rooms and events are enabled only in test mode. Access logs are enabled, and the entrypoint idle
+timeout is 60 seconds. See [API realtime checks](apps/api/README.md#redis-streams-integration-tests-ul-124).
 
 The API healthcheck calls `/api/health` every 10 seconds, with a 5-second timeout, 3 retries and
 a 20-second start period. It checks liveness only. `restart: unless-stopped` restarts exited
@@ -169,7 +170,7 @@ loopback connection below.
 | `POSTGRES_PORT`        | Host port for Postgres                                                | `55432`                                                 | compose `postgres`               |
 | `DATABASE_URL`         | Connection string; must match the four values above                   | `postgresql://app:app_dev_password@127.0.0.1:55432/app` | `@app/api`, Prisma CLI           |
 | `REDIS_PORT`           | Host port for Redis                                                   | `56379`                                                 | compose `redis`                  |
-| `REDIS_URL`            | Redis connection; must match `REDIS_PORT`                             | `redis://127.0.0.1:56379`                               | reserved for Phase 2 (realtime)  |
+| `REDIS_URL`            | Redis connection; must match `REDIS_PORT`                             | `redis://127.0.0.1:56379`                               | required by API realtime         |
 | `S3_PORT`              | Host port for the S3 gateway                                          | `58333`                                                 | compose `seaweedfs`              |
 | `S3_ENDPOINT`          | S3 endpoint; must match `S3_PORT`                                     | `http://127.0.0.1:58333`                                | reserved for Phase 7 (files)     |
 | `S3_REGION`            | S3 region (SeaweedFS accepts any)                                     | `us-east-1`                                             | reserved for Phase 7 (files)     |
