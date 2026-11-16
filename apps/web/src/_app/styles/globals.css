@@ -9,6 +9,8 @@
 @import './tokens/text-sizes.css';
 @import './tokens/radii.css';
 @import './tokens/breakpoints.css';
+@import './tokens/spacings.css';
+@import './tokens/shadows.css';
 
 /* Custom variants for radix-ui state attributes (data-state / data-open / ...). */
 @custom-variant data-open {

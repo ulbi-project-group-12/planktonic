@@ -49,9 +49,37 @@ names above. The config is lead-owned (CODEOWNERS).
 
 ## Styling
 
-Tailwind CSS 4 utilities and the theme variables in `src/_app/styles/globals.css` (shadcn's light
-and dark tokens, `@theme inline`). That file is the only stylesheet: no CSS modules or ad hoc CSS
-files. Use kit components and utilities.
+Tailwind CSS 4 utilities; no CSS modules or ad hoc CSS files. Use kit components and utilities.
+
+## Design tokens
+
+All design tokens live in `src/_app/styles/tokens/` — one file per group, imported from
+`globals.css` (the single source of variables):
+
+| File              | Contents                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| `fonts.css`       | Onest 200/400/700 via local `@font-face` (`public/fonts`), `--font-sans`                         |
+| `colors.css`      | raw palette (`:root` light, `.dark` dark) + the `--color-*` utility layer (`bg-…`, `text-…`)     |
+| `text-sizes.css`  | role-based text tokens (`text-caption` … `text-h1–h6`) — the default Tailwind scale is untouched |
+| `radii.css`       | `--radius-*` scale from the mockup cornerRadius                                                  |
+| `breakpoints.css` | `--breakpoint-*` — mobile is below 1024 (`desktop-s`), desktop from 1024 up                      |
+| `spacings.css`    | adaptive `--space-*` scale — mobile value below 1024, desktop from 1024; `-fix` = same on both   |
+| `shadows.css`     | elevation scale `shadow-sm … shadow-3xl` from the mockup                                         |
+
+To add a token:
+
+1. Add the raw variable to its group file (a new `--color-*` goes to both `:root` and `.dark`
+   when it is theme-dependent; shadows and radii are theme-independent).
+2. Expose it as a utility in the `@theme inline` block of the same file, e.g.
+   `--color-accent: var(--accent);` gives `bg-accent` / `text-accent` automatically.
+3. Show it on the matching `shared/Design Tokens/*` Storybook page so the scale stays reviewable.
+
+Spacing utilities (`p-s`, `gap-m`, `m-1xl`, …) resolve through the `--spacing-*` namespace, so
+every Tailwind spacing utility accepts the token names. `auto` is not a token — Tailwind has
+`ml-auto` / `mr-auto` / … natively.
+
+The Storybook toolbar has a global **Theme** switch (light/dark): it toggles `.dark` on
+`<html>`, so portals (modal, dropdown, select, tooltip) follow it too.
 
 ## Tests and stories
 

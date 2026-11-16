@@ -187,7 +187,7 @@ function DropdownSpec({ portalContainer }: { portalContainer?: HTMLElement | nul
         </Card>
       </div>
       <p className="text-[11px] text-fg-muted">
-        radius 10 · item 28 · hover bg.sunken · shadow 0/4/16 · z/menu 50
+        radius 10 · item 28 · hover bg.sunken · shadow-sm (токен теней) · z/menu 50
       </p>
     </div>
   );

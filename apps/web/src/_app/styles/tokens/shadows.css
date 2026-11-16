@@ -1,0 +1,13 @@
+/* Shadow tokens — the elevation scale from the mockup (Atoms — effects): each step raises
+   the offset by 4 px and grows the blur and the opacity. Utilities: shadow-sm … shadow-3xl
+   (the Tailwind default scale is intentionally replaced by the mockup one).
+   Shadows do not depend on the theme. */
+
+@theme inline {
+  --shadow-sm: 0 4px 12px #0000002e;
+  --shadow-md: 0 8px 20px #00000040;
+  --shadow-lg: 0 12px 28px #00000052;
+  --shadow-xl: 0 16px 40px #00000066;
+  --shadow-2xl: 0 20px 48px #00000073;
+  --shadow-3xl: 0 24px 56px #00000080;
+}

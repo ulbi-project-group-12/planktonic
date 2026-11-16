@@ -62,7 +62,7 @@ function Toast({
       data-slot="toast"
       data-palette={palette}
       className={cn(
-        'flex items-start gap-3 rounded-xl border border-line bg-surface px-4 py-3 shadow-lg',
+        'flex items-start gap-3 rounded-xl border border-line bg-surface px-4 py-3 shadow-md',
         'data-[state=open]:animate-[toast-in_0.2s_ease-out] data-[state=closed]:animate-[toast-out_0.18s_ease-in]',
         className,
       )}
