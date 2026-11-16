@@ -57,6 +57,33 @@ const CHIP_GAP = 6;
 /** Used to reserve room for the ellipsis until it is rendered and measured. */
 const ELLIPSIS_FALLBACK_WIDTH = 12;
 
+/**
+ * How many chips fit on one line. Room for the ellipsis is reserved only when
+ * something gets hidden; `containerWidth` must be the full width available to
+ * chips and ellipsis together (the caller adds the ellipsis share back when it
+ * is already rendered and flex has shrunk the chips box).
+ */
+function fitChipCount(
+  widths: number[],
+  containerWidth: number,
+  ellipsisWidth: number,
+  gap: number,
+): number {
+  const fitWithReserve = (reserve: number) => {
+    let used = reserve;
+    let count = 0;
+    for (const width of widths) {
+      const extra = width + (count > 0 ? gap : 0);
+      if (used + extra > containerWidth) break;
+      used += extra;
+      count += 1;
+    }
+    return count;
+  };
+  const count = fitWithReserve(0);
+  return count < widths.length ? fitWithReserve(gap + ellipsisWidth) : count;
+}
+
 /** Select per the "Atoms — selects" mockup: dropdown under the field, 36 px options, search and scroll for long lists. */
 function Select({
   options,
@@ -103,9 +130,8 @@ function Select({
         if (!value.includes(key)) chipWidthsRef.current.delete(key);
       }
       const widths = value.map((chipValue) => chipWidthsRef.current.get(chipValue));
-      const containerWidth = element.clientWidth;
       // nothing to measure against (jsdom / not laid out yet) — show everything
-      if (containerWidth === 0) {
+      if (element.clientWidth === 0) {
         setFitCount(null);
         return;
       }
@@ -117,20 +143,11 @@ function Select({
         return;
       }
       const ellipsisWidth = ellipsisRef.current?.offsetWidth ?? ELLIPSIS_FALLBACK_WIDTH;
-      // any chip beyond the fit count is hidden, so room for the ellipsis must be reserved up front
-      const fitWithReserve = (reserve: number) => {
-        let used = reserve;
-        let count = 0;
-        for (const width of widths as number[]) {
-          const extra = width + (count > 0 ? CHIP_GAP : 0);
-          if (used + extra > containerWidth) break;
-          used += extra;
-          count += 1;
-        }
-        return count;
-      };
-      const count = fitWithReserve(0);
-      setFitCount(count < widths.length ? fitWithReserve(CHIP_GAP + ellipsisWidth) : count);
+      // the ellipsis is a flex sibling of the chips box: once rendered, it already
+      // shrinks the measured width — add its share back so it is not reserved twice
+      const containerWidth =
+        element.clientWidth + (ellipsisRef.current ? ellipsisWidth + CHIP_GAP : 0);
+      setFitCount(fitChipCount(widths as number[], containerWidth, ellipsisWidth, CHIP_GAP));
     };
     computeFit();
     if (typeof ResizeObserver === 'undefined') return; // jsdom
@@ -378,7 +395,8 @@ function Select({
                   // ArrowDown moves from the search field into the option list
                   if (event.key !== 'ArrowDown') return;
                   event.preventDefault();
-                  const selectedIndex = options.findIndex((option) => option.value === value[0]);
+                  // the listbox renders `filtered` — index against it, not against `options`
+                  const selectedIndex = filtered.findIndex((option) => option.value === value[0]);
                   focusOption(selectedIndex === -1 ? 0 : selectedIndex);
                 }}
                 className="h-9"
@@ -477,4 +495,4 @@ function Select({
   );
 }
 
-export { Select, type SelectOption, type SelectProps };
+export { Select, fitChipCount, type SelectOption, type SelectProps };

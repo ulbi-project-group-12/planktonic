@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { Select, type SelectOption } from './select';
+import { Select, fitChipCount, type SelectOption } from './select';
 
 const options: SelectOption[] = [
   { value: 'all', label: 'Все участники' },
@@ -97,6 +97,31 @@ describe('Select (одиночный)', () => {
     await userEvent.click(screen.getByRole('button', { name: /Только владельцы/ }));
     await userEvent.keyboard('{ArrowDown}');
     expect(screen.getByRole('option', { name: 'Только владельцы' })).toHaveFocus();
+  });
+
+  it('focuses the selected option in the filtered list, not at its index in the full list', async () => {
+    render(<Select options={options} value={['owner']} onValueChange={vi.fn()} searchable />);
+    await userEvent.click(screen.getByRole('button', { name: /Владелец и админы/ }));
+    // 'владел' leaves 'Владелец и админы' (index 0) and 'Только владельцы' (index 1) in the listbox;
+    // the selected option is at index 0 of `filtered` but index 1 of `options`
+    await userEvent.type(screen.getByLabelText('Поиск по списку'), 'владел');
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getByRole('option', { name: 'Владелец и админы' })).toHaveFocus();
+  });
+});
+
+describe('fitChipCount (ellipsis math)', () => {
+  it('reserves the ellipsis width only when a chip gets hidden', () => {
+    // two 80 px chips + 12 px ellipsis + gap fit into 190 px, three do not
+    expect(fitChipCount([80, 80, 80], 190, 12, 6)).toBe(2);
+    // everything fits — no ellipsis, no reserve
+    expect(fitChipCount([80, 80], 190, 12, 6)).toBe(2);
+    // two 90 px chips (186) still fit without an ellipsis — no reserve applied
+    expect(fitChipCount([90, 90], 190, 12, 6)).toBe(2);
+    // three 90 px chips do not fit; with the ellipsis reserved only one stays
+    expect(fitChipCount([90, 90, 90], 190, 12, 6)).toBe(1);
+    // nothing fits at all — only the ellipsis stays
+    expect(fitChipCount([80, 80], 40, 12, 6)).toBe(0);
   });
 });
 
