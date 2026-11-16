@@ -9,7 +9,7 @@ const AUTHOR = '00000000-0000-7000-8000-000000000002';
 
 const row: MessageRow = {
   id: '00000000-0000-7000-8000-000000000003',
-  sec: 7n,
+  seq: 7n,
   channelId: CHANNEL,
   authorId: AUTHOR,
   body: 'hello',
@@ -29,7 +29,7 @@ describe('MessagesService', () => {
 
     await expect(service.create(CHANNEL, AUTHOR, 'hello')).resolves.toEqual({
       id: row.id,
-      seq: 7,
+      seq: '7',
       channelId: CHANNEL,
       authorId: AUTHOR,
       body: 'hello',
@@ -51,7 +51,7 @@ describe('MessagesService', () => {
 
     const result = await service.list(CHANNEL);
     expect(result.messages).toHaveLength(1);
-    expect(result.messages[0]?.seq).toBe(7);
+    expect(result.messages[0]?.seq).toBe('7');
   });
 
   it('throws 404 when listing a missing channel', async () => {

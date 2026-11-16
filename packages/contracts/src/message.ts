@@ -10,11 +10,19 @@ export const CreateMessageBody = z.object({
 
 export type CreateMessageBody = z.infer<typeof CreateMessageBody>;
 
+/**
+ * A channel sequence number on the wire: a decimal string, because it is `BigInt` in the database
+ * and a JS number loses precision past 2^53 (UL-212).
+ */
+export const MessageSeq = z.string().regex(/^[1-9][0-9]*$/);
+
+export type MessageSeq = z.infer<typeof MessageSeq>;
+
 /** A message as the API returns it (also the `POST` response). */
 export const MessageResponse = z.object({
   id: z.uuid(),
-  /** Per-channel sequence number (`message.sec` in the database). */
-  seq: z.number().int().nonnegative(),
+  /** Per-channel sequence number, gapless from "1" (`messages.seq` in the database). */
+  seq: MessageSeq,
   channelId: z.uuid(),
   authorId: z.uuid(),
   body: z.string(),

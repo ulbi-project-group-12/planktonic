@@ -5,5 +5,5 @@ model User {
 
   messages Message[]
 
-  @@map("user")
+  @@map("users")
 }

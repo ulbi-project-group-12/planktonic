@@ -8,7 +8,7 @@ export const MESSAGES_PAGE_SIZE = 100;
 function toResponse(row: MessageRow): MessageResponse {
   return {
     id: row.id,
-    seq: Number(row.sec),
+    seq: row.seq.toString(),
     channelId: row.channelId,
     authorId: row.authorId,
     body: row.body,
