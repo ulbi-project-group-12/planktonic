@@ -12,20 +12,23 @@ Run these commands from the repo root after installing dependencies and copying
 ```sh
 pnpm services:up
 pnpm db:migrate
+pnpm --filter @app/api generate
 pnpm db:seed
 ```
 
+`generate` writes the Prisma client to `src/generated/prisma` (git-ignored), which the seed
+imports; Turbo runs it before `dev`, `build` and `test`, but `db:seed` does not.
 `pnpm db:seed` (`prisma db seed`, run by `tsx`) upserts one test user and one test channel,
-`00000000-0000-7000-8000-000000000001`, so you can try the messages endpoints:
+`00000000-0000-7000-8000-000000000001`.
+
+Then `pnpm dev` (web + api) or `pnpm --filter @app/api dev` (api only) runs it in watch mode on
+http://127.0.0.1:3001/api. With the api running, try the messages endpoints:
 
 ```sh
 curl -X POST -H 'content-type: application/json' -d '{"body":"hello"}' \
   http://127.0.0.1:3001/api/channels/00000000-0000-7000-8000-000000000001/messages
 curl http://127.0.0.1:3001/api/channels/00000000-0000-7000-8000-000000000001/messages
 ```
-
-Then `pnpm dev` (web + api) or `pnpm --filter @app/api dev` (api only) runs it in watch mode on
-http://127.0.0.1:3001/api.
 
 Two compiled replicas behind Traefik start only with the compose profile `realtime`:
 `docker compose --profile realtime up -d --build`, then http://127.0.0.1:58080/api/health
@@ -171,13 +174,15 @@ channel and expects `seq` 1..20 with no gaps and no duplicates (UL-125).
 ```sh
 pnpm services:up
 pnpm db:migrate
+pnpm --filter @app/api generate
 DATABASE_URL=postgresql://app:app_dev_password@127.0.0.1:55432/app pnpm --filter @app/api test:integration
 ```
 
-`DATABASE_URL` must be exported (the URL above is the `.env.example` default): under `NODE_ENV`
-`test` nothing reads `.env`, and a missing URL fails the run rather than skipping it. Each test
-creates its own channel and deletes it afterwards. UL-132 adds Postgres to CI as a service
-container and can run this config there.
+`generate` is needed because the specs import the git-ignored Prisma client and
+`test:integration` does not go through Turbo. `DATABASE_URL` must be exported (the URL above is
+the `.env.example` default): under `NODE_ENV` `test` nothing reads `.env`, and a missing URL fails
+the run rather than skipping it. Each test creates its own channel and deletes it afterwards.
+UL-132 adds Postgres to CI as a service container and can run this config there.
 
 ## Image
 
