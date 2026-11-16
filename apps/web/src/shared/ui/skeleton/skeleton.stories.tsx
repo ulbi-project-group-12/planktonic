@@ -7,7 +7,9 @@ import { Skeleton } from './skeleton';
 function Card({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="rounded-xl border border-line bg-app p-6">
-      <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">{label}</div>
+      <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
+        {label}
+      </div>
       {children}
     </div>
   );
@@ -45,7 +47,7 @@ function AiSkeleton() {
     <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
       <div className="flex items-center gap-2">
         <Avatar name="Plankton AI" size="sm" />
-        <span className="text-sm font-bold text-fg-primary">Plankton AI</span>
+        <span className="text-caption font-bold text-fg-primary">Plankton AI</span>
         <Badge dot variant="brand" />
       </div>
       <div className="flex flex-col gap-2">
@@ -53,7 +55,7 @@ function AiSkeleton() {
         <Skeleton className="h-3 w-5/6" />
         <Skeleton className="h-3 w-2/3" />
       </div>
-      <span className="text-xs text-fg-muted">streaming…</span>
+      <span className="text-micro text-fg-muted">streaming…</span>
     </div>
   );
 }
@@ -84,7 +86,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
         <h2 className="mb-6 text-base font-bold text-fg-primary">
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
-        <h3 className="mb-4 text-xl font-bold text-fg-primary">Атомы — скелетон</h3>
+        <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — скелетон</h3>
         <SkeletonSpec />
         <p className="mt-6 text-[11px] text-fg-muted">bg.sunken · radius 4 · импульс 1.2 s</p>
       </div>

@@ -14,10 +14,10 @@ function ToastSpec({ theme, onShow }: { theme: 'light' | 'dark'; onShow: () => v
         <h2 className="mb-6 text-base font-bold text-fg-primary">
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
-        <h3 className="mb-4 text-xl font-bold text-fg-primary">Атомы — тосты</h3>
+        <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — тосты</h3>
         <div className="flex flex-col gap-6">
           <div className="rounded-xl border border-line bg-app p-6">
-            <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">
+            <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
               Живой пример — сколько кликов, столько тостов · стек друг под другом
             </div>
             <Button onClick={onShow}>Показать тост</Button>
@@ -170,7 +170,7 @@ export const States: Story = {
     <div className="flex flex-col gap-10 bg-app p-8 font-sans">
       <div>
         <div className="rounded-2xl border border-line bg-surface p-6">
-          <h3 className="mb-4 text-xl font-bold text-fg-primary">Атомы — тосты · состояния</h3>
+          <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — тосты · состояния</h3>
           <ToastStates />
         </div>
       </div>

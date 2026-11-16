@@ -6,7 +6,9 @@ function Card({ label, children }: { label: string; children: ReactNode }) {
   return (
     // фон surface: кольцо 2 px у presence совпадает с подложкой и не читается как бордер
     <div className="rounded-xl border border-line bg-surface p-6">
-      <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">{label}</div>
+      <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
+        {label}
+      </div>
       {children}
     </div>
   );
@@ -64,7 +66,7 @@ function AvatarSpec() {
           {presenceList.map((presence) => (
             <div key={presence} className="flex items-center gap-2.5">
               <Avatar name={presenceNames[presence]} size="lg" presence={presence} />
-              <span className="text-sm text-fg-secondary">
+              <span className="text-caption text-fg-secondary">
                 {
                   { online: 'В сети', away: 'Отошёл', dnd: 'Не беспокоить', offline: 'Не в сети' }[
                     presence
@@ -82,8 +84,8 @@ function AvatarSpec() {
           <div className="flex items-center gap-2.5">
             <AvatarGroup users={groupUsers} max={1} size="lg" />
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-fg-primary">Иван Петров</span>
-              <span className="text-xs text-fg-muted">В сети</span>
+              <span className="text-caption font-bold text-fg-primary">Иван Петров</span>
+              <span className="text-micro text-fg-muted">В сети</span>
             </div>
           </div>
         </div>
@@ -99,7 +101,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
         <h2 className="mb-6 text-base font-bold text-fg-primary">
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
-        <h3 className="mb-4 text-xl font-bold text-fg-primary">Атомы — аватары</h3>
+        <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — аватары</h3>
         <AvatarSpec />
       </div>
     </div>

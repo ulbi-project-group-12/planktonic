@@ -76,10 +76,10 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
         <h2 className="mb-6 text-base font-bold text-fg-primary">
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
-        <h3 className="mb-4 text-xl font-bold text-fg-primary">Атомы — селекты</h3>
+        <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — селекты</h3>
         <div className="flex flex-col gap-6">
           <div className="rounded-xl border border-line bg-app p-6">
-            <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">
+            <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
               Одиночный выбор
             </div>
             <div className="grid max-w-2xl grid-cols-2 gap-6">
@@ -104,7 +104,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
             </div>
           </div>
           <div className="rounded-xl border border-line bg-app p-6">
-            <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">
+            <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
               Длинный список — поиск и скролл
             </div>
             <div className="max-w-sm">
@@ -118,7 +118,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
             </div>
           </div>
           <div className="rounded-xl border border-line bg-app p-6">
-            <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">
+            <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
               Множественный выбор — чипсы, чекбоксы, счётчик
             </div>
             <div className="max-w-sm">
@@ -135,7 +135,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
             </p>
           </div>
           <div className="rounded-xl border border-line bg-app p-6">
-            <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">
+            <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
               Множественный выбор — переполнение чипсов
             </div>
             <div className="grid max-w-3xl gap-6 desktop-s:grid-cols-2">

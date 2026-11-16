@@ -177,7 +177,9 @@ const columns: { key: keyof SpecRowConfig['cells']; title: string; caption: stri
 function Card({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="rounded-xl border border-line bg-app p-6">
-      <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">{label}</div>
+      <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
+        {label}
+      </div>
       {children}
     </div>
   );
@@ -190,7 +192,7 @@ function SpecTable({ rows }: { rows: SpecRowConfig[] }) {
         <div />
         {columns.map((column) => (
           <div key={column.key} className="min-w-0">
-            <div className="text-xs font-bold text-fg-primary">{column.title}</div>
+            <div className="text-micro font-bold text-fg-primary">{column.title}</div>
             <div className="truncate text-[11px] text-fg-muted">{column.caption}</div>
           </div>
         ))}
@@ -201,7 +203,7 @@ function SpecTable({ rows }: { rows: SpecRowConfig[] }) {
           className="grid grid-cols-[180px_repeat(4,minmax(0,1fr))] items-start gap-x-4 gap-y-2 border-t border-line py-4"
         >
           <div className="min-w-0 pt-2">
-            <div className="text-sm font-bold text-fg-primary">{row.name}</div>
+            <div className="text-caption font-bold text-fg-primary">{row.name}</div>
             <div className="truncate text-[11px] text-fg-muted">{row.spec}</div>
           </div>
           {columns.map((column) => (
@@ -240,7 +242,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
         <h2 className="mb-6 text-base font-bold text-fg-primary">
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
-        <h3 className="mb-4 text-xl font-bold text-fg-primary">Атомы — инпуты</h3>
+        <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — инпуты</h3>
         <InputSpec />
       </div>
     </div>

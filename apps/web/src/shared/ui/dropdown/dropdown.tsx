@@ -51,7 +51,7 @@ function DropdownContent({
 }
 
 const itemClass = cn(
-  'flex h-7 cursor-pointer items-center gap-2 rounded-md px-2 text-sm text-fg-primary outline-none select-none',
+  'flex h-7 cursor-pointer items-center gap-2 rounded-md px-2 text-caption text-fg-primary outline-none select-none',
   'data-[highlighted]:bg-sunken data-[disabled]:pointer-events-none data-[disabled]:text-fg-muted',
 );
 

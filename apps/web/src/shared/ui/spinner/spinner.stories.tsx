@@ -16,10 +16,10 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
         <h2 className="mb-6 text-base font-bold text-fg-primary">
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
-        <h3 className="mb-4 text-xl font-bold text-fg-primary">Атомы — спиннер</h3>
+        <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — спиннер</h3>
         <div className="flex flex-col gap-6">
           <div className="rounded-xl border border-line bg-app p-6">
-            <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">
+            <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
               Размеры — spin 0.8 s linear
             </div>
             <div className="flex flex-wrap items-center gap-10">
@@ -32,7 +32,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
             </div>
           </div>
           <div className="rounded-xl border border-line bg-app p-6">
-            <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">
+            <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
               В кнопке — «Отправка…»
             </div>
             <Button disabled>

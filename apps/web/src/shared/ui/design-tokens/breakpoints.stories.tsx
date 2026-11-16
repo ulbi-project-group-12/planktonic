@@ -66,26 +66,28 @@ function BreakpointRow({ token, width }: { token: BreakpointToken; width: number
   return (
     <div className="flex items-center gap-4">
       <div className="w-28 shrink-0">
-        <div className="text-sm font-bold text-fg-primary">
+        <div className="text-caption font-bold text-fg-primary">
           {token.name}
-          {isActive ? <span className="ml-2 text-xs font-bold text-success">активен</span> : null}
+          {isActive ? (
+            <span className="ml-2 text-micro font-bold text-success">активен</span>
+          ) : null}
         </div>
-        <div className="text-xs text-fg-muted">{token.px} px</div>
+        <div className="text-micro text-fg-muted">{token.px} px</div>
       </div>
       <div className="relative h-8 flex-1">
         <div className="absolute inset-0 rounded-md bg-sunken" />
         <div
           className={
             isBoundary
-              ? 'absolute top-0 left-0 flex h-full items-center rounded-md bg-brand-subtle pl-2 text-xs font-bold text-brand-primary'
-              : 'absolute top-0 left-0 flex h-full items-center rounded-md bg-brand-primary/25 pl-2 text-xs font-bold text-fg-secondary'
+              ? 'absolute top-0 left-0 flex h-full items-center rounded-md bg-brand-subtle pl-2 text-micro font-bold text-brand-primary'
+              : 'absolute top-0 left-0 flex h-full items-center rounded-md bg-brand-primary/25 pl-2 text-micro font-bold text-fg-secondary'
           }
           style={{ width: `${String((token.px / DESKTOP_L) * 100)}%` }}
         >
           {token.name}:
         </div>
       </div>
-      <div className="hidden w-56 shrink-0 text-xs text-fg-muted sm:block">{token.usage}</div>
+      <div className="hidden w-56 shrink-0 text-micro text-fg-muted sm:block">{token.usage}</div>
     </div>
   );
 }
@@ -121,8 +123,8 @@ function BreakpointsScale() {
   return (
     <div className="flex flex-col gap-6 p-8 font-sans">
       <div>
-        <h2 className="mb-1 text-lg font-bold text-fg-primary">Брейкпоинты</h2>
-        <p className="max-w-3xl text-sm text-fg-secondary">
+        <h2 className="mb-1 text-body-s font-bold text-fg-primary">Брейкпоинты</h2>
+        <p className="max-w-3xl text-caption text-fg-secondary">
           Токены лежат в <code>tokens/breakpoints.css</code> и генерируют одноимённые варианты
           Tailwind: <code>mobile-s:</code>, <code>mobile-m:</code>, <code>mobile-l:</code>,{' '}
           <code>mobile-xl:</code>, <code>desktop-s:</code>, <code>desktop-m:</code>,{' '}
@@ -133,7 +135,7 @@ function BreakpointsScale() {
       </div>
 
       <div className="rounded-xl border border-line bg-surface p-6">
-        <div className="mb-4 text-xs font-medium tracking-wider text-fg-muted uppercase">
+        <div className="mb-4 text-micro font-medium tracking-wider text-fg-muted uppercase">
           Текущая ширина viewport: {width} px · активен токен «{active.name}»
         </div>
         <div className="flex flex-col gap-3">
@@ -144,19 +146,19 @@ function BreakpointsScale() {
       </div>
 
       <div className="rounded-xl border border-line bg-surface p-6">
-        <div className="mb-4 text-xs font-medium tracking-wider text-fg-muted uppercase">
+        <div className="mb-4 text-micro font-medium tracking-wider text-fg-muted uppercase">
           Применение — кнопка меняет высоту на desktop-s (1024 px)
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <div ref={demoRef} className="w-fit">
             <Button size="m">Кнопка M</Button>
           </div>
-          <span className="text-sm text-fg-secondary">
+          <span className="text-caption text-fg-secondary">
             сейчас высота {demoHeight ?? '…'} px (
             {width >= 1024 ? 'десктоп, h-10' : 'мобильная, h-9'})
           </span>
         </div>
-        <p className="mt-4 text-xs text-fg-muted">
+        <p className="mt-4 text-micro text-fg-muted">
           Размеры кнопок mobile-first: S 32→36, M 36→40, L 40→44, icon 36→40. Сужайте и расширяйте
           окно — надпись и высота пересчитываются.
         </p>

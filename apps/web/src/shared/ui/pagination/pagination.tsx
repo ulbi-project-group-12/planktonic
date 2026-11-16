@@ -19,7 +19,7 @@ function buildPages(page: number, totalPages: number): (number | 'ellipsis')[] {
 }
 
 const itemClass = cn(
-  'inline-flex size-7 cursor-pointer items-center justify-center rounded-lg text-sm font-bold transition-colors',
+  'inline-flex size-7 cursor-pointer items-center justify-center rounded-lg text-caption font-bold transition-colors',
   'outline-none focus-visible:ring-3 focus-visible:ring-brand-primary/40 disabled:cursor-not-allowed',
 );
 
@@ -67,9 +67,9 @@ function Pagination({
             className={arrowClass(page <= 1)}
           >
             <ChevronLeft className="size-4" />
-            <span className="text-sm font-bold">Назад</span>
+            <span className="text-caption font-bold">Назад</span>
           </button>
-          <span className="text-sm font-bold text-fg-secondary">
+          <span className="text-caption font-bold text-fg-secondary">
             {page} <span className="text-fg-muted">/ {totalPages}</span>
           </span>
           <button
@@ -79,7 +79,7 @@ function Pagination({
             aria-label="Вперёд"
             className={arrowClass(page >= totalPages)}
           >
-            <span className="text-sm font-bold">Вперёд</span>
+            <span className="text-caption font-bold">Вперёд</span>
             <ChevronRight className="size-4" />
           </button>
         </div>
@@ -104,7 +104,7 @@ function Pagination({
             <span
               key={`ellipsis-${String(index)}`}
               aria-hidden
-              className="px-1 text-sm text-fg-muted"
+              className="px-1 text-caption text-fg-muted"
             >
               …
             </span>
@@ -160,7 +160,7 @@ function LoadMore({ onLoadMore, loading = false, batchSize, className }: LoadMor
         disabled={loading}
         className={cn(
           'inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface',
-          'px-4 text-sm font-bold text-brand-primary transition-colors',
+          'px-4 text-caption font-bold text-brand-primary transition-colors',
           'hover:bg-sunken focus-visible:ring-3 focus-visible:ring-brand-primary/40 focus-visible:outline-none',
           loading && 'pointer-events-none text-fg-muted',
         )}
@@ -192,7 +192,7 @@ function PaginationStatus({ shown, total, className }: PaginationStatusProps) {
   const percent = total > 0 ? Math.min(100, Math.round((shown / total) * 100)) : 0;
   return (
     <div data-slot="pagination-status" className={cn('flex flex-col gap-2', className)}>
-      <span className="text-xs text-fg-secondary">
+      <span className="text-micro text-fg-secondary">
         Показано {shown} из {total}
       </span>
       <div className="h-1 w-full overflow-hidden rounded-full bg-sunken">

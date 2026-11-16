@@ -9,10 +9,10 @@ type AvatarColor = (typeof avatarColors)[number];
 
 /** Размеры по макету: 24 инициалы 10 · 32 списки/сообщения · 40 шапка/presence · 48 профиль. */
 const sizeClasses: Record<AvatarSize, string> = {
-  sm: 'size-6 text-2xs',
-  md: 'size-8 text-sm',
-  lg: 'size-10 text-lg',
-  xl: 'size-12 text-2xl',
+  sm: 'size-6 text-micro-s',
+  md: 'size-8 text-caption',
+  lg: 'size-10 text-body-s',
+  xl: 'size-12 text-body',
 };
 
 /** Размеры в px — для next/image. */

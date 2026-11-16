@@ -2,20 +2,14 @@ import type { ElementType, HTMLAttributes } from 'react';
 import { cn } from '@/shared/lib';
 
 const typographySizes = [
-  '2xs',
-  'xs',
-  'sm',
-  'md',
-  'lg',
-  'xl',
-  '2xl',
-  '3xl',
-  '4xl',
-  '5xl',
-  '6xl',
-  '7xl',
-  '8xl',
-  '9xl',
+  'micro-s',
+  'micro',
+  'caption',
+  'body-xs',
+  'body-s',
+  'body',
+  'body-l',
+  'body-xl',
   'h1',
   'h2',
   'h3',
@@ -67,7 +61,7 @@ type TypographyElement = 'span' | 'p' | 'div' | 'h1' | 'h2' | 'h3' | 'h4' | 'lab
 interface TypographyProps extends HTMLAttributes<HTMLElement> {
   /** HTML-тег, которым рендерится текст: span, p, div, h1–h4, label, li. */
   as?: TypographyElement;
-  /** Токен шкалы из макета: 2xs–9xl или семантические h1–h6 (всегда с weight 700). */
+  /** Токен шкалы из макета: micro-s–body-xl или семантические h1–h6 (всегда с weight 700). */
   size?: TypographySize;
   /** Цвет по имени дизайн-токена (см. Design Tokens/Colors); по умолчанию text-primary. */
   color?: TypographyColor;
@@ -76,28 +70,22 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
 }
 
 /** Токены размеров из типографической шкалы макета (см. shared/Atoms/Typography).
-   h1–h6 — семантические алиасы шагов заголовков, всегда парные с начертанием 700. */
+   h1–h6 — семантические заголовки, всегда парные с начертанием 700. */
 const sizeClasses: Record<TypographySize, string> = {
-  '2xs': 'text-2xs',
-  xs: 'text-xs',
-  sm: 'text-sm',
-  md: 'text-md',
-  lg: 'text-lg',
-  xl: 'text-xl',
-  '2xl': 'text-2xl',
-  '3xl': 'text-3xl',
-  '4xl': 'text-4xl',
-  '5xl': 'text-5xl',
-  '6xl': 'text-6xl',
-  '7xl': 'text-7xl',
-  '8xl': 'text-8xl',
-  '9xl': 'text-9xl',
-  h1: 'text-8xl',
-  h2: 'text-7xl',
-  h3: 'text-6xl',
-  h4: 'text-5xl',
-  h5: 'text-4xl',
-  h6: 'text-2xl',
+  'micro-s': 'text-micro-s',
+  micro: 'text-micro',
+  caption: 'text-caption',
+  'body-xs': 'text-body-xs',
+  'body-s': 'text-body-s',
+  body: 'text-body',
+  'body-l': 'text-body-l',
+  'body-xl': 'text-body-xl',
+  h1: 'text-h1',
+  h2: 'text-h2',
+  h3: 'text-h3',
+  h4: 'text-h4',
+  h5: 'text-h5',
+  h6: 'text-h6',
 };
 
 /** Цвета палитры по именам дизайн-токенов (см. Design Tokens/Colors). */
@@ -147,7 +135,7 @@ const weightClasses: Record<TypographyWeight, string> = {
  */
 function Typography({
   as = 'span',
-  size = 'sm',
+  size = 'caption',
   color = 'text-primary',
   weight = '400',
   className,

@@ -66,7 +66,7 @@ function Switch({
         <label
           htmlFor={switchId}
           className={cn(
-            'text-lg leading-5 select-none',
+            'text-body-s leading-5 select-none',
             disabled ? 'cursor-not-allowed text-fg-muted' : 'cursor-pointer text-fg-primary',
           )}
         >

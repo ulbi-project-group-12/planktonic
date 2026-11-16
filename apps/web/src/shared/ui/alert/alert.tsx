@@ -64,11 +64,11 @@ function Alert({
     >
       <Icon className={cn('mt-0.5 size-5 shrink-0', titleColor)} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div data-slot="alert-title" className={cn('text-lg leading-5 font-bold', titleColor)}>
+        <div data-slot="alert-title" className={cn('text-body-s leading-5 font-bold', titleColor)}>
           {title}
         </div>
         {description ? (
-          <div data-slot="alert-description" className="text-lg leading-5 text-fg-secondary">
+          <div data-slot="alert-description" className="text-body-s leading-5 text-fg-secondary">
             {description}
           </div>
         ) : null}
@@ -78,7 +78,7 @@ function Alert({
             data-slot="alert-action"
             onClick={action.onClick}
             className={cn(
-              'w-fit cursor-pointer text-left text-lg leading-5 font-bold hover:underline',
+              'w-fit cursor-pointer text-left text-body-s leading-5 font-bold hover:underline',
               titleColor,
             )}
           >

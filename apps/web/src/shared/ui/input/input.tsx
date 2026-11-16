@@ -50,7 +50,7 @@ function Input({
   return (
     <div data-slot="input-group" className="flex w-full min-w-0 flex-col gap-1.5">
       {label ? (
-        <label htmlFor={inputId} className="text-md font-bold text-fg-primary">
+        <label htmlFor={inputId} className="text-body-xs font-bold text-fg-primary">
           {label}
         </label>
       ) : null}
@@ -84,7 +84,7 @@ function Input({
           ref={inputRef}
           id={inputId}
           disabled={disabled}
-          className="h-full w-full min-w-0 flex-1 bg-transparent text-lg leading-5 text-fg-primary outline-none placeholder:text-fg-muted disabled:cursor-not-allowed disabled:text-fg-muted"
+          className="h-full w-full min-w-0 flex-1 bg-transparent text-body-s leading-5 text-fg-primary outline-none placeholder:text-fg-muted disabled:cursor-not-allowed disabled:text-fg-muted"
           {...props}
         />
         {status === 'error' ? (
@@ -92,10 +92,10 @@ function Input({
         ) : status === 'success' ? (
           <CircleCheck className="size-4 shrink-0 text-success" />
         ) : suffix ? (
-          <span className="shrink-0 text-lg leading-5 text-fg-muted">{suffix}</span>
+          <span className="shrink-0 text-body-s leading-5 text-fg-muted">{suffix}</span>
         ) : null}
       </div>
-      {text ? <p className={cn('text-sm', textClass)}>{text}</p> : null}
+      {text ? <p className={cn('text-caption', textClass)}>{text}</p> : null}
     </div>
   );
 }

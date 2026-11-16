@@ -58,7 +58,7 @@ function Tabs({ tabs, value, onValueChange, variant = 'underline', className }: 
             {tab.icon}
             {tab.label}
             {tab.count !== undefined ? (
-              <span className="text-xs font-bold text-fg-muted [[data-state=active]_&]:text-brand-primary">
+              <span className="text-micro font-bold text-fg-muted [[data-state=active]_&]:text-brand-primary">
                 {tab.count}
               </span>
             ) : null}

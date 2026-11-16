@@ -5,7 +5,9 @@ import { Badge, badgeVariants, type BadgeVariant } from './badge';
 function Card({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="rounded-xl border border-line bg-app p-6">
-      <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">{label}</div>
+      <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
+        {label}
+      </div>
       {children}
     </div>
   );
@@ -23,7 +25,7 @@ function Row({
   return (
     <div className="grid grid-cols-[140px_1fr] items-center gap-4 border-t border-line py-3 first:border-t-0 first:pt-0 last:pb-0">
       <div className="min-w-0">
-        <div className="text-sm font-bold text-fg-primary">{label}</div>
+        <div className="text-caption font-bold text-fg-primary">{label}</div>
         <div className="text-[11px] text-fg-muted">{caption}</div>
       </div>
       <div className="flex flex-wrap items-center gap-2">{children}</div>
@@ -82,7 +84,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
         <h2 className="mb-6 text-base font-bold text-fg-primary">
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
-        <h3 className="mb-4 text-xl font-bold text-fg-primary">Атомы — бейджи</h3>
+        <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — бейджи</h3>
         <BadgeSpec />
       </div>
     </div>

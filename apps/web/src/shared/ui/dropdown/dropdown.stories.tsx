@@ -36,7 +36,9 @@ function Card({
 }) {
   return (
     <div className="rounded-xl border border-line bg-app p-6">
-      <div className="mb-2 text-xs font-medium tracking-wider text-fg-muted uppercase">{label}</div>
+      <div className="mb-2 text-micro font-medium tracking-wider text-fg-muted uppercase">
+        {label}
+      </div>
       <div className="mb-6 text-[11px] text-fg-muted">{caption}</div>
       {children}
     </div>
@@ -205,7 +207,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
         <h2 className="mb-6 text-base font-bold text-fg-primary">
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
-        <h3 className="mb-4 text-xl font-bold text-fg-primary">Атомы — дропдаун</h3>
+        <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — дропдаун</h3>
         <DropdownSpec portalContainer={portalContainer} />
       </div>
     </div>

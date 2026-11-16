@@ -69,7 +69,7 @@ function Chip({
       data-slot="chip"
       data-fill={fill}
       className={cn(
-        'inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-bold',
+        'inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-micro font-bold',
         fillClass,
         className,
       )}

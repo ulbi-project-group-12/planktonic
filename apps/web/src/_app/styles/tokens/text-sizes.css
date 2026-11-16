@@ -1,36 +1,37 @@
-/* Токены размеров текста из типографической шкалы макета. Основной текст: text/xs–text/xl
-   (12–20 px), заголовки всегда 700 на h1–h6 (40–16 px). Интерлиньяж взят точно из макета
-   (40/48, 32/40, 28/36, 24/32, 20/28, 16/24 и 12/16, 14/20, 16/24, 18/26, 20/28).
-   Размеры, не покрытые макетом (микротекст 10–11 px, 13/15 px, 64 px display),
-   получили разумные значения по умолчанию. */
+/* Токены размеров текста из типографической шкалы макета — имена по ролям, чтобы не
+   перекрывать дефолтную шкалу Tailwind (text-sm и т.д. остаются стандартными).
+   Основной текст: caption (text/xs 12) – body-xl (text/xl 20), заголовки всегда 700 на
+   h1–h6 (40–16 px). Интерлиньяж взят точно из макета (40/48, 32/40, 28/36, 24/32, 20/28,
+   16/24 и 12/16, 14/20, 16/24, 18/26, 20/28). Размеры, не покрытые макетом (микротекст
+   10–11 px, мелкий лейбл 13 px), получили разумные значения по умолчанию. */
 
 @theme inline {
-  --text-2xs: 0.625rem; /* 10 */
-  --text-2xs--line-height: 1.4;
-  --text-xs: 0.6875rem; /* 11 */
-  --text-xs--line-height: 1.4;
-  --text-sm: 0.75rem; /* 12 — text/xs */
-  --text-sm--line-height: 1.333; /* 16 */
-  --text-md: 0.8125rem; /* 13 */
-  --text-md--line-height: 1.4;
-  --text-lg: 0.875rem; /* 14 — text/s */
-  --text-lg--line-height: 1.429; /* 20 */
-  --text-xl: 0.9375rem; /* 15 */
-  --text-xl--line-height: 1.4;
-  --text-2xl: 1rem; /* 16 — text/m, h6 */
-  --text-2xl--line-height: 1.5; /* 24 */
-  --text-3xl: 1.125rem; /* 18 — text/l */
-  --text-3xl--line-height: 1.444; /* 26 */
-  --text-4xl: 1.25rem; /* 20 — text/xl, h5 */
-  --text-4xl--line-height: 1.4; /* 28 */
-  --text-5xl: 1.5rem; /* 24 — h4 */
-  --text-5xl--line-height: 1.333; /* 32 */
-  --text-6xl: 1.75rem; /* 28 — h3 */
-  --text-6xl--line-height: 1.286; /* 36 */
-  --text-7xl: 2rem; /* 32 — h2 */
-  --text-7xl--line-height: 1.25; /* 40 */
-  --text-8xl: 2.5rem; /* 40 — h1 */
-  --text-8xl--line-height: 1.2; /* 48 */
-  --text-9xl: 4rem; /* 64 — display */
-  --text-9xl--line-height: 1.1;
+  --text-micro-s: 0.625rem; /* 10 — инициалы маленького аватара */
+  --text-micro-s--line-height: 1.4;
+  --text-micro: 0.6875rem; /* 11 — микроподписи: бейджи, чипсы, счётчики */
+  --text-micro--line-height: 1.4;
+  --text-caption: 0.75rem; /* 12 — caption, text/xs */
+  --text-caption--line-height: 1.333; /* 16 */
+  --text-body-xs: 0.8125rem; /* 13 — мелкие лейблы */
+  --text-body-xs--line-height: 1.4;
+  --text-body-s: 0.875rem; /* 14 — основной текст, text/s */
+  --text-body-s--line-height: 1.429; /* 20 */
+  --text-body: 1rem; /* 16 — text/m, h6 */
+  --text-body--line-height: 1.5; /* 24 */
+  --text-body-l: 1.125rem; /* 18 — text/l */
+  --text-body-l--line-height: 1.444; /* 26 */
+  --text-body-xl: 1.25rem; /* 20 — text/xl, h5 */
+  --text-body-xl--line-height: 1.4; /* 28 */
+  --text-h1: 2.5rem; /* 40 */
+  --text-h1--line-height: 1.2; /* 48 */
+  --text-h2: 2rem; /* 32 */
+  --text-h2--line-height: 1.25; /* 40 */
+  --text-h3: 1.75rem; /* 28 */
+  --text-h3--line-height: 1.286; /* 36 */
+  --text-h4: 1.5rem; /* 24 */
+  --text-h4--line-height: 1.333; /* 32 */
+  --text-h5: 1.25rem; /* 20 */
+  --text-h5--line-height: 1.4; /* 28 */
+  --text-h6: 1rem; /* 16 */
+  --text-h6--line-height: 1.5; /* 24 */
 }

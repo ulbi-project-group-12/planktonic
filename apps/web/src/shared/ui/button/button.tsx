@@ -55,9 +55,9 @@ const variantClasses: Record<ButtonVariant, Record<ButtonPalette, string>> = {
 
 /** Mobile-first sizes: S 32→36, M 36→40, L 40→44, icon 36→40 (mockup geometry). Десктоп — от desktop-s (1024). */
 const sizeClasses: Record<ButtonSize, string> = {
-  s: 'h-8 gap-2 px-4 text-sm leading-5 desktop-s:h-9 desktop-s:text-md [&_svg:not([class*=size-])]:size-3.5',
-  m: 'h-9 gap-2 px-4 text-lg leading-5 desktop-s:h-10',
-  l: 'h-10 gap-2 px-4 text-lg leading-5 desktop-s:h-11',
+  s: 'h-8 gap-2 px-4 text-caption leading-5 desktop-s:h-9 desktop-s:text-body-xs [&_svg:not([class*=size-])]:size-3.5',
+  m: 'h-9 gap-2 px-4 text-body-s leading-5 desktop-s:h-10',
+  l: 'h-10 gap-2 px-4 text-body-s leading-5 desktop-s:h-11',
   icon: 'size-9 desktop-s:size-10',
 };
 

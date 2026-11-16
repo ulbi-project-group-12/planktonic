@@ -119,7 +119,7 @@ function Modal({
           data-slot="modal"
           style={dragOffset > 0 ? { transform: `translateY(${String(dragOffset)}px)` } : undefined}
           className={cn(
-            'fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col rounded-t-xl bg-surface text-lg text-fg-primary outline-none',
+            'fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col rounded-t-xl bg-surface text-body-s text-fg-primary outline-none',
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
             // Мобильная шторка (<1024): выезд снизу.
             'max-desktop-s:data-[state=open]:slide-in-from-bottom-16 max-desktop-s:data-[state=closed]:slide-out-to-bottom-16',
@@ -147,7 +147,7 @@ function Modal({
             {title ? (
               <DialogPrimitive.Title
                 data-slot="modal-title"
-                className="pt-4 pb-1 text-2xl font-bold lg:pt-5"
+                className="pt-4 pb-1 text-body font-bold lg:pt-5"
               >
                 {title}
               </DialogPrimitive.Title>

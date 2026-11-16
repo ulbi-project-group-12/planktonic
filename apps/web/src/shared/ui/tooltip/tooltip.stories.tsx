@@ -23,10 +23,12 @@ function Section({
 }) {
   return (
     <div className="rounded-xl border border-line bg-app p-6">
-      <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">{label}</div>
+      <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
+        {label}
+      </div>
       <div className="grid grid-cols-[140px_1fr] items-center gap-4">
         <div className="min-w-0">
-          <div className="text-sm font-bold text-fg-primary">{label}</div>
+          <div className="text-caption font-bold text-fg-primary">{label}</div>
           <div className="text-[11px] text-fg-muted">{caption}</div>
         </div>
         <div className="flex flex-wrap items-center gap-10 py-6">{children}</div>
@@ -57,7 +59,7 @@ function TooltipSpec({ portalContainer }: { portalContainer?: HTMLElement | null
   return (
     <div className="flex flex-col gap-6">
       <div className="rounded-xl border border-line bg-app p-6">
-        <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">
+        <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
           Позиции — стрелка указывает на триггер
         </div>
         <div className="flex flex-wrap items-center gap-10 py-6">
@@ -133,7 +135,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
         <h2 className="mb-6 text-base font-bold text-fg-primary">
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
-        <h3 className="mb-4 text-xl font-bold text-fg-primary">Атомы — тултипы</h3>
+        <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — тултипы</h3>
         <TooltipSpec portalContainer={portalContainer} />
       </div>
     </div>

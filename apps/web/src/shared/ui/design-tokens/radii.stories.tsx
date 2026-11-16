@@ -27,8 +27,8 @@ function RadiusSample({ name, cssVar }: { name: string; cssVar: string }) {
         style={{ borderRadius: `var(${cssVar})` }}
       />
       <div>
-        <div className="text-sm font-bold">{name}</div>
-        <div className="text-xs text-fg-muted">
+        <div className="text-caption font-bold">{name}</div>
+        <div className="text-micro text-fg-muted">
           rounded-
           {name.split('.')[1]} · {value || '…'}
         </div>
@@ -45,8 +45,8 @@ export default {
 export const Scale = {
   render: () => (
     <div className="p-4">
-      <h2 className="mb-1 text-lg font-bold">Радиусы</h2>
-      <p className="mb-4 text-sm text-fg-secondary">
+      <h2 className="mb-1 text-body-s font-bold">Радиусы</h2>
+      <p className="mb-4 text-caption text-fg-secondary">
         Шкала из макетов (не зависит от темы): 3 — мелкие контролы (чекбоксы), 8 — кнопки и поля, 12
         — карточки и бейджи, 16/24 — диалоги. Для пилюль и аватаров используется{' '}
         <code>rounded-full</code>.

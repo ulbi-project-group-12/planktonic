@@ -71,11 +71,11 @@ function Toast({
         {icons[palette]}
       </span>
       <div className="min-w-0 flex-1">
-        <ToastPrimitive.Title className="text-sm font-bold text-fg-primary">
+        <ToastPrimitive.Title className="text-caption font-bold text-fg-primary">
           {title}
         </ToastPrimitive.Title>
         {description ? (
-          <ToastPrimitive.Description className="mt-0.5 text-xs text-fg-secondary">
+          <ToastPrimitive.Description className="mt-0.5 text-micro text-fg-secondary">
             {description}
           </ToastPrimitive.Description>
         ) : null}
@@ -85,7 +85,7 @@ function Toast({
           <ToastPrimitive.Action
             altText={action.label}
             onClick={action.onClick}
-            className="cursor-pointer rounded-md px-1 text-sm font-bold text-brand-primary transition-colors hover:underline"
+            className="cursor-pointer rounded-md px-1 text-caption font-bold text-brand-primary transition-colors hover:underline"
           >
             {action.label}
           </ToastPrimitive.Action>

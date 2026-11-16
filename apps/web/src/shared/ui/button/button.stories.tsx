@@ -70,7 +70,9 @@ const subtleRows: SpecRowConfig[] = [
 function Card({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="rounded-xl border border-line bg-app p-6">
-      <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">{label}</div>
+      <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
+        {label}
+      </div>
       {children}
     </div>
   );
@@ -82,9 +84,9 @@ function VariantTable({ variant, rows }: { variant: ButtonVariant; rows: SpecRow
     <div>
       <div className="grid grid-cols-[180px_repeat(3,minmax(0,1fr))] items-end gap-4">
         <div />
-        <div className="text-xs font-bold text-fg-primary">Default</div>
-        <div className="text-xs font-bold text-fg-primary">Disabled</div>
-        <div className="text-xs font-bold text-fg-primary">Loading</div>
+        <div className="text-micro font-bold text-fg-primary">Default</div>
+        <div className="text-micro font-bold text-fg-primary">Disabled</div>
+        <div className="text-micro font-bold text-fg-primary">Loading</div>
       </div>
       {rows.map((row) => (
         <div
@@ -92,7 +94,7 @@ function VariantTable({ variant, rows }: { variant: ButtonVariant; rows: SpecRow
           className="grid grid-cols-[180px_repeat(3,minmax(0,1fr))] items-center gap-4 border-t border-line py-3.5"
         >
           <div className="min-w-0">
-            <div className="text-sm font-bold text-fg-primary">{row.name}</div>
+            <div className="text-caption font-bold text-fg-primary">{row.name}</div>
             <div className="truncate text-[11px] text-fg-muted">{row.tokenCaption}</div>
           </div>
           <div>
@@ -128,7 +130,7 @@ function SizeItem({ caption, children }: { caption: string; children: ReactNode 
 function SizesAndGeometry() {
   return (
     <Card label="Размеры, иконки и геометрия — desktop / mobile">
-      <div className="text-xs font-medium tracking-wider text-fg-muted uppercase">
+      <div className="text-micro font-medium tracking-wider text-fg-muted uppercase">
         Desktop — основные размеры, точный курсор
       </div>
       <div className="mt-4 mb-8 flex flex-wrap items-start gap-6">
@@ -154,12 +156,12 @@ function SizesAndGeometry() {
         </SizeItem>
       </div>
 
-      <div className="text-xs font-medium tracking-wider text-fg-muted uppercase">
+      <div className="text-micro font-medium tracking-wider text-fg-muted uppercase">
         Mobile — компактнее, чтобы влезть в 390 px, чаще во всю ширину
       </div>
       <div className="mt-4 flex flex-wrap items-start gap-6">
         <SizeItem caption="S — 32 px · 12/20">
-          <Button size="s" className="h-8! text-sm! md:h-8! md:text-sm!">
+          <Button size="s" className="h-8! text-caption! md:h-8! md:text-caption!">
             Малая
           </Button>
         </SizeItem>
@@ -219,7 +221,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
         <h2 className="mb-6 text-base font-bold text-fg-primary">
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
-        <h3 className="mb-4 text-xl font-bold text-fg-primary">Атомы — кнопки</h3>
+        <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — кнопки</h3>
         <ButtonSpec />
       </div>
     </div>

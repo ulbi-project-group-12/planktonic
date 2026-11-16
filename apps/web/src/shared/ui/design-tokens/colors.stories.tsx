@@ -72,11 +72,11 @@ function Swatch({ item }: { item: SwatchItem }) {
         className="h-14 rounded-xl border border-line"
         style={{ background: `var(${item.cssVar})` }}
       />
-      <div className="mt-2 truncate text-sm font-bold text-fg-primary">{item.name}</div>
-      <div className="mt-0.5 text-xs text-fg-secondary">
+      <div className="mt-2 truncate text-caption font-bold text-fg-primary">{item.name}</div>
+      <div className="mt-0.5 text-micro text-fg-secondary">
         <ComputedColorValue targetRef={ref} />
       </div>
-      <div className="mt-0.5 text-xs text-fg-muted">{item.description}</div>
+      <div className="mt-0.5 text-micro text-fg-muted">{item.description}</div>
     </div>
   );
 }
@@ -84,7 +84,7 @@ function Swatch({ item }: { item: SwatchItem }) {
 function Group({ label, items }: { label: string; items: SwatchItem[] }) {
   return (
     <div>
-      <div className="text-xs font-medium tracking-wider text-fg-muted uppercase">{label}</div>
+      <div className="text-micro font-medium tracking-wider text-fg-muted uppercase">{label}</div>
       <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">
         {items.map((item) => (
           <Swatch key={item.name} item={item} />
@@ -191,8 +191,8 @@ function SemanticRow({ status }: { status: (typeof semanticStatuses)[number] }) 
   return (
     <div className="grid grid-cols-[180px_1fr] items-start gap-6">
       <div className="min-w-0">
-        <div className="text-sm font-bold text-fg-primary">{status.name}</div>
-        <div className="mt-0.5 text-xs text-fg-muted">{status.usage}</div>
+        <div className="text-caption font-bold text-fg-primary">{status.name}</div>
+        <div className="mt-0.5 text-micro text-fg-muted">{status.usage}</div>
       </div>
       <div className="grid grid-cols-4 gap-4">
         {semanticStates.map((state) => {
@@ -215,7 +215,7 @@ function SemanticSwatch({ cssVar, label }: { cssVar: string; label: string }) {
         style={{ background: `var(${cssVar})` }}
       />
       <div className="mt-1.5 text-[10px] font-medium tracking-wider text-fg-muted">{label}</div>
-      <div className="text-xs text-fg-secondary">
+      <div className="text-micro text-fg-secondary">
         <ComputedColorValue targetRef={ref} />
       </div>
     </div>
@@ -233,7 +233,7 @@ function ThemePalette({ theme }: { theme: 'light' | 'dark' }) {
         <div className="flex flex-col gap-10">
           {sections.map((section) => (
             <section key={section.title}>
-              <h3 className="mb-4 text-xl font-bold text-fg-primary">{section.title}</h3>
+              <h3 className="mb-4 text-body-l font-bold text-fg-primary">{section.title}</h3>
               <div className="flex flex-col gap-8 rounded-xl border border-line bg-app p-6">
                 {section.groups.map((group) => (
                   <Group key={group.label} label={group.label} items={group.items} />
@@ -243,11 +243,11 @@ function ThemePalette({ theme }: { theme: 'light' | 'dark' }) {
           ))}
 
           <section>
-            <h3 className="mb-4 text-xl font-bold text-fg-primary">
+            <h3 className="mb-4 text-body-l font-bold text-fg-primary">
               Semantic — цвет и его состояния
             </h3>
             <div className="flex flex-col gap-8 rounded-xl border border-line bg-app p-6">
-              <div className="text-xs font-medium tracking-wider text-fg-muted uppercase">
+              <div className="text-micro font-medium tracking-wider text-fg-muted uppercase">
                 BASE — HOVER — ACTIVE — SUBTLE
               </div>
               {semanticStatuses.map((status) => (

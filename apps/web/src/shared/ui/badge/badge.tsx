@@ -54,7 +54,7 @@ function Badge({ count, mention = false, dot = false, variant = 'brand', classNa
       data-slot="badge"
       data-variant={variant}
       className={cn(
-        'inline-flex h-5 min-w-5 items-center justify-center gap-px rounded-full px-1.5 text-xs font-bold',
+        'inline-flex h-5 min-w-5 items-center justify-center gap-px rounded-full px-1.5 text-micro font-bold',
         variantClasses[variant],
         className,
       )}

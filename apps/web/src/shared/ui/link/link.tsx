@@ -38,7 +38,7 @@ function Link({
       aria-disabled={disabled || undefined}
       tabIndex={disabled ? -1 : props.tabIndex}
       className={cn(
-        'inline-flex cursor-pointer items-center gap-1 text-lg leading-5 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-brand-primary/40',
+        'inline-flex cursor-pointer items-center gap-1 text-body-s leading-5 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-brand-primary/40',
         variantClasses[variant],
         variant === 'nav' && active && 'bg-brand-subtle text-brand-primary hover:bg-brand-subtle',
         disabled && 'pointer-events-none cursor-not-allowed text-fg-muted',

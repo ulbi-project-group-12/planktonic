@@ -8,23 +8,23 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
         <h2 className="mb-6 text-base font-bold text-fg-primary">
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
-        <h3 className="mb-4 text-xl font-bold text-fg-primary">Атомы — прогресс</h3>
+        <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — прогресс</h3>
         <div className="flex flex-col gap-6">
           <div className="rounded-xl border border-line bg-app p-6">
-            <div className="mb-6 text-xs font-medium tracking-wider text-fg-muted uppercase">
+            <div className="mb-6 text-micro font-medium tracking-wider text-fg-muted uppercase">
               Загрузка файла
             </div>
             <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
-                <span className="text-xs text-fg-secondary">Загрузка файла — 60%</span>
+                <span className="text-micro text-fg-secondary">Загрузка файла — 60%</span>
                 <Progress value={60} aria-label="Загрузка файла" />
               </div>
               <div className="flex flex-col gap-2">
-                <span className="text-xs text-fg-secondary">Начало — 8%</span>
+                <span className="text-micro text-fg-secondary">Начало — 8%</span>
                 <Progress value={8} aria-label="Начало загрузки" />
               </div>
               <div className="flex flex-col gap-2">
-                <span className="text-xs text-fg-secondary">Почти готово — 92%</span>
+                <span className="text-micro text-fg-secondary">Почти готово — 92%</span>
                 <Progress value={92} aria-label="Почти готово" />
               </div>
             </div>
@@ -62,7 +62,7 @@ export const Playground: Story = {
   },
   render: (args) => (
     <div className="flex flex-col gap-2 p-10">
-      <span className="text-xs text-fg-secondary">Загрузка файла — {args.value}%</span>
+      <span className="text-micro text-fg-secondary">Загрузка файла — {args.value}%</span>
       <Progress {...args} aria-label="Загрузка файла" />
     </div>
   ),

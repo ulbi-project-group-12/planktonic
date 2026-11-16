@@ -34,7 +34,7 @@ interface SelectProps {
 }
 
 const triggerClass = cn(
-  'flex w-full items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm outline-none',
+  'flex w-full items-center gap-2 rounded-xl border border-line bg-surface px-3 text-caption outline-none',
   'cursor-pointer transition-shadow focus-visible:border-brand-primary focus-visible:ring-3 focus-visible:ring-brand-subtle',
   'data-[state=open]:border-brand-primary data-[state=open]:ring-3 data-[state=open]:ring-brand-subtle',
   'disabled:cursor-not-allowed disabled:bg-sunken',
@@ -202,7 +202,7 @@ function Select({
                 ))}
               </div>
             )}
-            {chipsOverflow ? <span className="shrink-0 text-sm text-fg-muted">…</span> : null}
+            {chipsOverflow ? <span className="shrink-0 text-caption text-fg-muted">…</span> : null}
             <ChevronDown className="ml-auto size-4 shrink-0 text-fg-muted transition-transform [[data-state=open]_&]:rotate-180" />
           </div>
         ) : (
@@ -255,7 +255,7 @@ function Select({
             className="flex-1 overflow-y-auto p-1"
           >
             {filtered.length === 0 ? (
-              <div className="flex h-9 items-center px-2 text-sm text-fg-muted">
+              <div className="flex h-9 items-center px-2 text-caption text-fg-muted">
                 Ничего не найдено
               </div>
             ) : multiple ? (
@@ -295,7 +295,7 @@ function Select({
                       toggle(option.value);
                     }}
                     className={cn(
-                      'flex h-9 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm text-fg-primary select-none',
+                      'flex h-9 cursor-pointer items-center gap-2 rounded-lg px-2 text-caption text-fg-primary select-none',
                       'focus-visible:outline-none',
                       selected ? 'bg-brand-subtle' : 'hover:bg-sunken focus:bg-sunken',
                     )}
