@@ -56,23 +56,29 @@ Tailwind CSS 4 utilities; no CSS modules or ad hoc CSS files. Use kit components
 All design tokens live in `src/_app/styles/tokens/` — one file per group, imported from
 `globals.css` (the single source of variables):
 
-| File              | Contents                                                                                         |
-| ----------------- | ------------------------------------------------------------------------------------------------ |
-| `fonts.css`       | Onest 200/400/700 via local `@font-face` (`public/fonts`), `--font-sans`                         |
-| `colors.css`      | raw palette (`:root` light, `.dark` dark) + the `--color-*` utility layer (`bg-…`, `text-…`)     |
-| `text-sizes.css`  | role-based text tokens (`text-caption` … `text-h1–h6`) — the default Tailwind scale is untouched |
-| `radii.css`       | `--radius-*` scale from the mockup cornerRadius                                                  |
-| `breakpoints.css` | `--breakpoint-*` — mobile is below 1024 (`desktop-s`), desktop from 1024 up                      |
-| `spacings.css`    | adaptive `--space-*` scale — mobile value below 1024, desktop from 1024; `-fix` = same on both   |
-| `shadows.css`     | elevation scale `shadow-elevation-1 … 6` from the mockup; Tailwind's `shadow-*` stays default    |
+| File                 | Contents                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------- |
+| `fonts.css`          | Onest 200/400/700 via local `@font-face` (`public/fonts`), `--font-sans`                          |
+| `colors.css`         | raw palette (`:root` light, `.dark` dark) + the `--color-*` utility layer (`bg-…`, `text-…`)      |
+| `shadcn-aliases.css` | shadcn theme names (`--primary`, `--muted-foreground`, `--ring`, …) pointing at the mockup tokens |
+| `text-sizes.css`     | role-based text tokens (`text-caption` … `text-h1–h6`) — the default Tailwind scale is untouched  |
+| `radii.css`          | `--radius-*` scale from the mockup cornerRadius                                                   |
+| `breakpoints.css`    | `--breakpoint-*` — mobile is below 1024 (`desktop-s`), desktop from 1024 up                       |
+| `spacings.css`       | adaptive `--space-*` scale — mobile value below 1024, desktop from 1024; `-fix` = same on both    |
+| `shadows.css`        | elevation scale `shadow-elevation-1 … 6` from the mockup; Tailwind's `shadow-*` stays default     |
 
 To add a token:
 
 1. Add the raw variable to its group file (a new `--color-*` goes to both `:root` and `.dark`
    when it is theme-dependent; shadows and radii are theme-independent).
 2. Expose it as a utility in the `@theme inline` block of the same file, e.g.
-   `--color-accent: var(--accent);` gives `bg-accent` / `text-accent` automatically.
+   `--color-brand-hover: var(--brand-hover);` gives `bg-brand-hover` / `text-brand-hover`.
 3. Show it on the matching `shared/Design Tokens/*` Storybook page so the scale stays reviewable.
+
+Components from `shadcn add` use the shadcn theme names (`bg-primary`, `text-muted-foreground`,
+`border-input`, `ring-ring`, …). `shadcn-aliases.css` maps each of them to a mockup token, so
+those components get the product look and the dark theme without edits. Our own atoms keep the
+mockup names. A new mockup color that has a shadcn meaning gets an alias there too.
 
 Spacing utilities carry an `sp-` prefix (`p-sp-s`, `gap-sp-m`, `m-sp-1xl`, …) and resolve
 through the `--spacing-sp-*` namespace. The prefix keeps bare Tailwind names intact —
