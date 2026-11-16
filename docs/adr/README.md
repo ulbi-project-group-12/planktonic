@@ -10,6 +10,8 @@ An ADR is a short record of one architectural decision: the context, what we cho
 - Status: `Proposed` → `Accepted` (the lead approves in the PR) → `Superseded by ADR-NNNN` or `Deprecated`.
 - Prose may be in Russian, like the tracker docs; identifiers, table and column names stay in English.
 
+> `0003-AI-NOTES.md` is a temporary working file for finishing ADR-0003; it is deleted before that PR merges.
+
 ## Index
 
 | ADR                        | Title             | Status   | Ticket |
