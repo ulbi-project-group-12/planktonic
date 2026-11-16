@@ -22,7 +22,7 @@ interface SelectProps {
   /** Multiple choice: chips in the field, checkboxes in the list, dropdown stays open on select. */
   multiple?: boolean;
   /** Multiple choice: wrap chips onto several rows (the field grows in height).
-   *  Disabled by default — chips in one row, ellipsis when out of space. */
+   *  Disabled by default — chips in one row, those that do not fit are replaced by an ellipsis. */
   chipsWrap?: boolean;
   placeholder?: string;
   /** Search for long lists + "Showing N of M" footer. */
@@ -52,6 +52,11 @@ const triggerClass = cn(
   'disabled:cursor-not-allowed disabled:bg-sunken',
 );
 
+/** Gap (px) between chips — matches gap-1.5 in the markup. */
+const CHIP_GAP = 6;
+/** Used to reserve room for the ellipsis until it is rendered and measured. */
+const ELLIPSIS_FALLBACK_WIDTH = 12;
+
 /** Select per the "Atoms — selects" mockup: dropdown under the field, 36 px options, search and scroll for long lists. */
 function Select({
   options,
@@ -74,24 +79,65 @@ function Select({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const chipsRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const listboxRef = useRef<HTMLDivElement>(null);
-  /** Chips overflow a single row — show ellipsis (no-wrap mode). */
-  const [chipsOverflow, setChipsOverflow] = useState(false);
+  const chipNodesRef = useRef(new Map<string, HTMLSpanElement>());
+  /** Measured chip widths survive unmount: hidden chips stay measurable on later passes. */
+  const chipWidthsRef = useRef(new Map<string, number>());
+  const ellipsisRef = useRef<HTMLSpanElement>(null);
+  /** How many chips fit on one line; null = nothing is hidden (also the initial measuring pass). */
+  const [fitCount, setFitCount] = useState<number | null>(null);
 
   useEffect(() => {
     const element = chipsRef.current;
     if (!element || chipsWrap) {
-      setChipsOverflow(false);
+      setFitCount(null);
       return;
     }
-    const update = () => {
-      setChipsOverflow(element.scrollWidth > element.clientWidth);
+    let raf = 0;
+    const computeFit = () => {
+      chipNodesRef.current.forEach((node, key) => {
+        chipWidthsRef.current.set(key, node.offsetWidth);
+      });
+      for (const key of chipWidthsRef.current.keys()) {
+        if (!value.includes(key)) chipWidthsRef.current.delete(key);
+      }
+      const widths = value.map((chipValue) => chipWidthsRef.current.get(chipValue));
+      const containerWidth = element.clientWidth;
+      // nothing to measure against (jsdom / not laid out yet) — show everything
+      if (containerWidth === 0) {
+        setFitCount(null);
+        return;
+      }
+      // an unmeasured chip (e.g. freshly selected while others are hidden) must render
+      // at least once — show everything and re-measure after that render
+      if (widths.includes(undefined)) {
+        setFitCount(null);
+        raf = requestAnimationFrame(computeFit);
+        return;
+      }
+      const ellipsisWidth = ellipsisRef.current?.offsetWidth ?? ELLIPSIS_FALLBACK_WIDTH;
+      // any chip beyond the fit count is hidden, so room for the ellipsis must be reserved up front
+      const fitWithReserve = (reserve: number) => {
+        let used = reserve;
+        let count = 0;
+        for (const width of widths as number[]) {
+          const extra = width + (count > 0 ? CHIP_GAP : 0);
+          if (used + extra > containerWidth) break;
+          used += extra;
+          count += 1;
+        }
+        return count;
+      };
+      const count = fitWithReserve(0);
+      setFitCount(count < widths.length ? fitWithReserve(CHIP_GAP + ellipsisWidth) : count);
     };
-    update();
+    computeFit();
     if (typeof ResizeObserver === 'undefined') return; // jsdom
-    const observer = new ResizeObserver(update);
+    const observer = new ResizeObserver(computeFit);
     observer.observe(element);
     return () => {
+      cancelAnimationFrame(raf);
       observer.disconnect();
     };
   }, [value, chipsWrap]);
@@ -126,16 +172,22 @@ function Select({
     event.stopPropagation();
   };
 
-  /** Focus an option of the single list by index (out-of-range indexes are ignored). */
+  /** Focus an option of the list by index (out-of-range indexes are ignored). */
   const focusOption = (index: number) => {
     const items = listboxRef.current?.querySelectorAll<HTMLElement>('[role="option"]');
     if (!items || items.length === 0) return;
     items[Math.max(0, Math.min(index, items.length - 1))]?.focus();
   };
 
-  /** Single-list keyboard: arrows/Home/End move focus, Enter/Space select. */
+  /** Move focus from the option list back to the search input (searchable mode). */
+  const focusSearch = () => {
+    contentRef.current
+      ?.querySelector<HTMLInputElement>('[data-slot="select-search"] input')
+      ?.focus();
+  };
+
+  /** Listbox keyboard: arrows/Home/End move focus, Enter/Space toggle; in multiple mode the dropdown stays open. */
   const onListboxKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (multiple) return;
     const target = event.target as HTMLElement;
     if (target.getAttribute('role') !== 'option') return;
     const items = Array.from(
@@ -144,6 +196,10 @@ function Select({
     const index = items.indexOf(target);
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
+      if (event.key === 'ArrowUp' && index === 0 && searchable) {
+        focusSearch();
+        return;
+      }
       focusOption(event.key === 'ArrowDown' ? index + 1 : index - 1);
       return;
     }
@@ -159,15 +215,16 @@ function Select({
     }
   };
 
-  /** On open: single mode focuses the selected option (else the first one), searchable — the search input. */
+  /** On open: searchable — the search input; otherwise the first option (single — the selected one). */
   const onContentOpenAutoFocus = (event: Event) => {
     if (searchable) return; // default Radix focus: the search input
+    event.preventDefault();
     if (multiple) {
-      // keep focus on the trigger so the chips stay reachable by keyboard
-      event.preventDefault();
+      // focus the first selected option; the chips stay reachable in the closed field
+      const firstSelected = options.findIndex((option) => value.includes(option.value));
+      focusOption(firstSelected === -1 ? 0 : firstSelected);
       return;
     }
-    event.preventDefault();
     const selectedIndex = options.findIndex((option) => option.value === value[0]);
     focusOption(selectedIndex === -1 ? 0 : selectedIndex);
   };
@@ -228,12 +285,20 @@ function Select({
                   chipsWrap ? 'flex-wrap' : 'overflow-hidden',
                 )}
               >
-                {value.map((optionValue) => (
+                {value.slice(0, fitCount ?? value.length).map((optionValue) => (
                   // No pointer-events here: a click on the chip text falls through to the
                   // trigger button and toggles the dropdown; only the remove button inside
                   // the chip re-enables pointer events. stopPropagation keeps the remove
                   // click from bubbling up to that same trigger.
-                  <span key={optionValue} className="shrink-0" onClick={stopPropagation}>
+                  <span
+                    key={optionValue}
+                    ref={(node) => {
+                      if (node) chipNodesRef.current.set(optionValue, node);
+                      else chipNodesRef.current.delete(optionValue);
+                    }}
+                    className="shrink-0"
+                    onClick={stopPropagation}
+                  >
                     <Chip
                       palette="brand"
                       // no remove when disabled: pointer-events on the wrapper only stops
@@ -251,8 +316,11 @@ function Select({
                   </span>
                 ))}
               </div>
-              {chipsOverflow ? (
-                <span className="shrink-0 text-caption text-fg-muted">…</span>
+              {fitCount !== null && fitCount < value.length ? (
+                // chips that did not fit are not rendered at all — the ellipsis takes their place
+                <span ref={ellipsisRef} className="shrink-0 text-caption text-fg-muted">
+                  …
+                </span>
               ) : null}
             </div>
           ) : null}
@@ -289,6 +357,7 @@ function Select({
 
       <PopoverPrimitive.Portal container={portalContainer ?? undefined}>
         <PopoverPrimitive.Content
+          ref={contentRef}
           align="start"
           sideOffset={4}
           onOpenAutoFocus={onContentOpenAutoFocus}
@@ -296,7 +365,7 @@ function Select({
           className="z-50 flex max-h-72 w-[var(--radix-popover-trigger-width)] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-elevation-2"
         >
           {searchable ? (
-            <div className="border-b border-line p-2">
+            <div data-slot="select-search" className="border-b border-line p-2">
               <Input
                 aria-label="Поиск по списку"
                 placeholder="Найти…"
@@ -304,6 +373,13 @@ function Select({
                 value={query}
                 onChange={(event) => {
                   setQuery(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  // ArrowDown moves from the search field into the option list
+                  if (event.key !== 'ArrowDown') return;
+                  event.preventDefault();
+                  const selectedIndex = options.findIndex((option) => option.value === value[0]);
+                  focusOption(selectedIndex === -1 ? 0 : selectedIndex);
                 }}
                 className="h-9"
               />
@@ -328,6 +404,8 @@ function Select({
                   <div
                     key={option.value}
                     role="option"
+                    tabIndex={-1}
+                    data-value={option.value}
                     aria-selected={selected}
                     onClick={(event) => {
                       // preventDefault cancels the checkbox label activation — otherwise the browser
@@ -336,11 +414,19 @@ function Select({
                       toggle(option.value);
                     }}
                     className={cn(
-                      'flex h-9 cursor-pointer items-center rounded-lg px-2 select-none hover:bg-sunken',
-                      selected && 'bg-brand-subtle hover:bg-brand-subtle',
+                      'flex h-9 cursor-pointer items-center rounded-lg px-2 select-none focus-visible:outline-none',
+                      selected
+                        ? 'bg-brand-subtle hover:bg-brand-subtle focus:bg-brand-subtle'
+                        : 'hover:bg-sunken focus:bg-sunken',
                     )}
                   >
-                    <Checkbox checked={selected} label={option.label} className="flex-1" />
+                    {/* tabIndex -1: the row is the keyboard target (arrows/Enter/Space), the checkbox serves the pointer */}
+                    <Checkbox
+                      checked={selected}
+                      label={option.label}
+                      tabIndex={-1}
+                      className="flex-1"
+                    />
                   </div>
                 );
               })

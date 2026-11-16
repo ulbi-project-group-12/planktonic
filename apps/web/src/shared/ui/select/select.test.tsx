@@ -80,6 +80,24 @@ describe('Select (одиночный)', () => {
     expect(screen.queryByRole('option', { name: 'Все участники' })).toBeNull();
     expect(screen.getByText(/Показано/)).toHaveTextContent('Показано 2 из 3 · скролл продолжает');
   });
+
+  it('moves from the search input to the options with ArrowDown and back with ArrowUp', async () => {
+    render(<Select options={options} value={[]} onValueChange={vi.fn()} searchable />);
+    await userEvent.click(screen.getByRole('button'));
+    const search = screen.getByLabelText('Поиск по списку');
+    expect(search).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getByRole('option', { name: 'Все участники' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(search).toHaveFocus();
+  });
+
+  it('focuses the selected option from the search input', async () => {
+    render(<Select options={options} value={['only-owner']} onValueChange={vi.fn()} searchable />);
+    await userEvent.click(screen.getByRole('button', { name: /Только владельцы/ }));
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getByRole('option', { name: 'Только владельцы' })).toHaveFocus();
+  });
 });
 
 describe('Select (множественный)', () => {
@@ -132,14 +150,36 @@ describe('Select (множественный)', () => {
     expect(screen.getByText('Выбрано: 2 из 5')).toBeInTheDocument();
   });
 
-  it('toggles the dropdown with Enter and Space on the trigger', async () => {
+  it('opens with Enter on the trigger, moves focus into the list and closes with Escape', async () => {
     render(<ControlledMultiple />);
     const trigger = screen.getByRole('button', { name: /PR открыт/ });
     trigger.focus();
     await userEvent.keyboard('{Enter}');
     expect(screen.getByRole('listbox')).toBeInTheDocument();
-    await userEvent.keyboard(' ');
+    // focus moves to the first selected option on open
+    expect(screen.getByRole('option', { name: 'PR открыт' })).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('navigates the list and toggles options with the keyboard', async () => {
+    render(<ControlledMultiple />);
+    const trigger = screen.getByRole('button', { name: /PR открыт/ });
+    trigger.focus();
+    await userEvent.keyboard('{Enter}');
+    // focus starts on the first selected option
+    expect(screen.getByRole('option', { name: 'PR открыт' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getByRole('option', { name: 'Запрос ревью' })).toHaveFocus();
+    await userEvent.keyboard('{End}');
+    expect(screen.getByRole('option', { name: 'Push в main' })).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
+    // toggled on, the dropdown stays open — the counter updated to 3
+    expect(screen.getByText('Выбрано: 3 из 5')).toBeInTheDocument();
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+    await userEvent.keyboard('{Space}');
+    // toggled off again
+    expect(screen.getByText('Выбрано: 2 из 5')).toBeInTheDocument();
   });
 
   it('does not intercept keys from the chip remove button', async () => {
