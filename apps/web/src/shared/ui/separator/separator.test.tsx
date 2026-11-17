@@ -18,11 +18,6 @@ describe('Separator', () => {
     expect(screen.getByRole('separator')).not.toHaveAttribute('aria-orientation');
   });
 
-  it('marks the vertical orientation', () => {
-    render(<Separator decorative={false} orientation="vertical" className="h-6" />);
-    expect(screen.getByRole('separator')).toHaveAttribute('aria-orientation', 'vertical');
-  });
-
   it('maps tones to token classes and thickness', () => {
     const { container, rerender } = render(<Separator />);
     const line = () => container.querySelector('[data-slot="separator"]');

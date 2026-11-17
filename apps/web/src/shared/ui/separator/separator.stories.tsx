@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import { Bold, Italic, Link as LinkIcon, Pencil, Trash2 } from 'lucide-react';
-import { Button } from '@/shared/ui/button';
 import { Separator, separatorTones } from './separator';
 
 function Card({ label, children }: { label: string; children: ReactNode }) {
@@ -48,42 +46,6 @@ function HorizontalSpec() {
   );
 }
 
-function VerticalSpec() {
-  return (
-    <Card label="Separator · вертикальный">
-      <div className="flex flex-col gap-6">
-        <Row name="В тулбаре" note="между группами действий">
-          <div className="flex w-fit items-center gap-1 rounded-lg border border-line bg-surface p-1">
-            <Button size="s" variant="secondary" aria-label="Жирный">
-              <Bold className="size-3.5" />
-            </Button>
-            <Button size="s" variant="secondary" aria-label="Курсив">
-              <Italic className="size-3.5" />
-            </Button>
-            <Separator orientation="vertical" className="mx-1 h-5" />
-            <Button size="s" variant="secondary" aria-label="Вставить ссылку">
-              <LinkIcon className="size-3.5" />
-            </Button>
-          </div>
-        </Row>
-        <Row name="В меню" note="между группами пунктов">
-          <div className="w-56 rounded-lg border border-line bg-surface p-1">
-            <div className="flex h-7 items-center gap-2 rounded-md px-2 text-caption text-fg-primary">
-              <Pencil className="size-3.5 text-fg-muted" />
-              Редактировать
-            </div>
-            <Separator className="my-1" />
-            <div className="flex h-7 items-center gap-2 rounded-md px-2 text-caption text-danger">
-              <Trash2 className="size-3.5" />
-              Удалить
-            </div>
-          </div>
-        </Row>
-      </div>
-    </Card>
-  );
-}
-
 function LabeledSpec() {
   return (
     <Card label="Separator · с подписью">
@@ -106,7 +68,6 @@ function SeparatorSpec() {
   return (
     <div className="flex flex-col gap-6">
       <HorizontalSpec />
-      <VerticalSpec />
       <LabeledSpec />
     </div>
   );
@@ -121,9 +82,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
         </h2>
         <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — разделитель</h3>
         <SeparatorSpec />
-        <p className="mt-6 text-[11px] text-fg-muted">
-          Горизонтальный и вертикальный, с подписью, оттенки
-        </p>
+        <p className="mt-6 text-[11px] text-fg-muted">Горизонтальный, с подписью, оттенки</p>
       </div>
     </div>
   );
@@ -152,14 +111,12 @@ export const States: Story = {
 
 export const Playground: Story = {
   args: {
-    orientation: 'horizontal',
     tone: 'default',
     children: 'или',
     section: false,
     className: 'w-72',
   },
   argTypes: {
-    orientation: { control: 'select', options: ['horizontal', 'vertical'] },
     tone: { control: 'select', options: separatorTones },
     children: { control: 'text' },
     section: { control: 'boolean' },

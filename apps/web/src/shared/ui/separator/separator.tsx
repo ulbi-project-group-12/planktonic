@@ -6,11 +6,9 @@ const separatorTones = ['default', 'strong', 'thick', 'brand'] as const;
 type SeparatorTone = (typeof separatorTones)[number];
 
 interface SeparatorProps {
-  /** Line direction: horizontal (default) or vertical — toolbars and menu groups. */
-  orientation?: 'horizontal' | 'vertical';
   /** default — border.default · 1px · strong — border.strong · 1px · thick — border.default · 2px · brand — brand.primary · 2px. */
   tone?: SeparatorTone;
-  /** Caption between two line halves — horizontal only ("или", "12 ноября"). */
+  /** Caption between two line halves ("или", "12 ноября"). */
   children?: ReactNode;
   /** Section label style: uppercase with wider tracking ("НОВЫЕ"). */
   section?: boolean;
@@ -19,9 +17,8 @@ interface SeparatorProps {
   className?: string;
 }
 
-/** Separator per the "Atoms — разделитель" mockup: горизонтальный/вертикальный, с подписью, оттенки. */
+/** Separator per the "Atoms — разделитель" mockup: горизонтальная линия, с подписью, оттенки. */
 function Separator({
-  orientation = 'horizontal',
   tone = 'default',
   children,
   section = false,
@@ -32,17 +29,11 @@ function Separator({
   const line = (stretch: boolean) => (
     <SeparatorPrimitive.Root
       decorative={decorative}
-      orientation={orientation}
+      orientation="horizontal"
       data-slot="separator"
       className={cn(
-        orientation === 'horizontal'
-          ? thick
-            ? 'h-[2px]'
-            : 'h-px'
-          : thick
-            ? 'w-[2px] self-stretch'
-            : 'w-px self-stretch',
-        stretch ? 'flex-1' : orientation === 'horizontal' ? 'w-full' : 'h-full',
+        thick ? 'h-[2px]' : 'h-px',
+        stretch ? 'flex-1' : 'w-full',
         tone === 'strong' && 'bg-line-strong',
         tone === 'brand' && 'bg-brand-primary',
         tone !== 'strong' && tone !== 'brand' && 'bg-line',
@@ -51,7 +42,7 @@ function Separator({
     />
   );
 
-  if (children === undefined || orientation === 'vertical') {
+  if (children === undefined) {
     return line(false);
   }
 
