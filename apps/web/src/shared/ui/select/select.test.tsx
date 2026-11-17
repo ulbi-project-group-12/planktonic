@@ -155,6 +155,14 @@ describe('Select (множественный)', () => {
     expect(screen.getByText('Выбрано: 3 из 5')).toBeInTheDocument();
   });
 
+  it('keeps the option row focused after a pointer click on the checkbox inside it', async () => {
+    render(<ControlledMultiple />);
+    await userEvent.click(screen.getByRole('button', { name: /PR открыт/ }));
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Merge' }));
+    // the row — not the checkbox — stays the keyboard target for arrows/Enter
+    expect(screen.getByRole('option', { name: 'Merge' })).toHaveFocus();
+  });
+
   it('removes a value via the chip cross', async () => {
     render(<ControlledMultiple />);
     await userEvent.click(screen.getAllByRole('button', { name: 'Убрать' })[0]!);

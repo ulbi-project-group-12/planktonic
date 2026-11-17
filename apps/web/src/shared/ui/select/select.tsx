@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { Popover as PopoverPrimitive } from 'radix-ui';
 import { Check, ChevronDown, Search } from 'lucide-react';
@@ -109,11 +109,18 @@ function Select({
   const contentRef = useRef<HTMLDivElement>(null);
   const listboxRef = useRef<HTMLDivElement>(null);
   const chipNodesRef = useRef(new Map<string, HTMLSpanElement>());
-  /** Measured chip widths survive unmount: hidden chips stay measurable on later passes. */
-  const chipWidthsRef = useRef(new Map<string, number>());
+  /** Measured chip widths (with their labels) survive unmount: hidden chips stay
+   *  measurable on later passes; a changed label invalidates the measurement. */
+  const chipWidthsRef = useRef(new Map<string, { width: number; label: string }>());
   const ellipsisRef = useRef<HTMLSpanElement>(null);
   /** How many chips fit on one line; null = nothing is hidden (also the initial measuring pass). */
   const [fitCount, setFitCount] = useState<number | null>(null);
+
+  const labelOf = useCallback(
+    (optionValue: string) =>
+      options.find((option) => option.value === optionValue)?.label ?? optionValue,
+    [options],
+  );
 
   useEffect(() => {
     const element = chipsRef.current;
@@ -124,12 +131,17 @@ function Select({
     let raf = 0;
     const computeFit = () => {
       chipNodesRef.current.forEach((node, key) => {
-        chipWidthsRef.current.set(key, node.offsetWidth);
+        chipWidthsRef.current.set(key, { width: node.offsetWidth, label: labelOf(key) });
       });
       for (const key of chipWidthsRef.current.keys()) {
         if (!value.includes(key)) chipWidthsRef.current.delete(key);
       }
-      const widths = value.map((chipValue) => chipWidthsRef.current.get(chipValue));
+      const widths = value.map((chipValue) => {
+        const cached = chipWidthsRef.current.get(chipValue);
+        // a changed option label means a different chip size — the cached width
+        // is stale, so the chip must render and re-measure before it can stay hidden
+        return cached?.label === labelOf(chipValue) ? cached.width : undefined;
+      });
       // nothing to measure against (jsdom / not laid out yet) — show everything
       if (element.clientWidth === 0) {
         setFitCount(null);
@@ -157,16 +169,13 @@ function Select({
       cancelAnimationFrame(raf);
       observer.disconnect();
     };
-  }, [value, chipsWrap]);
+  }, [value, chipsWrap, labelOf]);
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (normalized === '') return options;
     return options.filter((option) => option.label.toLowerCase().includes(normalized));
   }, [options, query]);
-
-  const labelOf = (optionValue: string) =>
-    options.find((option) => option.value === optionValue)?.label ?? optionValue;
 
   const toggle = (optionValue: string) => {
     if (multiple) {
@@ -430,6 +439,9 @@ function Select({
                       // would duplicate the click onto the checkbox itself and the row would toggle twice
                       event.preventDefault();
                       toggle(option.value);
+                      // a pointer click on the checkbox inside moves focus to it (tabIndex -1);
+                      // keep the row the keyboard target so arrows/Enter keep working after the click
+                      event.currentTarget.focus();
                     }}
                     className={cn(
                       'flex h-9 cursor-pointer items-center rounded-lg px-2 select-none focus-visible:outline-none',
