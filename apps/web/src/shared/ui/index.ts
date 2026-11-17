@@ -59,6 +59,7 @@ export {
 export { Modal, modalSizes, type ModalAction, type ModalProps, type ModalSize } from './modal';
 export { Progress, type ProgressProps } from './progress';
 export { Select, type SelectOption, type SelectProps } from './select';
+export { Separator, separatorTones, type SeparatorProps, type SeparatorTone } from './separator';
 export { Skeleton } from './skeleton';
 export { Spinner, spinnerSizes, type SpinnerSize } from './spinner';
 export { Switch, type SwitchProps } from './switch';
