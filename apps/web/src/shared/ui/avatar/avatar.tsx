@@ -23,12 +23,14 @@ const sizePixels: Record<AvatarSize, number> = {
   xl: 48,
 };
 
+/** Initials on solid status fills (the constant --*-fill scale): white text is AA in
+ *  both themes (5.35-7.44:1), unlike the theme-bound foreground hues of .dark. */
 const colorClasses: Record<AvatarColor, string> = {
   brand: 'bg-brand-primary text-on-brand',
-  success: 'bg-success text-on-brand',
-  warning: 'bg-warning text-on-brand',
-  danger: 'bg-danger text-on-brand',
-  info: 'bg-info text-on-brand',
+  success: 'bg-success-fill text-on-brand',
+  warning: 'bg-warning-fill text-on-brand',
+  danger: 'bg-danger-fill text-on-brand',
+  info: 'bg-info-fill text-on-brand',
 };
 
 const presenceClasses: Record<Presence, string> = {

@@ -29,6 +29,7 @@ describe('Badge', () => {
 
   it('renders a muted badge', () => {
     render(<Badge count={7} variant="muted" />);
-    expect(screen.getByText('7')).toHaveClass('bg-sunken', 'text-fg-muted');
+    // fg-secondary: fg-muted gives 4.43 on sunken — below AA (axe, UL-209)
+    expect(screen.getByText('7')).toHaveClass('bg-sunken', 'text-fg-secondary');
   });
 });

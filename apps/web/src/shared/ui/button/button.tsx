@@ -11,34 +11,39 @@ type ButtonPalette = (typeof buttonPalettes)[number];
 const buttonSizes = ['s', 'm', 'l', 'icon'] as const;
 type ButtonSize = (typeof buttonSizes)[number];
 
-/** Solid — primary action on the screen, one per form (fill: {pal}). */
+/** Solid — primary action on the screen, one per form (fill: {pal}).
+ *  Status solids sit on the constant --*-fill scale: white on-fill text is 5.35-7.44:1
+ *  in BOTH themes, so every solid keeps text-on-brand (white) unlike the theme-bound
+ *  foreground hues, which are light in .dark and would give only 2.9-3.4:1. */
 const solidClasses: Record<ButtonPalette, string> = {
   primary:
     'border-transparent bg-brand-primary text-on-brand hover:bg-brand-hover active:bg-brand-active focus-visible:ring-brand-primary/40',
   success:
-    'border-transparent bg-success text-on-brand hover:bg-success-hover active:bg-success-active focus-visible:ring-success/40',
+    'border-transparent bg-success-fill text-on-brand hover:bg-success-fill-hover active:bg-success-fill-active focus-visible:ring-success-fill/40',
   warning:
-    'border-transparent bg-warning text-on-brand hover:bg-warning-hover active:bg-warning-active focus-visible:ring-warning/40',
+    'border-transparent bg-warning-fill text-on-brand hover:bg-warning-fill-hover active:bg-warning-fill-active focus-visible:ring-warning-fill/40',
   danger:
-    'border-transparent bg-danger text-on-brand hover:bg-danger-hover active:bg-danger-active focus-visible:ring-danger/40',
-  info: 'border-transparent bg-info text-on-brand hover:bg-info-hover active:bg-info-active focus-visible:ring-info/40',
+    'border-transparent bg-danger-fill text-on-brand hover:bg-danger-fill-hover active:bg-danger-fill-active focus-visible:ring-danger-fill/40',
+  info: 'border-transparent bg-info-fill text-on-brand hover:bg-info-fill-hover active:bg-info-fill-active focus-visible:ring-info-fill/40',
 };
 
 /** Secondary — neutral actions (cancel, filters): bg.sunken + border. */
 const secondaryClasses =
   'border-line bg-sunken text-fg-primary hover:border-line hover:bg-line active:border-line-strong active:bg-line-strong focus-visible:ring-brand-primary/40';
 
-/** Subtle — quiet actions in cards and lists (fill: {pal}.subtle). */
+/** Subtle — quiet actions in cards and lists (fill: {pal}.subtle).
+ *  Base text uses the -hover/-text steps: the raw status hues fail AA on the blended
+ *  subtle backgrounds (3.3-4.49), and the brand hue fails in both themes (3.91 / 3.24). */
 const subtleClasses: Record<ButtonPalette, string> = {
   primary:
-    'border-transparent bg-brand-subtle text-brand-primary hover:border-brand-primary hover:text-brand-hover active:border-brand-active active:text-brand-active focus-visible:ring-brand-primary/40',
+    'border-transparent bg-brand-subtle text-brand-text hover:border-brand-primary hover:text-brand-active dark:hover:text-brand-text active:border-brand-active active:text-brand-active dark:active:text-brand-text focus-visible:ring-brand-primary/40',
   success:
     'border-transparent bg-success-subtle text-success hover:border-success hover:text-success-hover active:border-success-active active:text-success-active focus-visible:ring-success/40',
   warning:
-    'border-transparent bg-warning-subtle text-warning hover:border-warning hover:text-warning-hover active:border-warning-active active:text-warning-active focus-visible:ring-warning/40',
+    'border-transparent bg-warning-subtle text-warning-hover dark:text-warning hover:border-warning hover:text-warning-active dark:hover:text-warning-hover active:border-warning-active active:text-warning-active dark:active:text-warning-hover focus-visible:ring-warning/40',
   danger:
     'border-transparent bg-danger-subtle text-danger hover:border-danger hover:text-danger-hover active:border-danger-active active:text-danger-active focus-visible:ring-danger/40',
-  info: 'border-transparent bg-info-subtle text-info hover:border-info hover:text-info-hover active:border-info-active active:text-info-active focus-visible:ring-info/40',
+  info: 'border-transparent bg-info-subtle text-info-hover dark:text-info hover:border-info hover:text-info-active dark:hover:text-info-hover active:border-info-active active:text-info-active dark:active:text-info-hover focus-visible:ring-info/40',
 };
 
 const variantClasses: Record<ButtonVariant, Record<ButtonPalette, string>> = {

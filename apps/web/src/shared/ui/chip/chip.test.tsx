@@ -23,7 +23,7 @@ describe('Chip', () => {
         Критичный
       </Chip>,
     );
-    expect(screen.getByText('Критичный')).toHaveClass('bg-danger', 'text-on-brand');
+    expect(screen.getByText('Критичный')).toHaveClass('bg-danger-fill', 'text-on-brand');
   });
 
   it('renders a dot for the subtle fill', () => {

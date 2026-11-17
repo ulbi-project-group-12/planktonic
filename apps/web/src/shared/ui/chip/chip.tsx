@@ -12,19 +12,21 @@ type ChipFill = (typeof chipFills)[number];
 const neutralClasses = 'bg-sunken text-fg-secondary';
 
 const subtleClasses: Record<ChipPalette, string> = {
-  brand: 'bg-brand-subtle text-brand-primary',
+  // brand/warning/info texts use the contrast-safe steps: the raw hues fail AA
+  // on the blended subtle backgrounds (chip--states axe scan, UL-209).
+  brand: 'bg-brand-subtle text-brand-text',
   success: 'bg-success-subtle text-success',
-  warning: 'bg-warning-subtle text-warning',
+  warning: 'bg-warning-subtle text-warning-hover dark:text-warning',
   danger: 'bg-danger-subtle text-danger',
-  info: 'bg-info-subtle text-info',
+  info: 'bg-info-subtle text-info-hover dark:text-info',
 };
 
 const solidClasses: Record<ChipPalette, string> = {
   brand: 'bg-brand-primary text-on-brand',
-  success: 'bg-success text-on-brand',
-  warning: 'bg-warning text-on-brand',
-  danger: 'bg-danger text-on-brand',
-  info: 'bg-info text-on-brand',
+  success: 'bg-success-fill text-on-brand',
+  warning: 'bg-warning-fill text-on-brand',
+  danger: 'bg-danger-fill text-on-brand',
+  info: 'bg-info-fill text-on-brand',
 };
 
 const dotClasses: Record<ChipPalette, string> = {
@@ -83,7 +85,7 @@ function Chip({
           type="button"
           aria-label="Убрать"
           onClick={onRemove}
-          className="-mr-1 inline-flex cursor-pointer items-center justify-center rounded-full p-px opacity-60 transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:outline-none"
+          className="-mr-1 pointer-events-auto inline-flex cursor-pointer items-center justify-center rounded-full p-px opacity-60 transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:outline-none"
         >
           <X className="size-3" />
         </button>

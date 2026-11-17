@@ -19,6 +19,7 @@ function ControlledPagination(props: {
   totalPages: number;
   initial: number;
   variant?: 'numbers' | 'compact';
+  'aria-label'?: string;
 }) {
   const [page, setPage] = useState(props.initial);
   return (
@@ -29,6 +30,7 @@ function ControlledPagination(props: {
         setPage(next);
       }}
       variant={props.variant}
+      aria-label={props['aria-label']}
     />
   );
 }
@@ -49,15 +51,28 @@ function LoadMoreDemo() {
   );
 }
 
-function PaginationSpec() {
+/** Landmark labels must be unique across the page; the spec renders in both theme blocks. */
+function PaginationSpec({ labelSuffix = '' }: { labelSuffix?: string }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid gap-6 lg:grid-cols-2">
         <Card label="Номера — десктоп · списки">
           <div className="flex flex-col gap-6">
-            <ControlledPagination totalPages={12} initial={1} />
-            <ControlledPagination totalPages={12} initial={5} />
-            <ControlledPagination totalPages={12} initial={12} />
+            <ControlledPagination
+              totalPages={12}
+              initial={1}
+              aria-label={`Пагинация — страница 1${labelSuffix}`}
+            />
+            <ControlledPagination
+              totalPages={12}
+              initial={5}
+              aria-label={`Пагинация — страница 5${labelSuffix}`}
+            />
+            <ControlledPagination
+              totalPages={12}
+              initial={12}
+              aria-label={`Пагинация — страница 12${labelSuffix}`}
+            />
             <p className="text-[11px] text-fg-muted">
               элементы 28×28 · radius 8 · активная — fill brand
             </p>
@@ -65,8 +80,18 @@ function PaginationSpec() {
         </Card>
         <Card label="Компакт — мобайл">
           <div className="flex flex-col gap-6">
-            <ControlledPagination totalPages={12} initial={3} variant="compact" />
-            <ControlledPagination totalPages={1} initial={1} variant="compact" />
+            <ControlledPagination
+              totalPages={12}
+              initial={3}
+              variant="compact"
+              aria-label={`Пагинация — компакт 3${labelSuffix}`}
+            />
+            <ControlledPagination
+              totalPages={1}
+              initial={1}
+              variant="compact"
+              aria-label={`Пагинация — компакт 1${labelSuffix}`}
+            />
           </div>
         </Card>
       </div>
@@ -90,7 +115,7 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
           {theme === 'light' ? 'Светлая тема' : 'Тёмная тема'}
         </h2>
         <h3 className="mb-4 text-body-l font-bold text-fg-primary">Атомы — пагинация</h3>
-        <PaginationSpec />
+        <PaginationSpec labelSuffix={theme === 'dark' ? ' · тёмная тема' : ''} />
       </div>
     </div>
   );
