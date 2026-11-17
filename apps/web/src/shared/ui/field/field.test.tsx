@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { Input } from '@/shared/ui/input';
 import { Select } from '@/shared/ui/select';
+import { Textarea } from '@/shared/ui/textarea';
 import { Field } from './field';
 
 describe('Field', () => {
@@ -118,5 +119,59 @@ describe('Field', () => {
     const trigger = screen.getByRole('button', { name: 'Направление' });
     expect(trigger).toHaveAttribute('aria-invalid', 'true');
     expect(trigger).toHaveAccessibleDescription('Покажем подходящие шаблоны Выберите направление');
+  });
+
+  it('treats empty error and hint as absent', () => {
+    render(
+      <Field label="Email" hint="" error="">
+        <Input />
+      </Field>,
+    );
+    const input = screen.getByRole('textbox', { name: 'Email' });
+    expect(input).not.toHaveAttribute('aria-invalid');
+    expect(input).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('shows the error look on the control without a separate status', () => {
+    render(
+      <Field label="Email" error="Этот адрес уже занят">
+        <Input />
+      </Field>,
+    );
+    const input = screen.getByRole('textbox', { name: 'Email' });
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input.closest('[data-slot="input"]')).toHaveAttribute('data-status', 'error');
+  });
+
+  it('marks the control required for assistive tech', () => {
+    render(
+      <Field label="Пароль" required>
+        <Input type="password" />
+      </Field>,
+    );
+    expect(screen.getByLabelText(/Пароль/)).toHaveAttribute('aria-required', 'true');
+  });
+
+  it('disables the control', () => {
+    render(
+      <Field label="Описание" disabled>
+        <Textarea />
+      </Field>,
+    );
+    expect(screen.getByRole('textbox', { name: 'Описание' })).toBeDisabled();
+  });
+
+  it('keeps the field label as the name of a multiple Select and describes the selection', () => {
+    const options = [
+      { value: 'dev', label: 'Разработка' },
+      { value: 'design', label: 'Дизайн' },
+    ];
+    render(
+      <Field label="Направление" hint="Можно несколько">
+        <Select multiple options={options} value={['dev', 'design']} onValueChange={() => {}} />
+      </Field>,
+    );
+    const trigger = screen.getByRole('button', { name: 'Направление' });
+    expect(trigger).toHaveAccessibleDescription('Разработка, Дизайн Можно несколько');
   });
 });

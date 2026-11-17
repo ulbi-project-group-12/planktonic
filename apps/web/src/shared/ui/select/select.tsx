@@ -1,11 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { Popover as PopoverPrimitive } from 'radix-ui';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import { cn } from '@/shared/lib';
-import { Checkbox } from '@/shared/ui/checkbox';
 import { Chip } from '@/shared/ui/chip';
 import { Input } from '@/shared/ui/input';
 
@@ -255,8 +254,17 @@ function Select({
     focusOption(selectedIndex === -1 ? 0 : selectedIndex);
   };
 
-  /** Accessible name of the multiple trigger: joined chip labels (a hidden label is not visible). */
+  /** The trigger always has an id: the dropdown (dialog + listbox) is named after it. */
+  const autoId = useId();
+  const triggerId = id ?? autoId;
+  const listLabelledby = ariaLabelledby ?? triggerId;
+  /** Multiple: the selected labels as hidden text inside the trigger. It names the trigger
+   *  only when nothing else does (no aria-label / Field label) and is always wired as a
+   *  description — so a Field label stays the name and the selection is still announced. */
   const joinedLabels = value.length > 0 ? value.map(labelOf).join(', ') : undefined;
+  const valuesId = `${triggerId}-values`;
+  const multipleDescribedby =
+    [joinedLabels ? valuesId : undefined, ariaDescribedby].filter(Boolean).join(' ') || undefined;
 
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
@@ -286,10 +294,10 @@ function Select({
               disabled={disabled}
               aria-haspopup="listbox"
               aria-expanded={open}
-              id={id}
-              aria-label={ariaLabel ?? joinedLabels}
+              id={triggerId}
+              aria-label={ariaLabel}
               aria-labelledby={ariaLabelledby}
-              aria-describedby={ariaDescribedby}
+              aria-describedby={multipleDescribedby}
               // spread: jsx-a11y-x mistakenly reports aria-invalid as unsupported on
               // role=button, though it is a global ARIA attribute (Field error wiring)
               {...(ariaInvalid !== undefined ? { 'aria-invalid': ariaInvalid } : null)}
@@ -297,7 +305,11 @@ function Select({
             >
               {value.length === 0 ? (
                 <span className="flex-1 text-left text-fg-muted">{placeholder}</span>
-              ) : null}
+              ) : (
+                <span id={valuesId} className="sr-only">
+                  {joinedLabels}
+                </span>
+              )}
               <ChevronDown className="ml-auto size-4 shrink-0 text-fg-muted transition-transform [[data-state=open]_&]:rotate-180" />
             </button>
           </PopoverPrimitive.Trigger>
@@ -358,7 +370,7 @@ function Select({
             disabled={disabled}
             aria-haspopup="listbox"
             aria-expanded={open}
-            id={id}
+            id={triggerId}
             aria-label={ariaLabel}
             aria-labelledby={ariaLabelledby}
             aria-describedby={ariaDescribedby}
@@ -387,6 +399,8 @@ function Select({
           align="start"
           sideOffset={4}
           onOpenAutoFocus={onContentOpenAutoFocus}
+          // Radix renders the content as role=dialog: name it (axe aria-dialog-name)
+          aria-labelledby={listLabelledby}
           data-slot="select-content"
           className="z-50 flex max-h-72 w-[var(--radix-popover-trigger-width)] flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-elevation-2"
         >
@@ -416,6 +430,7 @@ function Select({
           <div
             ref={listboxRef}
             role="listbox"
+            aria-labelledby={listLabelledby}
             aria-multiselectable={multiple || undefined}
             onKeyDown={onListboxKeyDown}
             className="flex-1 overflow-y-auto p-1"
@@ -435,28 +450,38 @@ function Select({
                     data-value={option.value}
                     aria-selected={selected}
                     onClick={(event) => {
-                      // preventDefault cancels the checkbox label activation — otherwise the browser
-                      // would duplicate the click onto the checkbox itself and the row would toggle twice
-                      event.preventDefault();
                       toggle(option.value);
-                      // a pointer click on the checkbox inside moves focus to it (tabIndex -1);
                       // keep the row the keyboard target so arrows/Enter keep working after the click
                       event.currentTarget.focus();
                     }}
                     className={cn(
-                      'flex h-9 cursor-pointer items-center rounded-lg px-2 select-none focus-visible:outline-none',
+                      'flex h-9 cursor-pointer items-center gap-2.5 rounded-lg px-2 select-none focus-visible:outline-none',
                       selected
                         ? 'bg-brand-subtle hover:bg-brand-subtle focus:bg-brand-subtle'
                         : 'hover:bg-sunken focus:bg-sunken',
                     )}
                   >
-                    {/* tabIndex -1: the row is the keyboard target (arrows/Enter/Space), the checkbox serves the pointer */}
-                    <Checkbox
-                      checked={selected}
-                      label={option.label}
-                      tabIndex={-1}
-                      className="flex-1"
-                    />
+                    {/* A drawn box, not the Checkbox atom: role=option has presentational children,
+                        so a focusable checkbox inside it is nested-interactive (axe). The option
+                        itself carries the state via aria-selected. */}
+                    <span
+                      aria-hidden="true"
+                      data-slot="select-option-check"
+                      data-state={selected ? 'checked' : 'unchecked'}
+                      className={cn(
+                        'flex size-5 shrink-0 items-center justify-center rounded-sm border transition-colors',
+                        selected
+                          ? 'border-transparent bg-brand-primary'
+                          : 'border-line-strong bg-surface',
+                      )}
+                    >
+                      {selected ? (
+                        <Check className="size-3.5 text-on-brand" strokeWidth={3} />
+                      ) : null}
+                    </span>
+                    <span className="flex-1 truncate text-body-s leading-5 text-fg-primary">
+                      {option.label}
+                    </span>
                   </div>
                 );
               })

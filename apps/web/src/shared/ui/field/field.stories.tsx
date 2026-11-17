@@ -57,7 +57,7 @@ function FieldSpec({ portalContainer }: { portalContainer: HTMLElement | null })
           </Field>
         </div>
       </Card>
-      <p className="text-[11px] text-fg-muted">
+      <p className="text-micro text-fg-muted">
         Подпись связана с полем через htmlFor · подсказка и ошибка — через aria-describedby · ошибка
         ставит aria-invalid · id поля генерируется сам, если не задан
       </p>

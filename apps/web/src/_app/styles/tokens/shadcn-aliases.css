@@ -26,7 +26,9 @@
   --muted-foreground: var(--text-muted);
   --accent: var(--bg-sunken);
   --accent-foreground: var(--text-primary);
-  --destructive: var(--danger);
+  /* solid fill with white text: the constant fill scale, AA in both themes (5.6:1);
+     --danger is a light foreground hue in .dark */
+  --destructive: var(--danger-fill);
   --destructive-foreground: var(--on-brand);
   --border: var(--border-default);
   --input: var(--border-default);

@@ -2,6 +2,7 @@ import { useId, useRef } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
 import { CircleAlert, CircleCheck } from 'lucide-react';
 import { cn } from '@/shared/lib';
+import { Label } from '@/shared/ui/label';
 
 const inputStatuses = ['default', 'error', 'success'] as const;
 type InputStatus = (typeof inputStatuses)[number];
@@ -32,7 +33,7 @@ function Input({
   className,
   label,
   hint,
-  status = 'default',
+  status: statusProp = 'default',
   message,
   icon,
   suffix,
@@ -44,6 +45,10 @@ function Input({
   const autoId = useId();
   const inputId = id ?? autoId;
   const inputRef = useRef<HTMLInputElement>(null);
+  // An aria-invalid from outside (Field sets it on error) shows the error look too, so the
+  // screen does not have to pass both Field's error and status="error".
+  const invalid = props['aria-invalid'] === true || props['aria-invalid'] === 'true';
+  const status = invalid && statusProp === 'default' ? 'error' : statusProp;
   const text = message !== undefined && message !== '' ? message : hint;
   // Hint/message are linked to the field for screen readers; an external aria-describedby is kept too.
   const textId = `${inputId}-text`;
@@ -54,9 +59,9 @@ function Input({
   return (
     <div data-slot="input-group" className="flex w-full min-w-0 flex-col gap-1.5">
       {label ? (
-        <label htmlFor={inputId} className="text-body-xs font-bold text-fg-primary">
+        <Label htmlFor={inputId} disabled={disabled}>
           {label}
-        </label>
+        </Label>
       ) : null}
       <div
         data-slot="input"

@@ -40,7 +40,7 @@ function TextareaSpec() {
           <Textarea label="Отключённое" placeholder="Недоступно" disabled />
         </div>
       </Card>
-      <p className="text-[11px] text-fg-muted">
+      <p className="text-micro text-fg-muted">
         Геометрия как у Input: radius 10 · text 14/400 · высота тянется за контентом (min-height 96)
         · ошибка/успех — цветная рамка и сообщение · отключено — sunken + muted
       </p>

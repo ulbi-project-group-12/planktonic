@@ -30,7 +30,7 @@ interface PaginationProps {
   /** numbers — desktop/lists · compact — mobile ("Back 3 / 12 Forward"). */
   variant?: PaginationVariant;
   /** Nav landmark label — must be unique per page when several paginations render. */
-  ariaLabel?: string;
+  'aria-label'?: string;
   className?: string;
 }
 
@@ -40,7 +40,7 @@ function Pagination({
   totalPages,
   onPageChange,
   variant = 'numbers',
-  ariaLabel = 'Пагинация',
+  'aria-label': ariaLabel = 'Пагинация',
   className,
 }: PaginationProps) {
   const goPrev = () => {

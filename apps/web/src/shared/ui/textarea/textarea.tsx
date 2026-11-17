@@ -28,7 +28,7 @@ function Textarea({
   className,
   label,
   hint,
-  status = 'default',
+  status: statusProp = 'default',
   message,
   id,
   disabled,
@@ -37,6 +37,10 @@ function Textarea({
 }: TextareaProps) {
   const autoId = useId();
   const textareaId = id ?? autoId;
+  // An aria-invalid from outside (Field sets it on error) shows the error look too, so the
+  // screen does not have to pass both Field's error and status="error".
+  const invalid = props['aria-invalid'] === true || props['aria-invalid'] === 'true';
+  const status = invalid && statusProp === 'default' ? 'error' : statusProp;
   const text = message !== undefined && message !== '' ? message : hint;
   // Hint/message are linked to the field for screen readers; an external aria-describedby is kept too.
   const textId = `${textareaId}-text`;

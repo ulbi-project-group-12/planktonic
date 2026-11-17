@@ -37,7 +37,7 @@ function LabelSpec({ idPrefix }: { idPrefix: string }) {
           </div>
         </div>
       </Card>
-      <p className="text-[11px] text-fg-muted">
+      <p className="text-micro text-fg-muted">
         Подпись 13/700 · клик по подписи фокусирует поле (htmlFor) · * — маркер обязательности ·
         отключено — muted
       </p>

@@ -30,7 +30,7 @@ function ControlledPagination(props: {
         setPage(next);
       }}
       variant={props.variant}
-      ariaLabel={props['aria-label']}
+      aria-label={props['aria-label']}
     />
   );
 }

@@ -101,22 +101,24 @@
   --border-default: #2c3242;
   --border-strong: #3a4256;
 
+  /* Dark status steps go LIGHTER on hover/active (more contrast on the dark surface),
+     so every state stays distinct and AA as text: all >= 5.4:1 on surface. */
   --success: #35b578; /* 6.31:1 on surface, 5.19:1 on the subtle/surface blend */
-  --success-hover: #43c488;
-  --success-active: #35b578;
+  --success-hover: #43c488; /* 7.45:1 */
+  --success-active: #5ad39b;
 
   --warning: #d9822b; /* 5.64:1 on surface — unchanged */
-  --warning-hover: #d9822b;
-  --warning-active: #d9822b;
+  --warning-hover: #e39545; /* 6.79:1 */
+  --warning-active: #eba25a; /* 7.73:1 */
 
   --danger: #f2696c; /* 5.51:1 on surface, 4.70:1 on the danger-subtle blend
      (#de3b402e over surface; 4.13 with the previous #e85d61) */
-  --danger-hover: #ee7b7e;
-  --danger-active: #f2696c;
+  --danger-hover: #ee7b7e; /* 6.10:1 */
+  --danger-active: #f5888a; /* 6.89:1 */
 
   --info: #5a97de; /* 5.43:1 on surface */
-  --info-hover: #7fabe4;
-  --info-active: #5a97de;
+  --info-hover: #6ea2e2; /* 6.23:1 */
+  --info-active: #7fabe4; /* 6.95:1 */
 
   --success-subtle: #2fa36b24;
   --warning-subtle: #d9822b24;

@@ -5,12 +5,19 @@ import type { HTMLAttributes, ReactElement, ReactNode } from 'react';
 import { cn } from '@/shared/lib';
 import { Label } from '@/shared/ui/label';
 
-/** The form control Field can wire: accepts id / aria-* props (Input, Textarea, Select, Checkbox, …). */
+/** The form control Field can wire: accepts id / aria-* / disabled props (Input, Textarea, Select, Checkbox, …). */
 type FieldControl = ReactElement<{
   id?: string;
+  disabled?: boolean;
   'aria-invalid'?: boolean;
   'aria-describedby'?: string;
+  'aria-required'?: boolean;
 }>;
+
+/** Empty content (undefined, null, false, '') renders nothing and wires nothing. */
+function hasContent(node: ReactNode): boolean {
+  return node !== undefined && node !== null && node !== false && node !== '';
+}
 
 interface FieldProps extends HTMLAttributes<HTMLDivElement> {
   /** Label above the control; linked to the control id via htmlFor. */
@@ -20,9 +27,10 @@ interface FieldProps extends HTMLAttributes<HTMLDivElement> {
   /** Error under the control, 12 px danger; sets aria-invalid on the control
    *  and links the text via aria-describedby. */
   error?: ReactNode;
-  /** Required marker on the label. */
+  /** Required: a marker on the label and aria-required on the control. The native
+   *  `required` attribute (browser validation) stays the control's own choice. */
   required?: boolean;
-  /** Mutes the label (for disabled controls). */
+  /** Disables the control and mutes the label. */
   disabled?: boolean;
   /** The form control: Input, Textarea, Select, Checkbox, … Must accept id / aria-* props. */
   children: FieldControl;
@@ -35,6 +43,9 @@ interface FieldProps extends HTMLAttributes<HTMLDivElement> {
  * works out of the box; hint and error ids are merged into the control's aria-describedby
  * and an error sets aria-invalid. The atoms stay form-library-agnostic — a form passes
  * error and the control's props down.
+ *
+ * Inside Field, give the control no label / hint / message of its own (Input and Textarea
+ * have them for standalone use) — Field renders those, otherwise they would be doubled.
  */
 function Field({
   label,
@@ -47,9 +58,10 @@ function Field({
   ...props
 }: FieldProps) {
   const autoId = useId();
-  const hasError = error !== undefined && error !== null && error !== false;
+  const hasError = hasContent(error);
+  const hasHint = hasContent(hint);
   const controlId = children.props.id ?? autoId;
-  const hintId = hint !== undefined ? `${controlId}-hint` : undefined;
+  const hintId = hasHint ? `${controlId}-hint` : undefined;
   const errorId = hasError ? `${controlId}-error` : undefined;
   const describedByIds = [children.props['aria-describedby'], hintId, errorId]
     .filter(Boolean)
@@ -63,6 +75,8 @@ function Field({
     id: controlId,
     ...(hasError ? { 'aria-invalid': true } : null),
     ...(describedByIds ? { 'aria-describedby': describedByIds } : null),
+    ...(required ? { 'aria-required': true } : null),
+    ...(disabled ? { disabled: true } : null),
   });
 
   return (
@@ -71,13 +85,13 @@ function Field({
       className={cn('flex w-full min-w-0 flex-col gap-1.5', className)}
       {...props}
     >
-      {label !== undefined ? (
+      {hasContent(label) ? (
         <Label htmlFor={controlId} required={required} disabled={disabled}>
           {label}
         </Label>
       ) : null}
       {control}
-      {hint !== undefined ? (
+      {hasHint ? (
         <p id={hintId} className="text-caption text-fg-muted">
           {hint}
         </p>

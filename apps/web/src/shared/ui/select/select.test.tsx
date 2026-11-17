@@ -143,23 +143,27 @@ describe('Select (множественный)', () => {
     render(<ControlledMultiple />);
     await userEvent.click(screen.getByRole('button', { name: /PR открыт/ }));
     expect(screen.getByText('Выбрано: 2 из 5')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: 'PR открыт' })).toBeChecked();
+    expect(screen.getByRole('option', { name: 'PR открыт' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 
-  it('keeps the dropdown open and toggles via checkbox', async () => {
+  it('keeps the dropdown open and toggles an option on click', async () => {
     render(<ControlledMultiple />);
     await userEvent.click(screen.getByRole('button', { name: /PR открыт/ }));
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Merge' }));
-    expect(screen.getByRole('checkbox', { name: 'Merge' })).toBeChecked();
+    await userEvent.click(screen.getByRole('option', { name: 'Merge' }));
+    expect(screen.getByRole('option', { name: 'Merge' })).toHaveAttribute('aria-selected', 'true');
     // the dropdown stays open — the counter updated to 3
     expect(screen.getByText('Выбрано: 3 из 5')).toBeInTheDocument();
   });
 
-  it('keeps the option row focused after a pointer click on the checkbox inside it', async () => {
+  it('keeps the option row focused after a pointer click on its check box', async () => {
     render(<ControlledMultiple />);
     await userEvent.click(screen.getByRole('button', { name: /PR открыт/ }));
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Merge' }));
-    // the row — not the checkbox — stays the keyboard target for arrows/Enter
+    const merge = screen.getByRole('option', { name: 'Merge' });
+    await userEvent.click(merge.querySelector<HTMLElement>('[data-slot="select-option-check"]')!);
+    // the row stays the keyboard target for arrows/Enter
     expect(screen.getByRole('option', { name: 'Merge' })).toHaveFocus();
   });
 
@@ -173,13 +177,13 @@ describe('Select (множественный)', () => {
     render(<ControlledMultiple />);
     await userEvent.click(screen.getByRole('button', { name: /PR открыт/ }));
     const listbox = screen.getByRole('listbox');
-    // click on the text (checkbox label) inside the option row, not the checkbox itself
+    // click on the text inside the option row
     await userEvent.click(within(listbox).getByText('Merge'));
-    expect(screen.getByRole('checkbox', { name: 'Merge' })).toBeChecked();
+    expect(screen.getByRole('option', { name: 'Merge' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('Выбрано: 3 из 5')).toBeInTheDocument();
     // a second click on the text removes the selection (instead of toggling twice)
     await userEvent.click(within(listbox).getByText('Merge'));
-    expect(screen.getByRole('checkbox', { name: 'Merge' })).not.toBeChecked();
+    expect(screen.getByRole('option', { name: 'Merge' })).toHaveAttribute('aria-selected', 'false');
     expect(screen.getByText('Выбрано: 2 из 5')).toBeInTheDocument();
   });
 
@@ -278,5 +282,12 @@ describe('Select (множественный)', () => {
     expect(hidden).toHaveLength(2);
     expect(hidden[0]).toHaveValue('pr');
     expect(hidden[1]).toHaveValue('review');
+  });
+
+  it('names the open dropdown after its trigger', async () => {
+    render(<ControlledMultiple />);
+    await userEvent.click(screen.getByRole('button', { name: /PR открыт/ }));
+    expect(screen.getByRole('listbox', { name: /PR открыт/ })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /PR открыт/ })).toBeInTheDocument();
   });
 });
