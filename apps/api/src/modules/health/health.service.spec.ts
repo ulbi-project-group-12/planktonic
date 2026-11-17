@@ -4,7 +4,7 @@ import { TerminusModule } from '@nestjs/terminus';
 import { describe, expect, it } from 'vitest';
 import { PrismaHealthIndicator } from '../../core/prisma/prisma.health.js';
 import { HealthService } from './health.service.js';
-import { INSTANCE_ID } from './instance-id.provider.js';
+import { INSTANCE_ID } from '../../core/instance/instance-id.provider.js';
 
 async function serviceWithDatabase(status: 'up' | 'down') {
   const indicator = {

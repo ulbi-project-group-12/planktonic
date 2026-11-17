@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { mayReadEnvFile, ROOT_ENV_FILE } from './core/config/env-file.js';
 import { validateEnv } from './core/config/env.js';
+import { InstanceModule } from './core/instance/instance.module.js';
 import { PrismaModule } from './core/prisma/prisma.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { RealtimeModule } from './modules/realtime/realtime.module.js';
 
 @Module({
   imports: [
@@ -19,8 +21,10 @@ import { HealthModule } from './modules/health/health.module.js';
       // a developer's .env.
       ignoreEnvFile: !mayReadEnvFile(),
     }),
+    InstanceModule,
     PrismaModule,
     HealthModule,
+    RealtimeModule,
   ],
 })
 export class AppModule {}
