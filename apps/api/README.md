@@ -42,6 +42,8 @@ src/app.module.ts         root module: ConfigModule, PrismaModule, feature modul
 src/app.setup.ts          configureApp(): global prefix `api`, shutdown hooks (also used by e2e)
 src/core/config/          env schema (zod) and validation
 src/core/prisma/          PrismaService, PrismaHealthIndicator, global PrismaModule
+src/core/realtime/        Redis Streams IoAdapter and Redis connection lifecycle
+src/modules/realtime/     Socket.IO gateway and server-managed debug room
 src/modules/<feature>/    feature modules: controller, service, repository, specs
 src/generated/prisma/     generated Prisma client (git-ignored)
 prisma/                   schema.prisma and migrations/
@@ -68,12 +70,14 @@ A database health ping goes controller → service → an indicator in `src/core
 `src/core/config/env.ts` validates the environment with zod at startup. A failure names the
 variable and the rule, never the value, and the process exits 1.
 
-| Variable       | Rule                                  | Default       |
-| -------------- | ------------------------------------- | ------------- |
-| `NODE_ENV`     | `development`, `test` or `production` | `development` |
-| `API_PORT`     | integer 1–65535                       | `3001`        |
-| `API_HOST`     | interface to bind; image: `0.0.0.0`   | `127.0.0.1`   |
-| `DATABASE_URL` | `postgres://` or `postgresql://` URL  | required      |
+| Variable         | Rule                                                 | Default       |
+| ---------------- | ---------------------------------------------------- | ------------- |
+| `NODE_ENV`       | `development`, `test` or `production`                | `development` |
+| `API_PORT`       | integer 1–65535                                      | `3001`        |
+| `API_HOST`       | interface to bind; image: `0.0.0.0`                  | `127.0.0.1`   |
+| `DATABASE_URL`   | `postgres://` or `postgresql://` URL                 | required      |
+| `REDIS_URL`      | Redis connection URL (`redis://` or `rediss://`)     | required      |
+| `REALTIME_DEBUG` | `true` or `false`: diagnostic room and ping endpoint | `false`       |
 
 An empty value counts as unset. In development the api reads the repo-root `.env` only, found from
 the module's location rather than the current directory, so it works however the api is started.
@@ -86,6 +90,27 @@ pointing to `127.0.0.1:55432`. Compose explicitly sets the Docker API's `API_HOS
 `API_PORT=3001` and `DATABASE_URL` using the `POSTGRES_*` credentials and `postgres:5432`.
 The Docker API runs with `NODE_ENV=production`; it does not load `.env` itself or use the
 host's `DATABASE_URL` and `API_PORT` values.
+
+The API uses `REDIS_URL` to connect to Redis Streams for cross-instance Socket.IO event delivery.
+In Docker Compose, the API replicas use `redis://redis:6379`, while host-based development and
+integration tests connect through `redis://127.0.0.1:56379`.
+
+The Redis Streams adapter is configured before the HTTP server starts. Socket.IO uses the
+`/socket.io` path, which is not affected by the global `/api` prefix. Connection State Recovery
+remains disabled; missed messages will be retrieved through REST.
+
+Rooms are assigned on the server only: there is no client `join` event. `RealtimeService` is the
+emitter that services and controllers use; the gateway only binds the Socket.IO server and assigns
+rooms. While `REALTIME_DEBUG=true` (always under `NODE_ENV=test`) every socket joins the
+diagnostic room `debug:channel`, and `POST /api/debug/realtime/ping` broadcasts `debug:ping` with
+the sender's `instanceId` to it (202 with the same payload). While it is off the endpoint answers
+404 and sockets join no room. The compose profile `realtime` turns it on; a deployment leaves it
+unset.
+
+On shutdown `RedisConnectionLifecycle` closes the publishing client within 5 seconds and destroys
+it after that. It also tracks the adapter's read and sub duplicates and destroys any still open
+once the publisher is done, so shutdown never waits on Redis longer than that deadline, even when a
+duplicate is still connecting to an unreachable Redis.
 
 ## Prisma 7
 
@@ -141,7 +166,7 @@ An `unhealthy` status alone does not trigger `restart: unless-stopped`. Phase 4 
 | `typecheck`        | `tsc --noEmit`                                                  |
 | `lint`             | ESLint with the `nest()` preset, `--max-warnings=0`             |
 | `test`             | `vitest run`                                                    |
-| `test:integration` | `vitest run` on `vitest.integration.config.ts` (needs Postgres) |
+| `test:integration` | `vitest run` on `vitest.integration.config.ts` (needs services) |
 
 The root scripts `pnpm db:migrate`, `pnpm db:migrate:dev` and `pnpm db:seed` forward to the api
 scripts.
@@ -164,25 +189,49 @@ pnpm --filter @app/api generate
 pnpm --filter @app/api exec vitest run test/health.e2e-spec.ts
 ```
 
-### Integration tests (real Postgres)
+### Integration tests (real services)
 
-Specs in `test/integration/` as `*.int-spec.ts` boot the whole `AppModule` against a real,
-migrated database. `vitest.integration.config.ts` runs them; `pnpm test` never does, so CI (no
-database yet) skips them. `test/integration/messages.int-spec.ts` sends 20 parallel POSTs to one
-channel and expects `seq` 1..20 with no gaps and no duplicates (UL-125).
+Specs in `test/integration/` as `*.int-spec.ts` boot the whole `AppModule` against the services
+from `pnpm services:up`. `vitest.integration.config.ts` runs them one file at a time; `pnpm test`
+never does, so CI (no services yet) skips them. Both URLs must be exported: under `NODE_ENV`
+`test` nothing reads `.env`, and a missing URL fails the run rather than skipping it.
 
 ```sh
 pnpm services:up
 pnpm db:migrate
 pnpm --filter @app/api generate
-DATABASE_URL=postgresql://app:app_dev_password@127.0.0.1:55432/app pnpm --filter @app/api test:integration
+DATABASE_URL=postgresql://app:app_dev_password@127.0.0.1:55432/app \
+REDIS_URL=redis://127.0.0.1:56379 pnpm --filter @app/api test:integration
 ```
 
 `generate` is needed because the specs import the git-ignored Prisma client and
-`test:integration` does not go through Turbo. `DATABASE_URL` must be exported (the URL above is
-the `.env.example` default): under `NODE_ENV` `test` nothing reads `.env`, and a missing URL fails
-the run rather than skipping it. Each test creates its own channel and deletes it afterwards.
-UL-132 adds Postgres to CI as a service container and can run this config there.
+`test:integration` does not go through Turbo. The URLs above are the `.env.example` defaults.
+
+`test/integration/messages.int-spec.ts` (UL-125) sends 20 parallel POSTs to one channel and
+expects `seq` 1..20 with no gaps and no duplicates. Each test creates its own channel and deletes
+it afterwards.
+
+`test/integration/realtime.int-spec.ts` (UL-124) creates NestJS applications with explicit
+instance IDs (`test-api-1`, `test-api-2`), each with its own Socket.IO client, and checks that:
+
+- without the Redis Streams adapter a room broadcast does not reach the client on the other app;
+- with it, a broadcast from either app reaches the clients on both, with the sender's `instanceId`;
+- `POST /api/debug/realtime/ping` on one app reaches the client on the other;
+- a socket outside the room receives nothing;
+- `app.close()` leaves none of the app's three Redis connections open.
+
+UL-132 adds Redis and Postgres to CI as service containers and runs this config there.
+
+#### Manual check on two replicas
+
+```sh
+docker compose --profile realtime up -d --build --wait
+```
+
+Connect two Socket.IO clients to `http://127.0.0.1:58080` without sharing cookies, so the `io_srv`
+cookie puts them on different replicas, then
+`curl -X POST http://127.0.0.1:58080/api/debug/realtime/ping`. The answer names the replica that
+emitted, and both clients receive `debug:ping` with that `instanceId`.
 
 ## Image
 

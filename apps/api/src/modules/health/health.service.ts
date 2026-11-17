@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { HealthCheckService } from '@nestjs/terminus';
 import { PrismaHealthIndicator } from '../../core/prisma/prisma.health.js';
-import { INSTANCE_ID } from './instance-id.provider.js';
+import { INSTANCE_ID } from '../../core/instance/instance-id.provider.js';
 
 @Injectable()
 export class HealthService {
