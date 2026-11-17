@@ -10,15 +10,16 @@ An ADR is a short record of one architectural decision: the context, what we cho
 - Status: `Proposed` → `Accepted` (the lead approves in the PR) → `Superseded by ADR-NNNN` or `Deprecated`.
 - Prose may be in Russian, like the tracker docs; identifiers, table and column names stay in English.
 
-> `0003-AI-NOTES.md` is a temporary working file for finishing ADR-0003; it is deleted before that PR merges.
-
 ## Index
 
-| ADR                        | Title             | Status   | Ticket |
-| -------------------------- | ----------------- | -------- | ------ |
-| 0001                       | Realtime protocol | Planned  | UL-134 |
-| 0002                       | Permission model  | Planned  | UL-136 |
-| [0003](0003-data-model.md) | Data model        | Proposed | UL-212 |
+| ADR                        | Title                             | Status   | Ticket |
+| -------------------------- | --------------------------------- | -------- | ------ |
+| 0001                       | Realtime protocol                 | Planned  | UL-134 |
+| 0002                       | Permission model                  | Planned  | UL-136 |
+| [0003](0003-data-model.md) | Data model                        | Proposed | UL-212 |
+| 0004                       | Observability (Alloy / GlitchTip) | Planned  | UL-167 |
+
+> UL-167 and UL-170 used to call the observability ADR "ADR-0003". That number belongs to the data model (UL-212, created first), so observability is ADR-0004.
 
 ## Template
 
