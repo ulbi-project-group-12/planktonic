@@ -100,4 +100,50 @@ describe('RedisConnectionLifecycle', () => {
     await lifecycle.onApplicationShutdown();
     expect(client.close).not.toHaveBeenCalled();
   });
+
+  it('destroys duplicates still open after the publisher closes, and only those', async () => {
+    const lifecycle = new RedisConnectionLifecycle();
+    const client = { isOpen: true, close: vi.fn().mockResolvedValue(undefined), destroy: vi.fn() };
+    const reading = { isOpen: true, destroy: vi.fn() };
+    const closed = { isOpen: false, destroy: vi.fn() };
+    lifecycle.register(client as unknown as RedisClientType);
+    lifecycle.track(reading);
+    lifecycle.track(closed);
+
+    await lifecycle.onApplicationShutdown();
+
+    expect(client.destroy).not.toHaveBeenCalled();
+    expect(reading.destroy).toHaveBeenCalledOnce();
+    expect(closed.destroy).not.toHaveBeenCalled();
+    await lifecycle.onApplicationShutdown();
+    expect(reading.destroy).toHaveBeenCalledOnce();
+  });
+
+  it('destroys duplicates after a stalled publisher close too', async () => {
+    vi.useFakeTimers();
+    const lifecycle = new RedisConnectionLifecycle();
+    const client = { isOpen: true, close: vi.fn(() => new Promise(() => {})), destroy: vi.fn() };
+    const connecting = { isOpen: true, destroy: vi.fn() };
+    lifecycle.register(client as unknown as RedisClientType);
+    lifecycle.track(connecting);
+
+    const failure = expect(lifecycle.onApplicationShutdown()).rejects.toThrow(
+      'Redis shutdown timed out',
+    );
+    await vi.advanceTimersByTimeAsync(5_000);
+    await failure;
+
+    expect(client.destroy).toHaveBeenCalledOnce();
+    expect(connecting.destroy).toHaveBeenCalledOnce();
+  });
+
+  it('destroys tracked duplicates even when no publisher was registered', async () => {
+    const lifecycle = new RedisConnectionLifecycle();
+    const orphan = { isOpen: true, destroy: vi.fn() };
+    lifecycle.track(orphan);
+
+    await lifecycle.onApplicationShutdown();
+
+    expect(orphan.destroy).toHaveBeenCalledOnce();
+  });
 });

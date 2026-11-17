@@ -95,8 +95,9 @@ the sender's `instanceId` to it (202 with the same payload). While it is off the
 unset.
 
 On shutdown `RedisConnectionLifecycle` closes the publishing client within 5 seconds and destroys
-it after that. The adapter's own read and sub connections close with the Socket.IO server; the
-read one after its current XREAD, which blocks for at most 2 seconds.
+it after that. It also tracks the adapter's read and sub duplicates and destroys any still open
+once the publisher is done, so shutdown never waits on Redis longer than that deadline, even when a
+duplicate is still connecting to an unreachable Redis.
 
 ## Prisma 7
 

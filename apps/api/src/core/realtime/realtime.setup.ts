@@ -40,6 +40,15 @@ export async function configureRealtime(app: INestApplication): Promise<void> {
       }),
     ]);
 
+    // The adapter duplicates the client for its read and sub connections; route every copy
+    // through the lifecycle so shutdown bounds them as well.
+    const duplicate = redisClient.duplicate.bind(redisClient);
+    redisClient.duplicate = ((...args: Parameters<typeof duplicate>) => {
+      const copy = duplicate(...args);
+      lifecycle.track(copy);
+      return copy;
+    }) as typeof redisClient.duplicate;
+
     const adapter = new RedisStreamsAdapter(app, redisClient);
 
     app.useWebSocketAdapter(adapter);

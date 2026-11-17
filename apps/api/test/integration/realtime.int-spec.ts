@@ -279,11 +279,13 @@ describe('Redis Streams realtime delivery', () => {
       return list.filter((entry) => entry.name === `api:${instanceId}`).length;
     };
     const app = await createTestApp(instanceId);
-    apps.splice(apps.indexOf(app), 1);
-    // Publisher plus the adapter's read and sub duplicates.
-    await expect.poll(connectionsOf, { timeout: 5_000 }).toBe(3);
-
-    await app.close();
+    try {
+      // Publisher plus the adapter's read and sub duplicates.
+      await expect.poll(connectionsOf, { timeout: 5_000 }).toBe(3);
+    } finally {
+      await app.close();
+      apps.splice(apps.indexOf(app), 1);
+    }
 
     await expect.poll(connectionsOf, { timeout: STREAM_BLOCK_TIME_MS + 3_000 }).toBe(0);
   });

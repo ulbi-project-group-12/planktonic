@@ -11,6 +11,7 @@ const { client, createAdapter, createClient } = vi.hoisted(() => ({
     on: vi.fn(),
     connect: vi.fn(),
     destroy: vi.fn(),
+    duplicate: vi.fn(),
     isOpen: true,
   },
   createAdapter: vi.fn(() => vi.fn()),
@@ -27,11 +28,14 @@ afterEach(() => {
 
 beforeEach(() => {
   createClient.mockReturnValue(client);
+  // configureRealtime wraps duplicate() on the shared mock; start every test from a fresh one.
+  client.duplicate = vi.fn();
 });
 
 function testApp() {
   const lifecycle = new RedisConnectionLifecycle();
   const register = vi.spyOn(lifecycle, 'register');
+  const track = vi.spyOn(lifecycle, 'track');
   const useWebSocketAdapter = vi.fn();
   const config = new ConfigService({ REDIS_URL: 'redis://127.0.0.1:6379' });
   const app = {
@@ -39,7 +43,7 @@ function testApp() {
       provider === ConfigService ? config : provider === INSTANCE_ID ? 'test-api-1' : lifecycle,
     useWebSocketAdapter,
   } as unknown as INestApplication;
-  return { app, register, useWebSocketAdapter };
+  return { app, register, track, useWebSocketAdapter };
 }
 
 describe('configureRealtime', () => {
@@ -90,5 +94,19 @@ describe('configureRealtime', () => {
     expect(client.destroy).toHaveBeenCalledOnce();
     expect(register).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('routes the adapter duplicates through the lifecycle', async () => {
+    const originalDuplicate = client.duplicate;
+    const copy = { isOpen: true, destroy: vi.fn() };
+    originalDuplicate.mockReturnValueOnce(copy);
+    client.connect.mockResolvedValueOnce(undefined);
+    const { app, track } = testApp();
+
+    await configureRealtime(app);
+
+    expect((client.duplicate as () => unknown)()).toBe(copy);
+    expect(originalDuplicate).toHaveBeenCalledOnce();
+    expect(track).toHaveBeenCalledExactlyOnceWith(copy);
   });
 });
