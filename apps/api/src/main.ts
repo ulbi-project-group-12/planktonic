@@ -1,6 +1,5 @@
-// NestJS 12 (ESM) entry point of @app/api.
-// The product name is never spelled here (D-07):
-// code that needs it imports @app/config/product.
+// NestJS 12 (ESM) entry point of @app/api. The product name is never spelled here (D-07): code
+// that needs it imports @app/config/product. The image exports PRODUCT_NAME, but no code reads it.
 
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -11,6 +10,8 @@ import type { Env } from './core/config/env.js';
 import { configureRealtime } from './core/realtime/realtime.setup.js';
 
 async function bootstrap(): Promise<void> {
+  // abortOnError: false makes a startup failure (an invalid environment included) reject here
+  // instead of Nest calling process.exit, so the catch below sets the exit code.
   const app = configureApp(
     await NestFactory.create(AppModule, {
       abortOnError: false,
@@ -20,6 +21,7 @@ async function bootstrap(): Promise<void> {
   try {
     const config = app.get<ConfigService<Env, true>>(ConfigService);
 
+    // Before listen(): the Socket.IO server is created with the Redis Streams adapter in place.
     await configureRealtime(app);
 
     await app.listen(

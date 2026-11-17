@@ -12,12 +12,12 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "start": "node dist/main.js",
     "dev": "prisma generate && nest start --watch",
     "generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "db:migrate:dev": "prisma migrate dev",
-    "test:redis": "vitest run --config vitest.redis.config.ts"
+    "db:migrate:dev": "prisma migrate dev"
   },
   "dependencies": {
     "@nestjs/common": "catalog:",
@@ -45,10 +45,10 @@
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "prisma": "catalog:",
+    "socket.io-client": "catalog:",
     "typescript": "catalog:",
     "unplugin-swc": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:",
-    "socket.io-client": "catalog:"
+    "vitest": "catalog:"
   }
 }

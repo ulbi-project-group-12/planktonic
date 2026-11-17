@@ -1,11 +1,12 @@
 import type { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { INSTANCE_ID } from '../instance/instance-id.provider.js';
 import { configureRealtime } from './realtime.setup.js';
 import { RedisStreamsAdapter } from './redis-streams.adapter.js';
 import { RedisConnectionLifecycle } from './redis-connection.lifecycle.js';
 
-const { client, createAdapter } = vi.hoisted(() => ({
+const { client, createAdapter, createClient } = vi.hoisted(() => ({
   client: {
     on: vi.fn(),
     connect: vi.fn(),
@@ -13,14 +14,19 @@ const { client, createAdapter } = vi.hoisted(() => ({
     isOpen: true,
   },
   createAdapter: vi.fn(() => vi.fn()),
+  createClient: vi.fn(),
 }));
 
-vi.mock('redis', () => ({ createClient: () => client }));
+vi.mock('redis', () => ({ createClient }));
 vi.mock('@socket.io/redis-streams-adapter', () => ({ createAdapter }));
 
 afterEach(() => {
   vi.useRealTimers();
   vi.clearAllMocks();
+});
+
+beforeEach(() => {
+  createClient.mockReturnValue(client);
 });
 
 function testApp() {
@@ -29,7 +35,8 @@ function testApp() {
   const useWebSocketAdapter = vi.fn();
   const config = new ConfigService({ REDIS_URL: 'redis://127.0.0.1:6379' });
   const app = {
-    get: (provider: unknown) => (provider === ConfigService ? config : lifecycle),
+    get: (provider: unknown) =>
+      provider === ConfigService ? config : provider === INSTANCE_ID ? 'test-api-1' : lifecycle,
     useWebSocketAdapter,
   } as unknown as INestApplication;
   return { app, register, useWebSocketAdapter };
@@ -43,6 +50,10 @@ describe('configureRealtime', () => {
 
     await configureRealtime(app);
 
+    expect(createClient).toHaveBeenCalledExactlyOnceWith({
+      url: 'redis://127.0.0.1:6379',
+      name: 'api:test-api-1',
+    });
     expect(client.connect).toHaveBeenCalledOnce();
     expect(createAdapter).not.toHaveBeenCalled();
     expect(useWebSocketAdapter).toHaveBeenCalledOnce();

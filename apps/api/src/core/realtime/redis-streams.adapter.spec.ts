@@ -4,7 +4,7 @@ import { createAdapter } from '@socket.io/redis-streams-adapter';
 import type { RedisClientType } from 'redis';
 import type { Server, ServerOptions } from 'socket.io';
 import { afterEach, expect, it, vi } from 'vitest';
-import { RedisStreamsAdapter } from './redis-streams.adapter.js';
+import { RedisStreamsAdapter, STREAM_BLOCK_TIME_MS } from './redis-streams.adapter.js';
 
 vi.mock('@socket.io/redis-streams-adapter', () => ({ createAdapter: vi.fn(() => vi.fn()) }));
 afterEach(() => {
@@ -35,7 +35,9 @@ it('creates the factory after the server and reuses it for subsequent servers', 
   const adapter = new RedisStreamsAdapter({} as INestApplicationContext, redisClient);
 
   expect(adapter.createIOServer(0)).toBe(firstServer);
-  expect(createAdapter).toHaveBeenCalledExactlyOnceWith(redisClient);
+  expect(createAdapter).toHaveBeenCalledExactlyOnceWith(redisClient, {
+    blockTimeInMs: STREAM_BLOCK_TIME_MS,
+  });
   const factory: unknown = vi.mocked(createAdapter).mock.results[0]?.value;
   expect(firstServer.adapter).toHaveBeenCalledExactlyOnceWith(factory);
   expect(adapter.createIOServer(0)).toBe(secondServer);

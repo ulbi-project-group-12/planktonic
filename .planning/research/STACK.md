@@ -706,7 +706,7 @@ v6 changes that matter, verified against the migration guide:
 | | orval | **8.47.0** ✓ | OpenAPI → TanStack hooks + MSW |
 | | testcontainers | **12.2.1** ✓ | Optional for API e2e |
 | Errors | @sentry/nextjs, @sentry/nestjs | **11.11.0** ✓ | GlitchTip server **6.x** ~ |
-| API | @nestjs/core, common, platform-express, platform-socket.io, websockets | **12.4.0** ✓ | ESM-only packages [DR-A] |
+| API | @nestjs/core, common, platform-express, platform-socket.io, websockets | **12.3.2** ✓ (catalog; one version for every `@nestjs/*`, 12.4.0 later in one PR) | ESM-only packages [DR-A] |
 | | @nestjs/cli | **12.0.12** ✓ | |
 | | @nestjs/config / jwt / terminus / swagger | **12.1.1 / 12.0.4 / 12.1.0 / 12.1.1** ✓ | |
 | | @nestjs/throttler | **6.7.1** ✓ | Redis storage via rate-limiter-flexible **11.4.0** ✓ |

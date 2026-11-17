@@ -57,13 +57,14 @@ A database health ping goes controller → service → an indicator in `src/core
 `src/core/config/env.ts` validates the environment with zod at startup. A failure names the
 variable and the rule, never the value, and the process exits 1.
 
-| Variable       | Rule                                             | Default       |
-| -------------- | ------------------------------------------------ | ------------- |
-| `NODE_ENV`     | `development`, `test` or `production`            | `development` |
-| `API_PORT`     | integer 1–65535                                  | `3001`        |
-| `API_HOST`     | interface to bind; image: `0.0.0.0`              | `127.0.0.1`   |
-| `DATABASE_URL` | `postgres://` or `postgresql://` URL             | required      |
-| `REDIS_URL`    | Redis connection URL (`redis://` or `rediss://`) | required      |
+| Variable         | Rule                                                 | Default       |
+| ---------------- | ---------------------------------------------------- | ------------- |
+| `NODE_ENV`       | `development`, `test` or `production`                | `development` |
+| `API_PORT`       | integer 1–65535                                      | `3001`        |
+| `API_HOST`       | interface to bind; image: `0.0.0.0`                  | `127.0.0.1`   |
+| `DATABASE_URL`   | `postgres://` or `postgresql://` URL                 | required      |
+| `REDIS_URL`      | Redis connection URL (`redis://` or `rediss://`)     | required      |
+| `REALTIME_DEBUG` | `true` or `false`: diagnostic room and ping endpoint | `false`       |
 
 An empty value counts as unset. In development the api reads the repo-root `.env` only, found from
 the module's location rather than the current directory, so it works however the api is started.
@@ -84,6 +85,18 @@ integration tests connect through `redis://127.0.0.1:56379`.
 The Redis Streams adapter is configured before the HTTP server starts. Socket.IO uses the
 `/socket.io` path, which is not affected by the global `/api` prefix. Connection State Recovery
 remains disabled; missed messages will be retrieved through REST.
+
+Rooms are assigned on the server only: there is no client `join` event. `RealtimeService` is the
+emitter that services and controllers use; the gateway only binds the Socket.IO server and assigns
+rooms. While `REALTIME_DEBUG=true` (always under `NODE_ENV=test`) every socket joins the
+diagnostic room `debug:channel`, and `POST /api/debug/realtime/ping` broadcasts `debug:ping` with
+the sender's `instanceId` to it (202 with the same payload). While it is off the endpoint answers
+404 and sockets join no room. The compose profile `realtime` turns it on; a deployment leaves it
+unset.
+
+On shutdown `RedisConnectionLifecycle` closes the publishing client within 5 seconds and destroys
+it after that. The adapter's own read and sub connections close with the Socket.IO server; the
+read one after its current XREAD, which blocks for at most 2 seconds.
 
 ## Prisma 7
 
@@ -121,18 +134,18 @@ An `unhealthy` status alone does not trigger `restart: unless-stopped`. Phase 4 
 
 ## Scripts
 
-| Script           | What it does                                        |
-| ---------------- | --------------------------------------------------- |
-| `dev`            | `prisma generate`, then `nest start --watch`        |
-| `build`          | `tsc -p tsconfig.build.json` into `dist/`           |
-| `start`          | `node dist/main.js`                                 |
-| `generate`       | `prisma generate`                                   |
-| `db:migrate`     | `prisma migrate deploy` (committed migrations)      |
-| `db:migrate:dev` | `prisma migrate dev` (new migration, interactive)   |
-| `typecheck`      | `tsc --noEmit`                                      |
-| `lint`           | ESLint with the `nest()` preset, `--max-warnings=0` |
-| `test`           | `vitest run`                                        |
-| `test:redis`     | Redis Streams integration tests (requires Redis)    |
+| Script             | What it does                                                    |
+| ------------------ | --------------------------------------------------------------- |
+| `dev`              | `prisma generate`, then `nest start --watch`                    |
+| `build`            | `tsc -p tsconfig.build.json` into `dist/`                       |
+| `start`            | `node dist/main.js`                                             |
+| `generate`         | `prisma generate`                                               |
+| `db:migrate`       | `prisma migrate deploy` (committed migrations)                  |
+| `db:migrate:dev`   | `prisma migrate dev` (new migration, interactive)               |
+| `typecheck`        | `tsc --noEmit`                                                  |
+| `lint`             | ESLint with the `nest()` preset, `--max-warnings=0`             |
+| `test`             | `vitest run`                                                    |
+| `test:integration` | `vitest run` on `vitest.integration.config.ts` (needs services) |
 
 The root scripts `pnpm db:migrate` and `pnpm db:migrate:dev` forward to the two migrate scripts.
 
@@ -154,34 +167,40 @@ pnpm --filter @app/api generate
 pnpm --filter @app/api exec vitest run test/health.e2e-spec.ts
 ```
 
-### Redis Streams integration tests (UL-124)
+### Integration tests (real services)
 
-Redis integration tests run separately from the default Vitest suite because they require a running Redis instance.
-
-Start the development services:
+Specs in `test/integration/` as `*.int-spec.ts` boot the whole `AppModule` against the services
+from `pnpm services:up`. `vitest.integration.config.ts` runs them one file at a time; `pnpm test`
+never does, so CI (no services yet) skips them. Both URLs must be exported: under `NODE_ENV`
+`test` nothing reads `.env`, and a missing URL fails the run rather than skipping it.
 
 ```sh
 pnpm services:up
+DATABASE_URL=postgresql://app:app_dev_password@127.0.0.1:55432/app \
+REDIS_URL=redis://127.0.0.1:56379 pnpm --filter @app/api test:integration
 ```
 
-Then run:
+`test/integration/realtime.int-spec.ts` (UL-124) creates NestJS applications with explicit
+instance IDs (`test-api-1`, `test-api-2`), each with its own Socket.IO client, and checks that:
+
+- without the Redis Streams adapter a room broadcast does not reach the client on the other app;
+- with it, a broadcast from either app reaches the clients on both, with the sender's `instanceId`;
+- `POST /api/debug/realtime/ping` on one app reaches the client on the other;
+- a socket outside the room receives nothing;
+- `app.close()` leaves none of the app's three Redis connections open.
+
+UL-132 adds Redis and Postgres to CI as service containers and runs this config there.
+
+#### Manual check on two replicas
 
 ```sh
-REDIS_URL=redis://127.0.0.1:56379 pnpm --filter @app/api test:redis
+docker compose --profile realtime up -d --build --wait
 ```
 
-The integration suite creates two independent NestJS applications with explicitly assigned instance IDs (`test-api-1` and `test-api-2`) and connects a Socket.IO client to each application.
-
-The tests verify that:
-
-- Without the Redis Streams adapter, a room broadcast does not reach the client connected to the other application.
-- Clients outside the target room do not receive its broadcasts.
-- Events emitted from either application reach clients connected to both applications.
-- Each debug event includes the sender's `instanceId`.
-
-The server assigns clients to the diagnostic room; clients cannot choose rooms themselves. Diagnostic broadcasts are enabled only when `NODE_ENV=test`.
-
-The default `pnpm test` suite does not require Redis.
+Connect two Socket.IO clients to `http://127.0.0.1:58080` without sharing cookies, so the `io_srv`
+cookie puts them on different replicas, then
+`curl -X POST http://127.0.0.1:58080/api/debug/realtime/ping`. The answer names the replica that
+emitted, and both clients receive `debug:ping` with that `instanceId`.
 
 ## Image
 

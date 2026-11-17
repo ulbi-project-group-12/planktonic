@@ -1,33 +1,34 @@
-import { Inject, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { WebSocketGateway, WebSocketServer, type OnGatewayConnection } from '@nestjs/websockets';
+import { Logger } from '@nestjs/common';
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  type OnGatewayConnection,
+  type OnGatewayInit,
+} from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
-import type { Env } from '../../core/config/env.js';
-import { INSTANCE_ID } from '../health/instance-id.provider.js';
+import { DEBUG_ROOM, RealtimeService } from './realtime.service.js';
 
+/** WS adapter: binds the server for RealtimeService and assigns rooms on the server side only. */
 @WebSocketGateway({
   path: '/socket.io',
 })
-export class RealtimeGateway implements OnGatewayConnection {
+export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   private readonly logger = new Logger(RealtimeGateway.name);
-
-  private readonly debugEnabled: boolean;
-
-  constructor(
-    @Inject(INSTANCE_ID) private readonly instanceId: string,
-    config: ConfigService<Env, true>,
-  ) {
-    this.debugEnabled = config.get('NODE_ENV', { infer: true }) === 'test';
-  }
 
   @WebSocketServer()
   server!: Server;
 
+  constructor(private readonly realtime: RealtimeService) {}
+
+  afterInit(server: Server): void {
+    this.realtime.bindServer(server);
+  }
+
   async handleConnection(client: Socket): Promise<void> {
-    if (!this.debugEnabled) return;
+    if (!this.realtime.debugEnabled) return;
 
     try {
-      await client.join('debug:channel');
+      await client.join(DEBUG_ROOM);
       this.logger.debug(`Socket connected: ${client.id}`);
     } catch (error) {
       this.logger.error(
@@ -36,13 +37,5 @@ export class RealtimeGateway implements OnGatewayConnection {
       );
       client.disconnect(true);
     }
-  }
-
-  emitDebugPing(): void {
-    if (!this.debugEnabled) return;
-
-    this.server.to('debug:channel').emit('debug:ping', {
-      instanceId: this.instanceId,
-    });
   }
 }

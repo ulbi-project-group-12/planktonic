@@ -17,7 +17,17 @@ export const envSchema = z.object({
   API_HOST: z.preprocess(emptyAsUnset, z.string().trim().min(1).default('127.0.0.1')),
   // Required: the app has no database default. Only postgres:// and postgresql:// URLs pass.
   DATABASE_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^postgres(ql)?$/ })),
+  // Required: Socket.IO crosses replicas through the Redis Streams adapter.
   REDIS_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^rediss?$/ })),
+  // Opt-in diagnostic room and `POST /api/debug/realtime/ping` for the two-replica stand. Always
+  // on under NODE_ENV=test; deployments leave it unset.
+  REALTIME_DEBUG: z.preprocess(
+    emptyAsUnset,
+    z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+  ),
 });
 
 export type Env = z.output<typeof envSchema>;

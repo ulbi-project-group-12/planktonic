@@ -3,6 +3,13 @@ import type { RedisClientType } from 'redis';
 
 const REDIS_SHUTDOWN_TIMEOUT_MS = 5_000;
 
+/**
+ * Closes the publishing client registered by `configureRealtime`, with a deadline. The adapter
+ * duplicates it into a read and a sub connection; those it closes itself when Nest closes the
+ * Socket.IO server, which happens before `onApplicationShutdown`. The read connection goes away
+ * once its current XREAD returns (`STREAM_BLOCK_TIME_MS`), so the deadline here is not the upper
+ * bound of the whole shutdown.
+ */
 @Injectable()
 export class RedisConnectionLifecycle implements OnApplicationShutdown {
   private readonly logger = new Logger(RedisConnectionLifecycle.name);

@@ -94,9 +94,9 @@ bucket), so run `pnpm db:migrate` again afterwards.
 
 Traefik discovers the API containers through the Docker socket and routes `/api` and
 `/socket.io` to their internal port `3001`. The `io_srv` sticky cookie keeps a client on the
-same replica. The API serves Socket.IO through the Redis Streams adapter (UL-124); diagnostic
-rooms and events are enabled only in test mode. Access logs are enabled, and the entrypoint idle
-timeout is 60 seconds. See [API realtime checks](apps/api/README.md#redis-streams-integration-tests-ul-124).
+same replica. The API serves Socket.IO through the Redis Streams adapter (UL-124); the profile
+sets `REALTIME_DEBUG=true`, so a diagnostic ping crosses replicas. Access logs are enabled, and the entrypoint idle
+timeout is 60 seconds. See [API realtime checks](apps/api/README.md#manual-check-on-two-replicas).
 
 The API healthcheck calls `/api/health` every 10 seconds, with a 5-second timeout, 3 retries and
 a 20-second start period. It checks liveness only. `restart: unless-stopped` restarts exited
@@ -155,29 +155,30 @@ The Docker API receives `API_HOST=0.0.0.0`, `API_PORT=3001` and a `DATABASE_URL`
 `DATABASE_URL` or `API_PORT` from `.env`. Host development and Prisma CLI commands use the
 loopback connection below.
 
-| Variable               | Purpose                                                               | Local example value                                     | Read by                          |
-| ---------------------- | --------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------- |
-| `NODE_ENV`             | Node environment (`development`, `test` or `production`)              | empty (each tool's default)                             | `@app/api` env schema            |
-| `APP_VERSION`          | Version string of a release image                                     | empty                                                   | release images (build-arg)       |
-| `PRODUCT_NAME`         | Unread by the apps; they bake in `packages/config/product.ts` instead | empty                                                   | release images (env, no reader)  |
-| `PRODUCT_SLUG`         | Slug override (URLs, image names)                                     | empty                                                   | reserved (no local reader yet)   |
-| `API_PORT`             | Port the api listens on                                               | `3001`                                                  | `@app/api`                       |
-| `API_HOST`             | Interface the api binds to (the api image sets `0.0.0.0`)             | empty (`127.0.0.1`, loopback only)                      | `@app/api`                       |
-| `TRAEFIK_PORT`         | Host HTTP port for Traefik                                            | `58080`                                                 | compose `traefik`                |
-| `POSTGRES_DB`          | Database created on the first start                                   | `app`                                                   | compose `postgres`               |
-| `POSTGRES_USER`        | Database owner role created on the first start                        | `app`                                                   | compose `postgres`               |
-| `POSTGRES_PASSWORD`    | Dev-only password for `POSTGRES_USER`                                 | `app_dev_password`                                      | compose `postgres`               |
-| `POSTGRES_PORT`        | Host port for Postgres                                                | `55432`                                                 | compose `postgres`               |
-| `DATABASE_URL`         | Connection string; must match the four values above                   | `postgresql://app:app_dev_password@127.0.0.1:55432/app` | `@app/api`, Prisma CLI           |
-| `REDIS_PORT`           | Host port for Redis                                                   | `56379`                                                 | compose `redis`                  |
-| `REDIS_URL`            | Redis connection; must match `REDIS_PORT`                             | `redis://127.0.0.1:56379`                               | required by API realtime         |
-| `S3_PORT`              | Host port for the S3 gateway                                          | `58333`                                                 | compose `seaweedfs`              |
-| `S3_ENDPOINT`          | S3 endpoint; must match `S3_PORT`                                     | `http://127.0.0.1:58333`                                | reserved for Phase 7 (files)     |
-| `S3_REGION`            | S3 region (SeaweedFS accepts any)                                     | `us-east-1`                                             | reserved for Phase 7 (files)     |
-| `S3_BUCKET`            | Dev bucket                                                            | `app-dev`                                               | compose `s3-init`; Phase 7 api   |
-| `S3_ACCESS_KEY_ID`     | Dev-only S3 access key (the gateway's admin identity)                 | `dev-access-key`                                        | compose `seaweedfs`; Phase 7 api |
-| `S3_SECRET_ACCESS_KEY` | Dev-only S3 secret key paired with `S3_ACCESS_KEY_ID`                 | `dev-secret-key`                                        | compose `seaweedfs`; Phase 7 api |
-| `S3_FORCE_PATH_STYLE`  | Path-style S3 URLs (bucket in the path), needed by SeaweedFS          | `true`                                                  | reserved for Phase 7 (files)     |
+| Variable               | Purpose                                                               | Local example value                                     | Read by                                    |
+| ---------------------- | --------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------ |
+| `NODE_ENV`             | Node environment (`development`, `test` or `production`)              | empty (each tool's default)                             | `@app/api` env schema                      |
+| `APP_VERSION`          | Version string of a release image                                     | empty                                                   | release images (build-arg)                 |
+| `PRODUCT_NAME`         | Unread by the apps; they bake in `packages/config/product.ts` instead | empty                                                   | release images (env, no reader)            |
+| `PRODUCT_SLUG`         | Slug override (URLs, image names)                                     | empty                                                   | reserved (no local reader yet)             |
+| `API_PORT`             | Port the api listens on                                               | `3001`                                                  | `@app/api`                                 |
+| `API_HOST`             | Interface the api binds to (the api image sets `0.0.0.0`)             | empty (`127.0.0.1`, loopback only)                      | `@app/api`                                 |
+| `TRAEFIK_PORT`         | Host HTTP port for Traefik                                            | `58080`                                                 | compose `traefik`                          |
+| `POSTGRES_DB`          | Database created on the first start                                   | `app`                                                   | compose `postgres`                         |
+| `POSTGRES_USER`        | Database owner role created on the first start                        | `app`                                                   | compose `postgres`                         |
+| `POSTGRES_PASSWORD`    | Dev-only password for `POSTGRES_USER`                                 | `app_dev_password`                                      | compose `postgres`                         |
+| `POSTGRES_PORT`        | Host port for Postgres                                                | `55432`                                                 | compose `postgres`                         |
+| `DATABASE_URL`         | Connection string; must match the four values above                   | `postgresql://app:app_dev_password@127.0.0.1:55432/app` | `@app/api`, Prisma CLI                     |
+| `REDIS_PORT`           | Host port for Redis                                                   | `56379`                                                 | compose `redis`                            |
+| `REDIS_URL`            | Redis connection; must match `REDIS_PORT`                             | `redis://127.0.0.1:56379`                               | required by API realtime                   |
+| `REALTIME_DEBUG`       | Diagnostic room and `POST /api/debug/realtime/ping` (`true`/`false`)  | empty (`false`)                                         | `@app/api`; compose `realtime` sets `true` |
+| `S3_PORT`              | Host port for the S3 gateway                                          | `58333`                                                 | compose `seaweedfs`                        |
+| `S3_ENDPOINT`          | S3 endpoint; must match `S3_PORT`                                     | `http://127.0.0.1:58333`                                | reserved for Phase 7 (files)               |
+| `S3_REGION`            | S3 region (SeaweedFS accepts any)                                     | `us-east-1`                                             | reserved for Phase 7 (files)               |
+| `S3_BUCKET`            | Dev bucket                                                            | `app-dev`                                               | compose `s3-init`; Phase 7 api             |
+| `S3_ACCESS_KEY_ID`     | Dev-only S3 access key (the gateway's admin identity)                 | `dev-access-key`                                        | compose `seaweedfs`; Phase 7 api           |
+| `S3_SECRET_ACCESS_KEY` | Dev-only S3 secret key paired with `S3_ACCESS_KEY_ID`                 | `dev-secret-key`                                        | compose `seaweedfs`; Phase 7 api           |
+| `S3_FORCE_PATH_STYLE`  | Path-style S3 URLs (bucket in the path), needed by SeaweedFS          | `true`                                                  | reserved for Phase 7 (files)               |
 
 Use `127.0.0.1`, not `localhost`, in `DATABASE_URL`, `REDIS_URL` and `S3_ENDPOINT`: the services
 bind to IPv4 loopback only.

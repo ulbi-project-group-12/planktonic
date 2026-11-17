@@ -23,6 +23,7 @@ describe('validateEnv', () => {
       API_HOST: '127.0.0.1',
       DATABASE_URL,
       REDIS_URL,
+      REALTIME_DEBUG: false,
     });
   });
 
@@ -35,6 +36,7 @@ describe('validateEnv', () => {
       API_HOST: '127.0.0.1',
       DATABASE_URL,
       REDIS_URL,
+      REALTIME_DEBUG: false,
     });
   });
 
@@ -102,6 +104,25 @@ describe('validateEnv', () => {
     (value) => {
       const message = errorOf({ DATABASE_URL, REDIS_URL: value });
       expect(message).toContain('REDIS_URL');
+      expect(message).not.toContain(value);
+    },
+  );
+
+  it.each([
+    ['true', true],
+    ['false', false],
+    ['', false],
+  ])('reads REALTIME_DEBUG %j as %s', (value, expected) => {
+    expect(validateEnv({ DATABASE_URL, REDIS_URL, REALTIME_DEBUG: value }).REALTIME_DEBUG).toBe(
+      expected,
+    );
+  });
+
+  it.each(['1', 'yes', 'TRUE'])(
+    'rejects REALTIME_DEBUG %s, naming the variable but not the value',
+    (value) => {
+      const message = errorOf({ DATABASE_URL, REDIS_URL, REALTIME_DEBUG: value });
+      expect(message).toContain('REALTIME_DEBUG');
       expect(message).not.toContain(value);
     },
   );
