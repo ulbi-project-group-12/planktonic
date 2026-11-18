@@ -257,7 +257,7 @@ function SortableColumnItem<T>({
     >
       <button
         type="button"
-        aria-label="Перетащить"
+        aria-label={`Перетащить колонку "${typeof column.header === 'string' ? column.header : column.id}"`}
         className="flex size-6 shrink-0 cursor-grab items-center justify-center rounded text-fg-muted transition-colors hover:bg-surface hover:text-fg-primary active:cursor-grabbing"
         {...attributes}
         {...listeners}
@@ -290,7 +290,7 @@ function ColumnSettings<T>({
 
   const items = useMemo(() => columns.map((column) => column.id), [columns]);
   const hiddenSet = useMemo(() => new Set(hiddenColumnIds), [hiddenColumnIds]);
-  const visibleCount = columns.length - hiddenSet.size;
+  const visibleCount = columns.filter((column) => !hiddenSet.has(column.id)).length;
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;

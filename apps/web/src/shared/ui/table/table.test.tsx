@@ -286,8 +286,10 @@ describe('Table', () => {
 
     await user.click(screen.getByRole('button', { name: 'Настроить колонки' }));
     await user.click(screen.getByRole('switch', { name: 'ID' }));
+    await user.keyboard('{Escape}');
 
     expect(onHiddenColumnIdsChange).toHaveBeenLastCalledWith(['id']);
+    expect(screen.getByRole('columnheader', { name: /Задача/ })).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: /ID/i })).toBeNull();
   });
 
