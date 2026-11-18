@@ -1,18 +1,13 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import {
-  Button,
-  Checkbox,
-  Chip,
-  Dropdown,
-  DropdownContent,
-  DropdownTrigger,
-  Pagination,
-  Select,
-  Table,
-} from '@/shared/ui';
-import type { TableSort } from '@/shared/ui';
-import { TableRow } from './table';
+import { Button } from '@/shared/ui/button';
+import { Checkbox } from '@/shared/ui/checkbox';
+import { Chip } from '@/shared/ui/chip';
+import { Dropdown, DropdownContent, DropdownTrigger } from '@/shared/ui/dropdown';
+import { Pagination } from '@/shared/ui/pagination';
+import { Select } from '@/shared/ui/select';
+import { Table, TableRow } from './table';
+import type { TableSort } from './table';
 import { TASKS, buildColumns, rowActions } from './table.demo';
 import type { Task, TaskStatus } from './table.demo';
 
@@ -229,8 +224,6 @@ function TaskTableDemo({
         sort={sort}
         onSortChange={setSort}
         actions={rowActions}
-        showColumnSettings
-        defaultHiddenColumnIds={['updated']}
         empty={
           <EmptyState
             onReset={() => {
@@ -408,22 +401,19 @@ export const Playground: StoryObj = {
     loading: { control: 'boolean' },
     withActions: { control: 'boolean' },
     sorted: { control: 'boolean' },
-    withColumnSettings: { control: 'boolean' },
   },
   args: {
     selectable: true,
     loading: false,
     withActions: true,
     sorted: true,
-    withColumnSettings: true,
   },
   render: (args) => {
-    const { selectable, loading, withActions, sorted, withColumnSettings } = args as {
+    const { selectable, loading, withActions, sorted } = args as {
       selectable: boolean;
       loading: boolean;
       withActions: boolean;
       sorted: boolean;
-      withColumnSettings: boolean;
     };
     return (
       <div className="p-8">
@@ -439,8 +429,6 @@ export const Playground: StoryObj = {
           selectable={selectable}
           loading={loading}
           actions={withActions ? rowActions : undefined}
-          showColumnSettings={withColumnSettings}
-          defaultHiddenColumnIds={['updated']}
         />
       </div>
     );

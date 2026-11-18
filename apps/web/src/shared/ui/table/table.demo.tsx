@@ -1,8 +1,9 @@
-/** Demo data and column builders for Table stories and docs.
+/** Demo data and column builders for Table stories.
     Lives outside *.stories so Storybook does not treat the exports as stories. */
 import { Copy, Pencil, Trash2 } from 'lucide-react';
-import { Avatar, Chip } from '@/shared/ui';
-import type { TableAction, TableColumn } from '@/shared/ui';
+import { Avatar } from '@/shared/ui/avatar';
+import { Chip } from '@/shared/ui/chip';
+import type { TableAction, TableColumn } from './table';
 
 export type TaskStatus = 'В работе' | 'На проверке' | 'Нужно сделать' | 'Готово';
 export type TaskPriority = 'Высокий' | 'Средний' | 'Низкий';

@@ -17,10 +17,6 @@
     "build-storybook": "storybook build --quiet"
   },
   "dependencies": {
-    "@dnd-kit/core": "catalog:",
-    "@dnd-kit/modifiers": "catalog:",
-    "@dnd-kit/sortable": "catalog:",
-    "@dnd-kit/utilities": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "lucide-react": "catalog:",
@@ -35,7 +31,6 @@
     "@app/config": "workspace:*",
     "@feature-sliced/steiger-plugin": "catalog:",
     "@storybook/addon-a11y": "catalog:",
-    "@storybook/addon-docs": "catalog:",
     "@storybook/nextjs-vite": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@testing-library/dom": "catalog:",

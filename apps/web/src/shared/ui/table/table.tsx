@@ -1,39 +1,13 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
-import type { ComponentPropsWithoutRef, CSSProperties, PointerEvent, ReactNode } from 'react';
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { CSS } from '@dnd-kit/utilities';
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  GripVertical,
-  MoreHorizontal,
-  Settings2,
-} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import type { ComponentPropsWithoutRef, CSSProperties, ReactNode } from 'react';
+import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/lib';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from '@/shared/ui/dropdown';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Switch } from '@/shared/ui/switch';
 
 const tableSortTypes = ['string', 'number', 'date', 'boolean'] as const;
 type TableSortType = (typeof tableSortTypes)[number];
@@ -59,7 +33,7 @@ interface TableColumn<T> {
   sortType?: TableSortType;
   /** Custom comparison (receives whole rows); overrides sortType. Null/empty handling is the comparator's job. */
   sortCompare?: (a: T, b: T) => number;
-  /** Initial width: px number or any grid track ('200px', 'minmax(0,2fr)'). Resizable on the fly. */
+  /** Width: px number or any grid track ('200px', 'minmax(0,2fr)'). */
   width?: number | string;
   align?: 'left' | 'right' | 'center';
 }
@@ -96,31 +70,15 @@ interface TableProps<T> {
   actionLabel?: string;
   /** Skeleton rows instead of data. */
   loading?: boolean;
-  /** Content of the empty state row. */
+  /** Content of the empty state row; defaults to "Нет данных". */
   empty?: ReactNode;
-  /** Accessible name of the table. */
-  caption?: string;
+  /** Accessible name of the table (required: a table needs a name for screen readers). */
+  caption: string;
   onRowClick?: (row: T) => void;
   /** Portal container for row menus (a themed story block); defaults to body. */
   portalContainer?: HTMLElement | null;
   className?: string;
-  /** Show the built-in column settings dropdown: visibility toggles and drag-to-reorder. */
-  showColumnSettings?: boolean;
-  /** Accessible name of the column settings trigger. */
-  columnSettingsLabel?: string;
-  /** Hidden column ids (controlled). */
-  hiddenColumnIds?: string[];
-  /** Hidden column ids on first render (uncontrolled). */
-  defaultHiddenColumnIds?: string[];
-  onHiddenColumnIdsChange?: (ids: string[]) => void;
-  /** Column order (controlled). */
-  columnOrder?: string[];
-  /** Column order on first render (uncontrolled). */
-  defaultColumnOrder?: string[];
-  onColumnOrderChange?: (ids: string[]) => void;
 }
-
-const MIN_COLUMN_WIDTH = 64;
 
 /** Comparison by the column sort type; strings — alphabetical with ru locale. */
 function compareValues(a: unknown, b: unknown, type: TableSortType): number {
@@ -149,6 +107,21 @@ function compareValues(a: unknown, b: unknown, type: TableSortType): number {
       );
     }
   }
+}
+
+/** Default cell text from accessor(): empty for null/undefined, a stable UTC date for Date. */
+function formatCellValue(value: unknown): string {
+  if (value == null) return '';
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime())
+      ? ''
+      : value.toLocaleDateString('ru-RU', { timeZone: 'UTC' });
+  }
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+  return JSON.stringify(value);
 }
 
 interface TableRowProps extends ComponentPropsWithoutRef<'div'> {
@@ -198,17 +171,14 @@ function TableRow({
   );
 }
 
-function isFlexibleColumn<T>(column: TableColumn<T>, resizedWidth?: number): boolean {
-  if (resizedWidth !== undefined) return false;
+function isFlexibleColumn<T>(column: TableColumn<T>): boolean {
   if (column.width === undefined) return true;
-  if (typeof column.width === 'string') {
-    return /(fr|auto)/.test(column.width);
-  }
+  if (typeof column.width === 'string') return /(fr|auto)/.test(column.width);
   return false;
 }
 
-function columnTrack<T>(column: TableColumn<T>, width?: number, fill = false): string {
-  if (width !== undefined) return fill ? `minmax(${String(width)}px, 1fr)` : `${String(width)}px`;
+/** Grid track of a column; `fill` stretches a fixed px column so the grid fills the container. */
+function columnTrack<T>(column: TableColumn<T>, fill = false): string {
   if (typeof column.width === 'number') {
     return fill ? `minmax(${String(column.width)}px, 1fr)` : `${String(column.width)}px`;
   }
@@ -216,140 +186,7 @@ function columnTrack<T>(column: TableColumn<T>, width?: number, fill = false): s
   return 'minmax(160px, 1fr)';
 }
 
-interface ColumnSettingsProps<T> {
-  columns: TableColumn<T>[];
-  hiddenColumnIds: string[];
-  onHiddenColumnIdsChange: (ids: string[]) => void;
-  onColumnOrderChange: (ids: string[]) => void;
-  portalContainer?: HTMLElement | null;
-  label?: string;
-}
-
-function SortableColumnItem<T>({
-  column,
-  checked,
-  disabled,
-  onCheckedChange,
-}: {
-  column: TableColumn<T>;
-  checked: boolean;
-  disabled: boolean;
-  onCheckedChange: (checked: boolean) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: column.id,
-  });
-
-  const style: CSSProperties = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : undefined,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        'flex items-center gap-2 rounded-md px-2 py-1 text-caption text-fg-primary',
-        isDragging && 'bg-sunken shadow-sm',
-      )}
-    >
-      <button
-        type="button"
-        aria-label={`Перетащить колонку "${typeof column.header === 'string' ? column.header : column.id}"`}
-        className="flex size-6 shrink-0 cursor-grab items-center justify-center rounded text-fg-muted transition-colors hover:bg-surface hover:text-fg-primary active:cursor-grabbing"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="size-4" />
-      </button>
-      <Switch
-        label={typeof column.header === 'string' ? column.header : column.id}
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={onCheckedChange}
-        className="flex-1 justify-between"
-      />
-    </div>
-  );
-}
-
-function ColumnSettings<T>({
-  columns,
-  hiddenColumnIds,
-  onHiddenColumnIdsChange,
-  onColumnOrderChange,
-  portalContainer,
-  label = 'Настроить колонки',
-}: ColumnSettingsProps<T>) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  const items = useMemo(() => columns.map((column) => column.id), [columns]);
-  const hiddenSet = useMemo(() => new Set(hiddenColumnIds), [hiddenColumnIds]);
-  const visibleCount = columns.filter((column) => !hiddenSet.has(column.id)).length;
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = items.indexOf(String(active.id));
-    const newIndex = items.indexOf(String(over.id));
-    onColumnOrderChange(arrayMove(items, oldIndex, newIndex));
-  };
-
-  const toggleColumn = (id: string, checked: boolean) => {
-    const next = checked ? hiddenColumnIds.filter((item) => item !== id) : [...hiddenColumnIds, id];
-    onHiddenColumnIdsChange(next);
-  };
-
-  return (
-    <Dropdown>
-      <DropdownTrigger>
-        <button
-          type="button"
-          aria-label={label}
-          className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-fg-muted transition-colors hover:bg-sunken hover:text-fg-primary focus-visible:ring-3 focus-visible:ring-brand-primary/40 focus-visible:outline-none"
-        >
-          <Settings2 className="size-4" />
-        </button>
-      </DropdownTrigger>
-      <DropdownContent portalContainer={portalContainer} align="end" className="w-64 p-2">
-        <div className="mb-2 px-2 text-body-s font-bold text-fg-primary">Колонки</div>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis]}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={items} strategy={verticalListSortingStrategy}>
-            <div className="flex flex-col gap-0.5">
-              {columns.map((column) => {
-                const checked = !hiddenSet.has(column.id);
-                const disabled = visibleCount === 1 && checked;
-                return (
-                  <SortableColumnItem
-                    key={column.id}
-                    column={column}
-                    checked={checked}
-                    disabled={disabled}
-                    onCheckedChange={(value) => {
-                      toggleColumn(column.id, value);
-                    }}
-                  />
-                );
-              })}
-            </div>
-          </SortableContext>
-        </DndContext>
-      </DropdownContent>
-    </Dropdown>
-  );
-}
-
-/** Universal table: optional selection, sorting and a row-actions menu, resizable columns. */
+/** Universal table: optional selection, sorting and a row-actions menu. */
 function Table<T>({
   data,
   columns,
@@ -370,29 +207,11 @@ function Table<T>({
   onRowClick,
   portalContainer,
   className,
-  showColumnSettings = false,
-  columnSettingsLabel,
-  hiddenColumnIds,
-  defaultHiddenColumnIds,
-  onHiddenColumnIdsChange,
-  columnOrder,
-  defaultColumnOrder,
-  onColumnOrderChange,
 }: TableProps<T>) {
   const [innerSelectedIds, setInnerSelectedIds] = useState<(string | number)[]>(
     defaultSelectedIds ?? [],
   );
   const [innerSort, setInnerSort] = useState<TableSort | null>(defaultSort);
-  const [resizedWidths, setResizedWidths] = useState<Record<string, number>>({});
-  const resizeRef = useRef<{ columnId: string; startWidth: number; startX: number } | null>(null);
-
-  const [innerHiddenColumnIds, setInnerHiddenColumnIds] = useState<string[]>(
-    defaultHiddenColumnIds ?? [],
-  );
-  const [innerColumnOrder, setInnerColumnOrder] = useState<string[]>(
-    defaultColumnOrder ?? columns.map((column) => column.id),
-  );
-
   const isControlledSelection = selectedIds !== undefined;
   const selected = isControlledSelection ? selectedIds : innerSelectedIds;
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -400,52 +219,19 @@ function Table<T>({
   const isControlledSort = sort !== undefined;
   const activeSort = isControlledSort ? sort : innerSort;
 
-  const isControlledHidden = hiddenColumnIds !== undefined;
-  const activeHiddenColumnIds = isControlledHidden ? hiddenColumnIds : innerHiddenColumnIds;
+  const hasFlexibleColumn = columns.some((column) => isFlexibleColumn(column));
 
-  const isControlledOrder = columnOrder !== undefined;
-  const activeColumnOrder = isControlledOrder ? columnOrder : innerColumnOrder;
-
-  const setHiddenColumnIds = (ids: string[]) => {
-    if (!isControlledHidden) setInnerHiddenColumnIds(ids);
-    onHiddenColumnIdsChange?.(ids);
-  };
-
-  const setColumnOrder = (ids: string[]) => {
-    if (!isControlledOrder) setInnerColumnOrder(ids);
-    onColumnOrderChange?.(ids);
-  };
-
-  const orderedColumns = useMemo(() => {
-    const byId = new Map(columns.map((column) => [column.id, column]));
-    const ordered = activeColumnOrder
-      .map((id) => byId.get(id))
-      .filter((column): column is TableColumn<T> => column !== undefined);
-    const rest = columns.filter((column) => !activeColumnOrder.includes(column.id));
-    return [...ordered, ...rest];
-  }, [columns, activeColumnOrder]);
-
-  const visibleColumns = useMemo(
-    () => orderedColumns.filter((column) => !activeHiddenColumnIds.includes(column.id)),
-    [orderedColumns, activeHiddenColumnIds],
-  );
-
-  const hasFlexibleVisibleColumn = visibleColumns.some((column) =>
-    isFlexibleColumn(column, resizedWidths[column.id]),
-  );
-
-  const hasActionsColumn = actions ?? showColumnSettings;
+  const hasActionsColumn = actions !== undefined || headerActions !== undefined;
 
   const template = useMemo(() => {
-    const tracks = visibleColumns.map((column, index) => {
-      const isLast = index === visibleColumns.length - 1;
-      const fill = !hasFlexibleVisibleColumn && isLast;
-      return columnTrack(column, resizedWidths[column.id], fill);
+    const tracks = columns.map((column, index) => {
+      const isLast = index === columns.length - 1;
+      return columnTrack(column, !hasFlexibleColumn && isLast);
     });
     return [...(selectable ? ['44px'] : []), ...tracks, ...(hasActionsColumn ? ['48px'] : [])].join(
       ' ',
     );
-  }, [visibleColumns, selectable, hasActionsColumn, resizedWidths, hasFlexibleVisibleColumn]);
+  }, [columns, selectable, hasActionsColumn, hasFlexibleColumn]);
 
   const sortedData = useMemo(() => {
     if (!activeSort) return data;
@@ -484,31 +270,6 @@ function Table<T>({
   const everySelected = keys.length > 0 && keys.every((key) => selectedSet.has(key));
   const someSelected = keys.some((key) => selectedSet.has(key));
 
-  const startResize = (event: PointerEvent<HTMLDivElement>, column: TableColumn<T>) => {
-    const header = event.currentTarget.parentElement;
-    if (!header) return;
-    resizeRef.current = {
-      columnId: column.id,
-      startWidth: header.offsetWidth,
-      startX: event.clientX,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-
-  const moveResize = (event: PointerEvent<HTMLDivElement>) => {
-    const state = resizeRef.current;
-    if (!state) return;
-    const width = Math.max(
-      MIN_COLUMN_WIDTH,
-      Math.round(state.startWidth + event.clientX - state.startX),
-    );
-    setResizedWidths((prev) => ({ ...prev, [state.columnId]: width }));
-  };
-
-  const endResize = () => {
-    resizeRef.current = null;
-  };
-
   const alignClass = {
     left: 'justify-start',
     right: 'justify-end',
@@ -516,8 +277,8 @@ function Table<T>({
   } as const;
 
   const headerClass = cn(
-    'relative flex h-10 items-center gap-1 px-3 text-micro font-bold tracking-wider',
-    // fg-secondary, not fg-muted: the header sits on bg-sunken, where muted is 4.43:1 (fails AA for 12px text)
+    'flex h-10 items-center gap-1 px-3 text-micro font-bold tracking-wider',
+    // fg-secondary, not fg-muted: 12px uppercase labels on bg-sunken; muted is only 4.70:1 there, secondary keeps a margin
     'bg-sunken text-fg-secondary uppercase select-none',
   );
 
@@ -550,12 +311,15 @@ function Table<T>({
               indeterminate={someSelected && !everySelected}
               disabled={loading}
               onCheckedChange={() => {
-                setSelection(everySelected ? [] : keys);
+                // only this table's rows change: ids selected outside `data` (other pages, filters) stay
+                const keySet = new Set(keys);
+                const outside = selected.filter((id) => !keySet.has(id));
+                setSelection(everySelected ? outside : [...outside, ...keys]);
               }}
             />
           </div>
         ) : null}
-        {visibleColumns.map((column) => {
+        {columns.map((column) => {
           const sortedAsc = activeSort?.columnId === column.id && activeSort.direction === 'asc';
           const sortedDesc = activeSort?.columnId === column.id && activeSort.direction === 'desc';
           const content = (
@@ -602,40 +366,12 @@ function Table<T>({
               ) : (
                 content
               )}
-              <div
-                role="presentation"
-                aria-hidden
-                className={cn(
-                  'absolute top-1/2 right-0 h-5 w-2 -translate-y-1/2 cursor-col-resize touch-none',
-                  loading && 'pointer-events-none',
-                )}
-                onClick={(event) => {
-                  event.stopPropagation();
-                }}
-                onPointerDown={(event) => {
-                  startResize(event, column);
-                }}
-                onPointerMove={moveResize}
-                onPointerUp={endResize}
-              >
-                <div className="mx-auto h-full w-px bg-transparent transition-colors hover:bg-brand-primary" />
-              </div>
             </div>
           );
         })}
         {hasActionsColumn ? (
           <div role="columnheader" className={cn(headerClass, 'justify-end gap-2 px-3')}>
             <span className="sr-only">{actionLabel}</span>
-            {showColumnSettings ? (
-              <ColumnSettings
-                columns={orderedColumns}
-                hiddenColumnIds={activeHiddenColumnIds}
-                onHiddenColumnIdsChange={setHiddenColumnIds}
-                onColumnOrderChange={setColumnOrder}
-                portalContainer={portalContainer}
-                label={columnSettingsLabel}
-              />
-            ) : null}
             {headerActions}
           </div>
         ) : null}
@@ -656,7 +392,7 @@ function Table<T>({
                 <Skeleton className="size-5" />
               </div>
             ) : null}
-            {visibleColumns.map((column, columnIndex) => (
+            {columns.map((column, columnIndex) => (
               <div
                 key={column.id}
                 role="cell"
@@ -678,7 +414,9 @@ function Table<T>({
           {/* Block cell, not flex: the empty content centers itself and must stretch
                 to the full spanned width instead of shrinking to a flex item. */}
           <div role="cell" style={{ gridColumn: '1 / -1' }}>
-            {empty}
+            {empty ?? (
+              <div className="px-3 py-8 text-center text-body-s text-fg-muted">Нет данных</div>
+            )}
           </div>
         </TableRow>
       ) : (
@@ -735,7 +473,7 @@ function Table<T>({
                   />
                 </div>
               ) : null}
-              {visibleColumns.map((column) => (
+              {columns.map((column) => (
                 <div
                   key={column.id}
                   role="cell"
@@ -751,8 +489,8 @@ function Table<T>({
                   ) : column.accessor ? (
                     // Full text as a native tooltip: the visible value is truncated with an
                     // ellipsis, so hover should reveal what did not fit.
-                    <span className="truncate" title={String(column.accessor(row))}>
-                      {String(column.accessor(row))}
+                    <span className="truncate" title={formatCellValue(column.accessor(row))}>
+                      {formatCellValue(column.accessor(row))}
                     </span>
                   ) : null}
                 </div>

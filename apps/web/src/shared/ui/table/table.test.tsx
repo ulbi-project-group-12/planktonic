@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Table } from './table';
@@ -208,6 +208,7 @@ describe('Table', () => {
         data={[]}
         columns={columns}
         rowKey={(task) => task.id}
+        caption="Задачи"
         empty={<p>Ничего не найдено</p>}
       />,
     );
@@ -253,61 +254,43 @@ describe('Table', () => {
     expect(cell.className).toContain('truncate');
   });
 
-  it('resizes a column by dragging the header edge', () => {
-    renderTable();
-    const handle = document.querySelector('[role="presentation"]');
-    expect(handle).not.toBeNull();
-
-    fireEvent.pointerDown(handle!, { clientX: 100, pointerId: 1 });
-    fireEvent.pointerMove(handle!, { clientX: 160, pointerId: 1 });
-    fireEvent.pointerUp(handle!, { pointerId: 1 });
-
-    const grid = screen.getByRole('table');
-    // jsdom offsetWidth is 0, so the width clamps to the 64 px minimum
-    expect(grid.getAttribute('style')).toContain('64px');
-  });
-
-  it('renders a column settings trigger when showColumnSettings is set', async () => {
+  it('selects all rows without dropping ids selected outside the current data', async () => {
     const user = userEvent.setup();
-    renderTable({ showColumnSettings: true });
+    const onSelectedIdsChange = vi.fn();
+    renderTable({ selectable: true, defaultSelectedIds: ['PL-1'], onSelectedIdsChange });
 
-    const trigger = screen.getByRole('button', { name: 'Настроить колонки' });
-    expect(trigger).toBeInTheDocument();
-
-    await user.click(trigger);
-    expect(screen.getByRole('switch', { name: 'ID' })).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: 'Задача' })).toBeInTheDocument();
+    const selectAll = screen.getByRole('checkbox', { name: 'Выбрать все' });
+    await user.click(selectAll);
+    expect(onSelectedIdsChange).toHaveBeenLastCalledWith(['PL-1', 'PL-42', 'PL-38', 'PL-45']);
+    await user.click(selectAll);
+    expect(onSelectedIdsChange).toHaveBeenLastCalledWith(['PL-1']);
   });
 
-  it('hides a column via the settings menu and reports the change', async () => {
-    const user = userEvent.setup();
-    const onHiddenColumnIdsChange = vi.fn();
-    renderTable({ showColumnSettings: true, onHiddenColumnIdsChange });
-
-    await user.click(screen.getByRole('button', { name: 'Настроить колонки' }));
-    await user.click(screen.getByRole('switch', { name: 'ID' }));
-    await user.keyboard('{Escape}');
-
-    expect(onHiddenColumnIdsChange).toHaveBeenLastCalledWith(['id']);
-    expect(screen.getByRole('columnheader', { name: /Задача/ })).toBeInTheDocument();
-    expect(screen.queryByRole('columnheader', { name: /ID/i })).toBeNull();
+  it('renders null as an empty cell and a Date as a UTC date, not as raw strings', () => {
+    interface Row {
+      id: string;
+      note: string | null;
+      at: Date;
+    }
+    render(
+      <Table<Row>
+        data={[{ id: 'a', note: null, at: new Date('2026-11-14T23:30:00Z') }]}
+        columns={[
+          { id: 'note', header: 'Заметка', accessor: (row) => row.note },
+          { id: 'at', header: 'Дата', accessor: (row) => row.at },
+        ]}
+        rowKey={(row) => row.id}
+        caption="Значения"
+      />,
+    );
+    expect(screen.queryByText('null')).toBeNull();
+    expect(screen.getAllByRole('cell')[0]).toHaveTextContent(/^$/);
+    expect(screen.getByText('14.11.2026')).toBeInTheDocument();
   });
 
-  it('disables the last visible column switch in the settings menu', async () => {
-    const user = userEvent.setup();
-    renderTable({
-      showColumnSettings: true,
-      defaultHiddenColumnIds: ['title', 'priority', 'due'],
-    });
-
-    await user.click(screen.getByRole('button', { name: 'Настроить колонки' }));
-    expect(screen.getByRole('switch', { name: 'ID' })).toBeDisabled();
-  });
-
-  it('renders columns in the controlled order prop', () => {
-    renderTable({ columnOrder: ['due', 'title', 'id', 'priority'] });
-    const headers = screen.getAllByRole('columnheader').map((header) => header.textContent);
-    expect(headers).toEqual(['Срок', 'Задача', 'ID', 'Приоритет']);
+  it('shows a default empty text when no empty content is passed', () => {
+    renderTable({ data: [] });
+    expect(screen.getByText('Нет данных')).toBeInTheDocument();
   });
 
   it('fills the table width when all visible columns have fixed widths', () => {
