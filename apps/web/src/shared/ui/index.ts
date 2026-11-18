@@ -63,6 +63,18 @@ export { Separator, separatorTones, type SeparatorProps, type SeparatorTone } fr
 export { Skeleton } from './skeleton';
 export { Spinner, spinnerSizes, type SpinnerSize } from './spinner';
 export { Switch, type SwitchProps } from './switch';
+export {
+  Table,
+  TableRow,
+  tableSortTypes,
+  type TableAction,
+  type TableColumn,
+  type TableProps,
+  type TableRowProps,
+  type TableSort,
+  type TableSortDirection,
+  type TableSortType,
+} from './table';
 export { Tabs, tabVariants, type TabItem, type TabsProps, type TabVariant } from './tabs';
 export { Textarea, textareaStatuses, type TextareaProps, type TextareaStatus } from './textarea';
 export {

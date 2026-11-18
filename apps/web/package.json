@@ -31,6 +31,7 @@
     "@app/config": "workspace:*",
     "@feature-sliced/steiger-plugin": "catalog:",
     "@storybook/addon-a11y": "catalog:",
+    "@storybook/addon-docs": "catalog:",
     "@storybook/nextjs-vite": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@testing-library/dom": "catalog:",

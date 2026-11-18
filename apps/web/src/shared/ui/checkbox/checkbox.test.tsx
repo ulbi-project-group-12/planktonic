@@ -49,4 +49,11 @@ describe('Checkbox', () => {
     await user.keyboard(' ');
     expect(checkbox).toHaveAttribute('data-state', 'unchecked');
   });
+
+  it('renders a dash in the indeterminate state and keeps checked a plain boolean', () => {
+    render(<Checkbox checked={false} indeterminate aria-label="чекбокс" />);
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toHaveAttribute('data-state', 'indeterminate');
+    expect(checkbox).toHaveAttribute('aria-checked', 'mixed');
+  });
 });

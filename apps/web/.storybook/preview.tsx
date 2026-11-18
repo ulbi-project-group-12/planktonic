@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import type { Decorator, Preview } from '@storybook/nextjs-vite';
 // Tailwind 4 + the design tokens: the same globals the root layout loads.
 import '../src/_app/styles/globals.css';
+// Docs pages only: undo Storybook's own docs font inside .sbdocs content.
+import './docs.css';
 
 /** Applies the toolbar theme to the whole canvas — portals (modal, dropdown, select,
  * tooltip) render into body, so the .dark class belongs on documentElement. */

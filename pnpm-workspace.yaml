@@ -41,6 +41,7 @@ catalog:
   '@prisma/client': 7.10.1
   '@socket.io/redis-streams-adapter': 0.3.1
   '@storybook/addon-a11y': 10.6.5
+  '@storybook/addon-docs': 10.6.5
   '@storybook/nextjs-vite': 10.6.5
   '@swc/core': 1.16.20
   '@tailwindcss/postcss': 4.3.3

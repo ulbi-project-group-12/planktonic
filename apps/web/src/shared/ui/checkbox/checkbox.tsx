@@ -3,7 +3,7 @@
 import { useId } from 'react';
 import type { ComponentPropsWithoutRef } from 'react';
 import { Checkbox as CheckboxPrimitive } from 'radix-ui';
-import { Check } from 'lucide-react';
+import { Check, Minus } from 'lucide-react';
 import { cn } from '@/shared/lib';
 
 interface CheckboxProps extends Omit<
@@ -12,6 +12,8 @@ interface CheckboxProps extends Omit<
 > {
   /** Controlled state; together with onCheckedChange. */
   checked?: boolean;
+  /** Intermediate state (a dash): e.g. a table header when some rows are selected. Takes visual precedence over checked. */
+  indeterminate?: boolean;
   /** Uncontrolled initial state. */
   defaultChecked?: boolean;
   /** Fires on toggle; does not change the state itself (controlled). */
@@ -23,6 +25,7 @@ interface CheckboxProps extends Omit<
 /** Checkbox per the design system tokens: 20 box, radius/s 4, brand when checked. */
 function Checkbox({
   checked,
+  indeterminate = false,
   defaultChecked,
   onCheckedChange,
   label,
@@ -39,7 +42,7 @@ function Checkbox({
       <CheckboxPrimitive.Root
         data-slot="checkbox"
         id={checkboxId}
-        checked={checked}
+        checked={indeterminate ? 'indeterminate' : checked}
         defaultChecked={defaultChecked}
         disabled={disabled}
         onCheckedChange={(state) => {
@@ -51,11 +54,16 @@ function Checkbox({
           'flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-line-strong bg-surface transition-colors outline-none',
           'focus-visible:ring-3 focus-visible:ring-brand-primary/40',
           'data-[state=checked]:border-transparent data-[state=checked]:bg-brand-primary',
+          'data-[state=indeterminate]:border-transparent data-[state=indeterminate]:bg-brand-primary',
           'disabled:cursor-not-allowed disabled:opacity-45',
         )}
       >
         <CheckboxPrimitive.Indicator>
-          <Check className="size-3.5 text-on-brand" strokeWidth={3} />
+          {indeterminate ? (
+            <Minus className="size-3.5 text-on-brand" strokeWidth={3} />
+          ) : (
+            <Check className="size-3.5 text-on-brand" strokeWidth={3} />
+          )}
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
       {label ? (
