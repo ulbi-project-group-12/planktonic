@@ -494,6 +494,9 @@ function Table<T>({
               {actions ? (
                 <div
                   role="cell"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                  }}
                   className={cn(
                     'flex items-center justify-end px-3 transition-colors',
                     cellBorder,
