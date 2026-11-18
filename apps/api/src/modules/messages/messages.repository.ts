@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 
 export interface MessageRow {
@@ -6,8 +7,25 @@ export interface MessageRow {
   seq: bigint;
   channelId: string;
   authorId: string;
+  clientMsgId: string;
   body: string;
   createdAt: Date;
+}
+
+/**
+ * Outcome of an idempotent insert (UL-126). `created` is true only for the call that inserted the
+ * row; a retry with the same `(authorId, clientMsgId)` gets the stored row and `created: false`.
+ */
+export interface CreateMessageRowResult {
+  row: MessageRow;
+  created: boolean;
+}
+
+/** Prisma's error code for a unique-constraint violation. */
+const UNIQUE_VIOLATION = 'P2002';
+
+function isUniqueViolation(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === UNIQUE_VIOLATION;
 }
 
 /** The only place that talks to the database for messages (STACK §3.1). */
@@ -34,19 +52,46 @@ export class MessagesRepository {
    * Allocates the next channel sequence number and inserts the message in one transaction.
    * The UPDATE locks the channel row, so concurrent posts get distinct, gapless numbers (a failed
    * insert rolls the number back). `last_seq` is NOT NULL DEFAULT 0, so the first message gets 1.
+   *
+   * Idempotent on `(authorId, clientMsgId)` (UL-126): a retry hits the unique index, the whole
+   * transaction rolls back (so `last_seq` is not advanced and no number is spent), and the stored
+   * row is read afterwards. The read must run outside the failed transaction: Postgres rejects every
+   * statement in an aborted transaction. A check before the insert would not do: two concurrent
+   * requests would both pass it; only the index decides.
+   *
    * Returns null when the channel does not exist.
    */
-  create(channelId: string, authorId: string, body: string): Promise<MessageRow | null> {
-    return this.prisma.$transaction(async (tx) => {
-      const rows = await tx.$queryRaw<{ last_seq: bigint }[]>`
-        UPDATE channels SET last_seq = last_seq + 1
-        WHERE id = ${channelId}::uuid
-        RETURNING last_seq`;
-      const seq = rows[0]?.last_seq;
-      if (seq === undefined) {
-        return null;
+  async create(
+    channelId: string,
+    authorId: string,
+    clientMsgId: string,
+    body: string,
+  ): Promise<CreateMessageRowResult | null> {
+    try {
+      const row = await this.prisma.$transaction(async (tx) => {
+        const rows = await tx.$queryRaw<{ last_seq: bigint }[]>`
+          UPDATE channels SET last_seq = last_seq + 1
+          WHERE id = ${channelId}::uuid
+          RETURNING last_seq`;
+        const seq = rows[0]?.last_seq;
+        if (seq === undefined) {
+          return null;
+        }
+        return tx.message.create({ data: { channelId, authorId, clientMsgId, body, seq } });
+      });
+      return row === null ? null : { row, created: true };
+    } catch (error) {
+      if (!isUniqueViolation(error)) {
+        throw error;
       }
-      return tx.message.create({ data: { channelId, authorId, body, seq } });
-    });
+      const existing = await this.prisma.message.findUnique({
+        where: { authorId_clientMsgId: { authorId, clientMsgId } },
+      });
+      // No row under this key means the violation came from another constraint: not a retry.
+      if (existing === null) {
+        throw error;
+      }
+      return { row: existing, created: false };
+    }
   }
 }

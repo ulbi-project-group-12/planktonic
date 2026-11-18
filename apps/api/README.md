@@ -28,10 +28,22 @@ Then `pnpm dev` (web + api) or `pnpm --filter @app/api dev` (api only) runs it i
 http://127.0.0.1:3001/api. With the api running, try the messages endpoints:
 
 ```sh
-curl -X POST -H 'content-type: application/json' -d '{"body":"hello"}' \
+curl -X POST -H 'content-type: application/json' \
+  -d '{"clientMsgId":"019a8f00-0000-7000-8000-000000000004","body":"hello"}' \
   http://127.0.0.1:3001/api/channels/00000000-0000-7000-8000-000000000001/messages
 curl http://127.0.0.1:3001/api/channels/00000000-0000-7000-8000-000000000001/messages
 ```
+
+`POST` is idempotent (UL-126). `clientMsgId` is a UUIDv7 the client makes once per message and
+sends again on every retry. A retry with a key the author already used returns the stored
+message: same `id` and `seq`, `201` again, and nothing new is saved. The stored message wins
+even if the retried `body` differs. The channel's `last_seq` does not move, because the
+conflicting insert rolls back the transaction that took the number. Reusing a key in another
+channel is a client bug and returns `409`. Run the `POST` above twice to see it.
+`MessagesService.create` also returns `created` (`true` for the insert, `false` for a retry),
+so the `message:new` broadcast (UL-127) goes out once.
+
+Rows that existed before the migration got their own `id` as the key.
 
 Two compiled replicas behind Traefik start only with the compose profile `realtime`:
 `docker compose --profile realtime up -d --build`, then http://127.0.0.1:58080/api/health
