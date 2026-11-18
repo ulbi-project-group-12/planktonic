@@ -92,6 +92,10 @@ async function channelWithListeners(): Promise<{ channelId: string; on: [Listene
   return { channelId: channel.id, on };
 }
 
+function bySeq(events: MessageNewEvent[]): MessageNewEvent[] {
+  return [...events].sort((a, b) => Number(BigInt(a.message.seq) - BigInt(b.message.seq)));
+}
+
 async function post(
   app: INestApplication,
   channelId: string,
@@ -189,7 +193,9 @@ describe('message:new after commit, across instances', () => {
       expect(MessageResponse.parse(await retry.json())).toEqual(message);
     }
 
-    // Control events from both instances, so a stray retry event from either would come first.
+    // Control events from both instances. Each instance's broadcasts stay in order, so once both
+    // controls are in, a stray retry event from either instance would already have arrived. The
+    // two instances' events may interleave, hence the sort by seq.
     const controls: MessageResponse[] = [];
     for (const app of apps.slice(0, 2)) {
       const control = await post(app, channelId, 'control');
@@ -197,8 +203,11 @@ describe('message:new after commit, across instances', () => {
     }
     expect(controls.map((control) => control.seq)).toEqual(['2', '3']);
     const expected = [message, ...controls].map((m) => ({ message: m }));
-    await expect.poll(() => remote.events, { timeout: EVENT_TIMEOUT_MS }).toEqual(expected);
-    await expect.poll(() => sender.events, { timeout: EVENT_TIMEOUT_MS }).toEqual(expected);
+    for (const listener of [remote, sender]) {
+      await expect
+        .poll(() => bySeq(listener.events), { timeout: EVENT_TIMEOUT_MS })
+        .toEqual(expected);
+    }
   });
 
   it('publishes nothing for a channel that does not exist', async () => {

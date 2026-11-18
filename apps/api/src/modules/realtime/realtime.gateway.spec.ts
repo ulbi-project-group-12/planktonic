@@ -168,6 +168,7 @@ describe('RealtimeService as RealtimePublisher', () => {
       seq: '1',
       channelId: CHANNEL_A,
       authorId: '00000000-0000-7000-8000-000000000002',
+      clientMsgId: '019a8f00-0000-7000-8000-000000000004',
       body: 'hi',
       createdAt: '2026-11-18T10:00:00.000Z',
     },
