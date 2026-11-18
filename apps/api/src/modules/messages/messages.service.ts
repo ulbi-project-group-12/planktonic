@@ -65,7 +65,7 @@ export class MessagesService {
     }
     const message = toResponse(result.row);
     if (result.created) {
-      this.realtime.publish(channelRoom(channelId), MESSAGE_NEW_EVENT, { message });
+      this.realtime.publish(channelRoom(message.channelId), MESSAGE_NEW_EVENT, { message });
     }
     return { message, created: result.created };
   }

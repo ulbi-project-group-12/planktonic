@@ -2,8 +2,10 @@
 // (shared Postgres and Redis, Redis Streams adapter between them). Run with `pnpm test:integration`.
 //
 // "No event" is proven with a control event, not a timer: the instance that would have emitted
-// the unwanted event then emits a wanted one to the same room. The adapter keeps one instance's
-// broadcasts in order, so once the wanted event has arrived the unwanted one can no longer come.
+// the unwanted event then emits a wanted one to the same room. One instance's broadcasts stay in
+// order: socket.io-adapter's ClusterAdapter awaits each XADD on one Redis connection before the
+// next, and receivers XREAD the single stream in order. So once the wanted event has arrived, the
+// unwanted one can no longer come.
 import { randomUUID, randomUUIDv7 } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -59,14 +61,13 @@ async function connectClient(app: INestApplication): Promise<Socket> {
   return client;
 }
 
-/** The gateway joins rooms after a DB lookup, so `connect` can fire first: wait for the room. */
-async function joinedRoom(app: INestApplication, client: Socket, channelId: string): Promise<void> {
+/**
+ * The gateway joins rooms in connection middleware, so by `connect` the socket must already be in
+ * the room. No polling: a client cannot poll either, and its catch-up starts on `connect`.
+ */
+function expectInRoom(app: INestApplication, client: Socket, channelId: string): void {
   const { server } = app.get(RealtimeGateway);
-  await expect
-    .poll(() => server.sockets.adapter.rooms.get(channelRoom(channelId))?.has(client.id ?? ''), {
-      timeout: EVENT_TIMEOUT_MS,
-    })
-    .toBe(true);
+  expect(server.sockets.adapter.rooms.get(channelRoom(channelId))?.has(client.id ?? '')).toBe(true);
 }
 
 interface Listener {
@@ -81,7 +82,7 @@ async function channelWithListeners(): Promise<{ channelId: string; on: [Listene
   const on = (await Promise.all(
     apps.slice(0, 2).map(async (app) => {
       const client = await connectClient(app);
-      await joinedRoom(app, client, channel.id);
+      expectInRoom(app, client, channel.id);
       const events: MessageNewEvent[] = [];
       client.on(MESSAGE_NEW_EVENT, (payload: unknown) => {
         events.push(MessageNewEvent.parse(payload));
@@ -208,6 +209,17 @@ describe('message:new after commit, across instances', () => {
         .poll(() => bySeq(listener.events), { timeout: EVENT_TIMEOUT_MS })
         .toEqual(expected);
     }
+  });
+
+  it('routes by the stored channel id when the path spells the uuid in upper case', async () => {
+    const { channelId, on } = await channelWithListeners();
+    const [, remote] = on;
+
+    const response = await post(apps[0]!, channelId.toUpperCase(), 'shouty path');
+    expect(response.status).toBe(201);
+    const message = MessageResponse.parse(await response.json());
+    expect(message.channelId).toBe(channelId);
+    await expect.poll(() => remote.events, { timeout: EVENT_TIMEOUT_MS }).toEqual([{ message }]);
   });
 
   it('publishes nothing for a channel that does not exist', async () => {

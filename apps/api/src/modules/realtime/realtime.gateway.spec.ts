@@ -23,29 +23,39 @@ function channelsWith(ids: string[]) {
   };
 }
 
+type Middleware = (socket: Socket, next: (error?: Error) => void) => void;
+
+/** Runs the gateway's connection middleware for one fake socket; resolves with what next got. */
+function connectThrough(middleware: Middleware, join: (rooms: string[]) => unknown) {
+  return new Promise<Error | undefined>((resolve) => {
+    middleware({ id: 'socket-1', join } as unknown as Socket, resolve);
+  });
+}
+
 async function realtimeWith(
   env: { NODE_ENV?: string; REALTIME_DEBUG?: boolean },
-  channelIds: string[] = [],
+  channels: ReturnType<typeof channelsWith> = channelsWith([]),
+  join: (rooms: string[]) => unknown = vi.fn(),
 ) {
   const moduleRef = await Test.createTestingModule({
     controllers: [RealtimeDebugController],
     providers: [
       RealtimeGateway,
       RealtimeService,
-      channelsWith(channelIds),
+      channels,
       { provide: INSTANCE_ID, useValue: 'test-api-1' },
       { provide: ConfigService, useValue: { get: (key: keyof typeof env) => env[key] } },
     ],
   }).compile();
   const gateway = moduleRef.get(RealtimeGateway);
   const controller = moduleRef.get(RealtimeDebugController);
-  const join = vi.fn();
-  const disconnect = vi.fn();
   const emit = vi.fn();
   const to = vi.fn(() => ({ emit }));
-  gateway.afterInit({ to } as unknown as Server);
-  await gateway.handleConnection({ id: 'socket-1', join, disconnect } as unknown as Socket);
-  return { moduleRef, controller, join, disconnect, emit, to };
+  const use = vi.fn();
+  gateway.afterInit({ to, use } as unknown as Server);
+  expect(use).toHaveBeenCalledOnce();
+  const nextError = await connectThrough(use.mock.calls[0]![0] as Middleware, join);
+  return { moduleRef, controller, join, nextError, emit, to };
 }
 
 describe('Realtime debug access', () => {
@@ -54,14 +64,14 @@ describe('Realtime debug access', () => {
     { NODE_ENV: 'development' },
     {},
     { NODE_ENV: 'production', REALTIME_DEBUG: false },
-  ])('does not join, broadcast or answer the trigger with %j', async (env) => {
-    const { moduleRef, controller, join, disconnect, to, emit } = await realtimeWith(env);
+  ])('does not join the debug room, broadcast or answer the trigger with %j', async (env) => {
+    const { moduleRef, controller, join, nextError, to, emit } = await realtimeWith(env);
     try {
       expect(() => controller.ping()).toThrow(NotFoundException);
-      expect(join).not.toHaveBeenCalled();
+      expect(join).toHaveBeenCalledExactlyOnceWith([]);
+      expect(nextError).toBeUndefined();
       expect(to).not.toHaveBeenCalled();
       expect(emit).not.toHaveBeenCalled();
-      expect(disconnect).not.toHaveBeenCalled();
     } finally {
       await moduleRef.close();
     }
@@ -81,69 +91,50 @@ describe('Realtime debug access', () => {
       }
     },
   );
+});
 
-  it('disconnects a socket whose room join fails', async () => {
-    const moduleRef = await Test.createTestingModule({
-      providers: [
-        RealtimeGateway,
-        RealtimeService,
-        channelsWith([CHANNEL_A]),
-        { provide: INSTANCE_ID, useValue: 'test-api-1' },
-        { provide: ConfigService, useValue: { get: () => 'test' } },
-      ],
-    }).compile();
-    try {
-      const gateway = moduleRef.get(RealtimeGateway);
-      vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-      const disconnect = vi.fn();
-      const join = vi.fn().mockRejectedValue(new Error('join failed'));
-
-      await gateway.handleConnection({ id: 's', join, disconnect } as unknown as Socket);
-
-      expect(disconnect).toHaveBeenCalledExactlyOnceWith(true);
-    } finally {
-      await moduleRef.close();
-    }
-  });
-
-  it('joins every channel room server-side, without the debug room when debug is off', async () => {
-    const { moduleRef, join } = await realtimeWith({ NODE_ENV: 'production' }, [
-      CHANNEL_A,
-      CHANNEL_B,
-    ]);
+describe('Channel rooms on connect', () => {
+  it('joins every channel room before the connection completes', async () => {
+    const { moduleRef, join, nextError } = await realtimeWith(
+      { NODE_ENV: 'production' },
+      channelsWith([CHANNEL_A, CHANNEL_B]),
+    );
     try {
       expect(join).toHaveBeenCalledExactlyOnceWith([
         `channel:${CHANNEL_A}`,
         `channel:${CHANNEL_B}`,
       ]);
+      expect(nextError).toBeUndefined();
     } finally {
       await moduleRef.close();
     }
   });
 
-  it('disconnects a socket whose channel lookup fails', async () => {
-    const moduleRef = await Test.createTestingModule({
-      providers: [
-        RealtimeGateway,
-        RealtimeService,
-        {
-          provide: ChannelsService,
-          useValue: { channelIdsForSocket: vi.fn().mockRejectedValue(new Error('db down')) },
-        },
-        { provide: INSTANCE_ID, useValue: 'test-api-1' },
-        { provide: ConfigService, useValue: { get: () => 'test' } },
-      ],
-    }).compile();
+  it('refuses the connection when the room join fails', async () => {
+    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    const join = vi.fn().mockRejectedValue(new Error('join failed'));
+    const { moduleRef, nextError } = await realtimeWith(
+      { NODE_ENV: 'test' },
+      channelsWith([CHANNEL_A]),
+      join,
+    );
     try {
-      const gateway = moduleRef.get(RealtimeGateway);
-      vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-      const disconnect = vi.fn();
-      const join = vi.fn();
+      expect(nextError).toBeInstanceOf(Error);
+    } finally {
+      await moduleRef.close();
+    }
+  });
 
-      await gateway.handleConnection({ id: 's', join, disconnect } as unknown as Socket);
-
+  it('refuses the connection without joining when the channel lookup fails', async () => {
+    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    const failing = {
+      provide: ChannelsService,
+      useValue: { channelIdsForSocket: vi.fn().mockRejectedValue(new Error('db down')) },
+    };
+    const { moduleRef, join, nextError } = await realtimeWith({ NODE_ENV: 'test' }, failing);
+    try {
       expect(join).not.toHaveBeenCalled();
-      expect(disconnect).toHaveBeenCalledExactlyOnceWith(true);
+      expect(nextError).toBeInstanceOf(Error);
     } finally {
       await moduleRef.close();
     }
@@ -190,7 +181,7 @@ describe('RealtimeService as RealtimePublisher', () => {
     }
   });
 
-  it('drops the event without throwing before the server is bound or when emit throws', async () => {
+  it('drops the event without throwing before the server is bound or when emit throws synchronously', async () => {
     const { moduleRef, realtime } = await publisher();
     try {
       vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);

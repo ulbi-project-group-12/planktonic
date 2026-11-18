@@ -53,10 +53,14 @@ export class RealtimeService extends RealtimePublisher {
       this.logger.warn(`Dropped ${event} to ${room}: the Socket.IO server is not bound yet`);
       return;
     }
+    // At most once by design (STACK §4.3): the data is committed and the client heals a gap.
+    // The Redis Streams adapter broadcasts asynchronously and swallows an XADD failure itself
+    // (socket.io-adapter ClusterAdapter), so the catch below only sees synchronous throws, such
+    // as a payload that fails to encode. During a Redis outage the XADD waits in the client's
+    // offline queue, and delivery, local sockets included, waits with it.
     try {
       this.server.to(room).emit(event, ...args);
     } catch (error) {
-      // At most once by design (STACK §4.3): the data is committed, the client heals the gap.
       this.logger.error(
         `Failed to publish ${event} to ${room}`,
         error instanceof Error ? error.stack : String(error),
