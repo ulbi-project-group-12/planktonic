@@ -33,12 +33,7 @@ const columns: TableColumn<Task>[] = [
   { id: 'due', header: 'Срок', accessor: (task) => task.due, sortable: true, sortType: 'date' },
 ];
 
-<Table<Task>
-  data={tasks}
-  columns={columns}
-  rowKey={(task) => task.id}
-  caption="Задачи проекта"
-/>;
+<Table<Task> data={tasks} columns={columns} rowKey={(task) => task.id} caption="Задачи проекта" />;
 ```
 
 - `data` — массив строк любой формы; компонент обобщённый (`Table<Task>`).
@@ -62,14 +57,16 @@ const columns: TableColumn<Task>[] = [
 ```
 
 <Unstyled>
-<div className="rounded-xl border border-line bg-app p-4">
-  <Table
-    data={TASKS}
-    columns={buildColumns().filter((column) => ['title', 'status', 'assignee'].includes(column.id))}
-    rowKey={(task) => task.id}
-    caption="Пример: просто данные"
-  />
-</div>
+  <div className="rounded-xl border border-line bg-app p-4">
+    <Table
+      data={TASKS}
+      columns={buildColumns().filter((column) =>
+        ['title', 'status', 'assignee'].includes(column.id),
+      )}
+      rowKey={(task) => task.id}
+      caption="Пример: просто данные"
+    />
+  </div>
 </Unstyled>
 
 ## Кейс: сортировка
@@ -116,15 +113,15 @@ const priorityRank = { Высокий: 0, Средний: 1, Низкий: 2 };
 ```
 
 <Unstyled>
-<div className="rounded-xl border border-line bg-app p-4">
-  <Table
-    data={TASKS}
-    columns={buildColumns().filter((column) => ['id', 'title', 'due'].includes(column.id))}
-    rowKey={(task) => task.id}
-    caption="Пример: сортировка"
-    defaultSort={{ columnId: 'due', direction: 'asc' }}
-  />
-</div>
+  <div className="rounded-xl border border-line bg-app p-4">
+    <Table
+      data={TASKS}
+      columns={buildColumns().filter((column) => ['id', 'title', 'due'].includes(column.id))}
+      rowKey={(task) => task.id}
+      caption="Пример: сортировка"
+      defaultSort={{ columnId: 'due', direction: 'asc' }}
+    />
+  </div>
 </Unstyled>
 
 ## Кейс: выбор строк
@@ -149,16 +146,16 @@ const priorityRank = { Высокий: 0, Средний: 1, Низкий: 2 };
 ```
 
 <Unstyled>
-<div className="rounded-xl border border-line bg-app p-4">
-  <Table
-    data={TASKS}
-    columns={buildColumns().filter((column) => ['id', 'title', 'status'].includes(column.id))}
-    rowKey={(task) => task.id}
-    caption="Пример: выбор строк"
-    selectable
-    defaultSelectedIds={['PL-42', 'PL-45']}
-  />
-</div>
+  <div className="rounded-xl border border-line bg-app p-4">
+    <Table
+      data={TASKS}
+      columns={buildColumns().filter((column) => ['id', 'title', 'status'].includes(column.id))}
+      rowKey={(task) => task.id}
+      caption="Пример: выбор строк"
+      selectable
+      defaultSelectedIds={['PL-42', 'PL-45']}
+    />
+  </div>
 </Unstyled>
 
 ## Кейс: действия над строкой
@@ -180,15 +177,15 @@ const actions: TableAction<Task>[] = [
 ```
 
 <Unstyled>
-<div className="rounded-xl border border-line bg-app p-4">
-  <Table
-    data={TASKS}
-    columns={buildColumns().filter((column) => ['id', 'title'].includes(column.id))}
-    rowKey={(task) => task.id}
-    caption="Пример: действия"
-    actions={rowActions}
-  />
-</div>
+  <div className="rounded-xl border border-line bg-app p-4">
+    <Table
+      data={TASKS}
+      columns={buildColumns().filter((column) => ['id', 'title'].includes(column.id))}
+      rowKey={(task) => task.id}
+      caption="Пример: действия"
+      actions={rowActions}
+    />
+  </div>
 </Unstyled>
 
 ## Кейс: состояния empty и loading
@@ -205,28 +202,30 @@ const actions: TableAction<Task>[] = [
 ```
 
 <Unstyled>
-<div className="flex flex-col gap-4 rounded-xl border border-line bg-app p-4">
-  <Table
-    data={[]}
-    columns={buildColumns().filter((column) => ['id', 'title'].includes(column.id))}
-    rowKey={(task) => task.id}
-    caption="Пример: пустое состояние"
-    empty={
-      <div className="flex flex-col items-center gap-2 py-10">
-        <div className="text-body-s font-bold text-fg-primary">Ничего не найдено</div>
-        <div className="text-caption text-fg-muted">Попробуйте изменить фильтры или сбросить поиск</div>
-      </div>
-    }
-  />
-  <Table
-    data={TASKS}
-    columns={buildColumns().filter((column) => ['id', 'title'].includes(column.id))}
-    rowKey={(task) => task.id}
-    caption="Пример: загрузка"
-    selectable
-    loading
-  />
-</div>
+  <div className="flex flex-col gap-4 rounded-xl border border-line bg-app p-4">
+    <Table
+      data={[]}
+      columns={buildColumns().filter((column) => ['id', 'title'].includes(column.id))}
+      rowKey={(task) => task.id}
+      caption="Пример: пустое состояние"
+      empty={
+        <div className="flex flex-col items-center gap-2 py-10">
+          <div className="text-body-s font-bold text-fg-primary">Ничего не найдено</div>
+          <div className="text-caption text-fg-muted">
+            Попробуйте изменить фильтры или сбросить поиск
+          </div>
+        </div>
+      }
+    />
+    <Table
+      data={TASKS}
+      columns={buildColumns().filter((column) => ['id', 'title'].includes(column.id))}
+      rowKey={(task) => task.id}
+      caption="Пример: загрузка"
+      selectable
+      loading
+    />
+  </div>
 </Unstyled>
 
 ## Кейс: ширина, выравнивание и переполнение
@@ -242,21 +241,28 @@ const actions: TableAction<Task>[] = [
 const columns: TableColumn<Task>[] = [
   { id: 'id', header: 'ID', accessor: (task) => task.numId, width: 90 },
   { id: 'title', header: 'Задача', accessor: (task) => task.title },
-  { id: 'due', header: 'Срок', accessor: (task) => task.due, sortable: true, sortType: 'date', align: 'right' },
+  {
+    id: 'due',
+    header: 'Срок',
+    accessor: (task) => task.due,
+    sortable: true,
+    sortType: 'date',
+    align: 'right',
+  },
 ];
 ```
 
 <Unstyled>
-<div className="rounded-xl border border-line bg-app p-4">
-  <Table
-    data={TASKS}
-    columns={buildColumns()
-      .filter((column) => ['id', 'title', 'due'].includes(column.id))
-      .map((column) => (column.id === 'due' ? { ...column, align: 'right' } : column))}
-    rowKey={(task) => task.id}
-    caption="Пример: ширина и выравнивание"
-  />
-</div>
+  <div className="rounded-xl border border-line bg-app p-4">
+    <Table
+      data={TASKS}
+      columns={buildColumns()
+        .filter((column) => ['id', 'title', 'due'].includes(column.id))
+        .map((column) => (column.id === 'due' ? { ...column, align: 'right' } : column))}
+      rowKey={(task) => task.id}
+      caption="Пример: ширина и выравнивание"
+    />
+  </div>
 </Unstyled>
 
 ## Кейс: TableRow вне таблицы
@@ -273,19 +279,21 @@ const columns: TableColumn<Task>[] = [
 ```
 
 <Unstyled>
-<div className="rounded-xl border border-line bg-app p-4">
-  <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-    <TableRow presentation gridTemplateColumns="90px minmax(160px, 1fr) 140px" className="h-11">
-      <div className="flex items-center px-3 text-body-s font-bold text-fg-primary">PL-42</div>
-      <div className="flex min-w-0 items-center px-3 text-body-s text-fg-primary">
-        <span className="truncate">Двойной вызов useEffect в канбане</span>
-      </div>
-      <div className="flex items-center px-3">
-        <Chip palette="info" fill="subtle">В работе</Chip>
-      </div>
-    </TableRow>
+  <div className="rounded-xl border border-line bg-app p-4">
+    <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+      <TableRow presentation gridTemplateColumns="90px minmax(160px, 1fr) 140px" className="h-11">
+        <div className="flex items-center px-3 text-body-s font-bold text-fg-primary">PL-42</div>
+        <div className="flex min-w-0 items-center px-3 text-body-s text-fg-primary">
+          <span className="truncate">Двойной вызов useEffect в канбане</span>
+        </div>
+        <div className="flex items-center px-3">
+          <Chip palette="info" fill="subtle">
+            В работе
+          </Chip>
+        </div>
+      </TableRow>
+    </div>
   </div>
-</div>
 </Unstyled>
 
 ## Справочник: колонки
@@ -293,56 +301,128 @@ const columns: TableColumn<Task>[] = [
 <table className="my-4 w-full border-collapse text-left text-body-s">
   <thead>
     <tr>
-      <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">Свойство</th>
+      <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">
+        Свойство
+      </th>
       <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">Тип</th>
-      <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">Назначение</th>
+      <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">
+        Назначение
+      </th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">id</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">string</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Стабильный ключ колонки (сортировка, ширина).</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">id</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">string</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Стабильный ключ колонки (сортировка, ширина).
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">header</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">ReactNode</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Заголовок: текст, иконка или разметка.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">header</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">ReactNode</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Заголовок: текст, иконка или разметка.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">accessor</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(row) =&gt; unknown</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Сырое значение: текст ячейки по умолчанию и значение сортировки по умолчанию.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">accessor</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(row) =&gt; unknown</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Сырое значение: текст ячейки по умолчанию и значение сортировки по умолчанию.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">cell</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(row, index) =&gt; ReactNode</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Кастомный контент ячейки (Badge, Avatar, кнопки…). Перекрывает <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">accessor</code>.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">cell</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">
+          (row, index) =&gt; ReactNode
+        </code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Кастомный контент ячейки (Badge, Avatar, кнопки…). Перекрывает{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">accessor</code>.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">sortable</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">boolean</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Колонка сортируется кликом по заголовку.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">sortable</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">boolean</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Колонка сортируется кликом по заголовку.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">sortType</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">'string' | 'number' | 'date' | 'boolean'</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Как сравнивать значения; <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">'string'</code> — алфавитный порядок в ru-локали.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">sortType</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">
+          'string' | 'number' | 'date' | 'boolean'
+        </code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Как сравнивать значения;{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">'string'</code> — алфавитный
+        порядок в ru-локали.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">sortCompare</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(a: T, b: T) =&gt; number</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Свой компаратор — получает строки целиком, перекрывает <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">sortType</code>. Обработка пустых значений — на совести компаратора.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">sortCompare</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">
+          (a: T, b: T) =&gt; number
+        </code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Свой компаратор — получает строки целиком, перекрывает{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">sortType</code>. Обработка
+        пустых значений — на совести компаратора.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">width</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">number | string</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Начальная ширина: px-число или grid-трек.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">width</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">number | string</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Начальная ширина: px-число или grid-трек.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">align</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">'left' | 'right' | 'center'</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Выравнивание содержимого (по умолчанию <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">left</code>).</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">align</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">
+          'left' | 'right' | 'center'
+        </code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Выравнивание содержимого (по умолчанию{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">left</code>).
+      </td>
     </tr>
   </tbody>
 </table>
@@ -357,89 +437,182 @@ const columns: TableColumn<Task>[] = [
     <tr>
       <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">Проп</th>
       <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">Тип</th>
-      <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">Назначение</th>
+      <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">
+        Назначение
+      </th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">data</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">T[]</code></td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">data</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">T[]</code>
+      </td>
       <td className="border-b border-line py-2 pr-4 align-top">Строки таблицы.</td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">columns</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">TableColumn&lt;T&gt;[]</code></td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">columns</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">TableColumn&lt;T&gt;[]</code>
+      </td>
       <td className="border-b border-line py-2 pr-4 align-top">Описание колонок.</td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">rowKey</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(row: T) =&gt; string | number</code></td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">rowKey</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">
+          (row: T) =&gt; string | number
+        </code>
+      </td>
       <td className="border-b border-line py-2 pr-4 align-top">Уникальный ключ строки.</td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">selectable</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">boolean</code></td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">selectable</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">boolean</code>
+      </td>
       <td className="border-b border-line py-2 pr-4 align-top">Чекбокс-колонка с «выбрать все».</td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">selectedIds</code> / <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">defaultSelectedIds</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(string | number)[]</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Выбор: controlled / uncontrolled.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">selectedIds</code> /{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">defaultSelectedIds</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(string | number)[]</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Выбор: controlled / uncontrolled.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">onSelectedIdsChange</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(ids) =&gt; void</code></td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">onSelectedIdsChange</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(ids) =&gt; void</code>
+      </td>
       <td className="border-b border-line py-2 pr-4 align-top">Изменение выбора (оба режима).</td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">sort</code> / <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">defaultSort</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">TableSort | null</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Сортировка: controlled / uncontrolled.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">sort</code> /{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">defaultSort</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">TableSort | null</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Сортировка: controlled / uncontrolled.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">onSortChange</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(sort) =&gt; void</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Изменение сортировки (оба режима).</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">onSortChange</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(sort) =&gt; void</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Изменение сортировки (оба режима).
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">actions</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">TableAction&lt;T&gt;[] | (row) =&gt; TableAction&lt;T&gt;[]</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Меню действий строки; функция — разный набор по строкам.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">actions</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">
+          TableAction&lt;T&gt;[] | (row) =&gt; TableAction&lt;T&gt;[]
+        </code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Меню действий строки; функция — разный набор по строкам.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">headerActions</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">ReactNode</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Контент шапки колонки действий (например, настройки колонок).</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">headerActions</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">ReactNode</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Контент шапки колонки действий (например, настройки колонок).
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">actionLabel</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">string</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Имя кнопки-триггера меню для скринридеров («Действия»).</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">actionLabel</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">string</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Имя кнопки-триггера меню для скринридеров («Действия»).
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">loading</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">boolean</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Скелетоны вместо данных; интерактив шапки отключён.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">loading</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">boolean</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Скелетоны вместо данных; интерактив шапки отключён.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">empty</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">ReactNode</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Контент строки при пустом <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">data</code>.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">empty</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">ReactNode</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Контент строки при пустом{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">data</code>.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">caption</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">string</code></td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">caption</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">string</code>
+      </td>
       <td className="border-b border-line py-2 pr-4 align-top">Доступное имя таблицы.</td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">onRowClick</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(row: T) =&gt; void</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Клик по строке (курсор-указатель).</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">onRowClick</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(row: T) =&gt; void</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Клик по строке (курсор-указатель).
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">portalContainer</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top"><code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">HTMLElement | null</code></td>
-      <td className="border-b border-line py-2 pr-4 align-top">Контейнер портала меню (темизированный блок в сторис).</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">portalContainer</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">HTMLElement | null</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Контейнер портала меню (темизированный блок в сторис).
+      </td>
     </tr>
   </tbody>
 </table>
@@ -449,30 +622,59 @@ const columns: TableColumn<Task>[] = [
 <table className="my-4 w-full border-collapse text-left text-body-s">
   <thead>
     <tr>
-      <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">Функция</th>
-      <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">Где реализовывать</th>
+      <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">
+        Функция
+      </th>
+      <th className="border-b border-line py-2 pr-4 align-top font-bold whitespace-nowrap">
+        Где реализовывать
+      </th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top">Фильтрация (чипы, конструктор фильтров)</td>
-      <td className="border-b border-line py-2 pr-4 align-top">Снаружи: фильтруете <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">data</code> и передаёте результат. Готовый пример — история States.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Фильтрация (чипы, конструктор фильтров)
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Снаружи: фильтруете{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">data</code> и передаёте
+        результат. Готовый пример — история States.
+      </td>
     </tr>
     <tr>
       <td className="border-b border-line py-2 pr-4 align-top">Видимость и порядок колонок</td>
-      <td className="border-b border-line py-2 pr-4 align-top">Снаружи: храните скрытые id и фильтруете <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">columns</code>. Пример — States.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Снаружи: храните скрытые id и фильтруете{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">columns</code>. Пример —
+        States.
+      </td>
     </tr>
     <tr>
-      <td className="border-b border-line py-2 pr-4 align-top">Пагинация и подсчёты («Найдено: N из M»)</td>
-      <td className="border-b border-line py-2 pr-4 align-top">Снаружи: режете <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">data</code>, рендерите <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">Pagination</code> под таблицей.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Пагинация и подсчёты («Найдено: N из M»)
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Снаружи: режете <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">data</code>,
+        рендерите <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">Pagination</code>{' '}
+        под таблицей.
+      </td>
     </tr>
     <tr>
       <td className="border-b border-line py-2 pr-4 align-top">Мультисорт, серверная сортировка</td>
-      <td className="border-b border-line py-2 pr-4 align-top">Снаружи: controlled-режим (<code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">sort</code> + <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">onSortChange</code>) или готовый <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">data</code>.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Снаружи: controlled-режим (
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">sort</code> +{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">onSortChange</code>) или
+        готовый <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">data</code>.
+      </td>
     </tr>
     <tr>
       <td className="border-b border-line py-2 pr-4 align-top">Загрузка данных</td>
-      <td className="border-b border-line py-2 pr-4 align-top">Снаружи: атом только показывает <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">loading</code>, запросы — не его зона.</td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Снаружи: атом только показывает{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">loading</code>, запросы — не
+        его зона.
+      </td>
     </tr>
   </tbody>
 </table>

@@ -5,7 +5,13 @@
    Selectors stay Selectors-3-compatible (no complex :not() arguments). */
 .sbdocs,
 .sbdocs * {
-  font-family: 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif !important;
+  font-family:
+    'Onest',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif !important;
 }
 
 .sbdocs pre,
