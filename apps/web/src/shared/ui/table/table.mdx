@@ -188,6 +188,128 @@ const actions: TableAction<Task>[] = [
   </div>
 </Unstyled>
 
+## Кейс: управление колонками
+
+Атом может сам показывать/скрывать колонки и менять их порядок. Всё включается одним пропом
+`showColumnSettings`. В шапке колонки действий появляется шестерёнка, по которой открывается
+выпадающее меню:
+
+- слева от каждой строки — drag-ручка (шесть точек) для изменения порядка мышью или клавишами;
+- справа — `Switch`, который включает/выключает видимость колонки;
+- последняя оставшаяся видимая колонка автоматически блокируется, чтобы таблицу нельзя было
+  оставить совсем без колонок.
+
+### Включение и начальное состояние
+
+Минимальный вариант — uncontrolled: атом сам хранит состояние между рендерами.
+
+```tsx
+<Table<Task>
+  data={tasks}
+  columns={columns}
+  rowKey={(task) => task.id}
+  caption="Задачи"
+  showColumnSettings
+  defaultHiddenColumnIds={['updated']}
+  defaultColumnOrder={['id', 'title', 'status', 'priority', 'assignee', 'due', 'updated']}
+/>
+```
+
+- `defaultHiddenColumnIds` — id колонок, которые будут скрыты при первом рендере.
+- `defaultColumnOrder` — начальный порядок data-колонок. Если не передан, используется порядок
+  массива `columns`.
+- `columnSettingsLabel` позволяет переопределить имя кнопки-шестерёнки для скринридеров
+  (по умолчанию — «Настроить колонки»).
+
+### Controlled-режим
+
+Если положение и видимость колонок нужно хранить в URL, на бэкенде или в другом стейте, используйте
+controlled-пропсы:
+
+```tsx
+const [hidden, setHidden] = useState<string[]>(['updated']);
+const [order, setOrder] = useState<string[]>([
+  'id',
+  'title',
+  'status',
+  'priority',
+  'assignee',
+  'due',
+  'updated',
+]);
+
+<Table<Task>
+  data={tasks}
+  columns={columns}
+  rowKey={(task) => task.id}
+  caption="Задачи"
+  showColumnSettings
+  hiddenColumnIds={hidden}
+  onHiddenColumnIdsChange={setHidden}
+  columnOrder={order}
+  onColumnOrderChange={setOrder}
+/>;
+```
+
+- `hiddenColumnIds` + `onHiddenColumnIdsChange` — полный контроль видимости.
+- `columnOrder` + `onColumnOrderChange` — полный контроль порядка.
+
+### Как работает порядок
+
+- `columnOrder` влияет **только на data-колонки** из пропа `columns`.
+- Служебные колонки (`selectable` и `actions` / настройки) всегда остаются на своих местах: чекбокс
+  — первая, действия/настройки — последняя.
+- Колонки, чьи id есть в `columns`, но отсутствуют в `columnOrder`, дописываются в конец в том
+  порядке, в котором они идут в `columns`.
+- Переупорядочивание в меню меняет `columnOrder`, при этом скрытые колонки тоже меняют позицию:
+  когда их снова включат, они встанут на новое место.
+
+### Drag-and-drop
+
+Reorder работает через `@dnd-kit/sortable`:
+
+- мышью — зажать drag-ручку и перетащить пункт вверх/вниз;
+- клавиатурой — сфокусироваться на ручке и использовать `Space` для поднятия элемента, стрелки
+  вверх/вниз для перемещения, `Enter` или `Space` для отпускания.
+
+### Ширина и заполнение пустого пространства
+
+Если все видимые колонки имеют фиксированную ширину (`width: number`) и их сумма меньше ширины
+контейнера, последняя видимая data-колонка автоматически растягивается через `minmax(<width>px, 1fr)`.
+Это гарантирует, что внутри рамки таблицы не останется пустого места справа.
+
+Если среди видимых колонок есть хотя бы одна «резиновая» (`width` не задан или задан через `fr`/
+`auto`), растяжение не применяется — сетка и так заполнит контейнер.
+
+### Ограничения
+
+- Настройки работают только для data-колонок из пропа `columns`; колонку выбора строк и колонку
+  действий/настроек переместить нельзя.
+- Если `actions` не передан, но включен `showColumnSettings`, атом автоматически добавляет пустую
+  колонку действий шириной `48px` и помещает в её шапку шестерёнку.
+
+### Живой пример
+
+Откройте шестерёнку в правом верхнем углу таблицы: можно скрыть/показать колонки и перетащить
+drag-ручки, чтобы изменить порядок.
+
+<Unstyled>
+  <div className="rounded-xl border border-line bg-app p-4">
+    <Table
+      data={TASKS}
+      columns={buildColumns().filter((column) =>
+        ['id', 'title', 'status', 'assignee'].includes(column.id),
+      )}
+      rowKey={(task) => task.id}
+      caption="Пример: управление колонками"
+      showColumnSettings
+      defaultHiddenColumnIds={[]}
+      defaultColumnOrder={['id', 'title', 'status', 'assignee']}
+      actions={rowActions}
+    />
+  </div>
+</Unstyled>
+
 ## Кейс: состояния empty и loading
 
 - `empty` — контент строки, когда `data` пуст: обычно иллюстрация, пояснение и кнопка «Сбросить фильтры».
@@ -600,8 +722,74 @@ const columns: TableColumn<Task>[] = [
         <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(row: T) =&gt; void</code>
       </td>
       <td className="border-b border-line py-2 pr-4 align-top">
-        Клик по строке (курсор-указатель).
+        Клик по строке (курсор-указатель); активируется также Enter/Space.
       </td>
+    </tr>
+    <tr>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">showColumnSettings</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">boolean</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Показать меню настройки колонок (видимость и порядок).
+      </td>
+    </tr>
+    <tr>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">columnSettingsLabel</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">string</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Имя кнопки настроек для скринридеров.
+      </td>
+    </tr>
+    <tr>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">hiddenColumnIds</code> /{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">defaultHiddenColumnIds</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">string[]</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Скрытые колонки: controlled / uncontrolled.
+      </td>
+    </tr>
+    <tr>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">onHiddenColumnIdsChange</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(ids) =&gt; void</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Изменение видимости (оба режима).
+      </td>
+    </tr>
+    <tr>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">columnOrder</code> /{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">defaultColumnOrder</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">string[]</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        Порядок data-колонок: controlled / uncontrolled.
+      </td>
+    </tr>
+    <tr>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">onColumnOrderChange</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">(ids) =&gt; void</code>
+      </td>
+      <td className="border-b border-line py-2 pr-4 align-top">Изменение порядка (оба режима).</td>
     </tr>
     <tr>
       <td className="border-b border-line py-2 pr-4 align-top">
@@ -644,9 +832,13 @@ const columns: TableColumn<Task>[] = [
     <tr>
       <td className="border-b border-line py-2 pr-4 align-top">Видимость и порядок колонок</td>
       <td className="border-b border-line py-2 pr-4 align-top">
-        Снаружи: храните скрытые id и фильтруете{' '}
-        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">columns</code>. Пример —
-        States.
+        Встроено: включите{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">showColumnSettings</code>,
+        управляйте через{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">hiddenColumnIds</code> и{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">columnOrder</code>. Для особых
+        случаев можно по-прежнему фильтровать{' '}
+        <code className="rounded bg-sunken px-1 py-0.5 text-[12.5px]">columns</code> снаружи.
       </td>
     </tr>
     <tr>
@@ -687,6 +879,8 @@ const columns: TableColumn<Task>[] = [
 - Сортировка и «выбрать все» — настоящие кнопки/чекбоксы, доступны с клавиатуры.
 - При `loading` интерактив отключён нативными `disabled`, скелетоны скрыты от скринридеров (`aria-hidden`), у таблицы `aria-busy`.
 - Переполненная таблица фокусируется (`tabIndex={0}`) и скроллится с клавиатуры.
+- Меню настроек колонок доступно с клавиатуры: переключатели видимости и reorder пунктов
+  клавишами (DnD через `@dnd-kit/sortable`).
 - Панель axe в Storybook показывает 0 нарушений для всех историй.
 
 ## Антипаттерны

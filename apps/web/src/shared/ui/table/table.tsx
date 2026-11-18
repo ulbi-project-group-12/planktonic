@@ -2,12 +2,38 @@
 
 import { useMemo, useRef, useState } from 'react';
 import type { ComponentPropsWithoutRef, CSSProperties, PointerEvent, ReactNode } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  GripVertical,
+  MoreHorizontal,
+  Settings2,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/lib';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from '@/shared/ui/dropdown';
 import { Skeleton } from '@/shared/ui/skeleton';
+import { Switch } from '@/shared/ui/switch';
 
 const tableSortTypes = ['string', 'number', 'date', 'boolean'] as const;
 type TableSortType = (typeof tableSortTypes)[number];
@@ -78,6 +104,20 @@ interface TableProps<T> {
   /** Portal container for row menus (a themed story block); defaults to body. */
   portalContainer?: HTMLElement | null;
   className?: string;
+  /** Show the built-in column settings dropdown: visibility toggles and drag-to-reorder. */
+  showColumnSettings?: boolean;
+  /** Accessible name of the column settings trigger. */
+  columnSettingsLabel?: string;
+  /** Hidden column ids (controlled). */
+  hiddenColumnIds?: string[];
+  /** Hidden column ids on first render (uncontrolled). */
+  defaultHiddenColumnIds?: string[];
+  onHiddenColumnIdsChange?: (ids: string[]) => void;
+  /** Column order (controlled). */
+  columnOrder?: string[];
+  /** Column order on first render (uncontrolled). */
+  defaultColumnOrder?: string[];
+  onColumnOrderChange?: (ids: string[]) => void;
 }
 
 const MIN_COLUMN_WIDTH = 64;
@@ -158,11 +198,155 @@ function TableRow({
   );
 }
 
-function columnTrack<T>(column: TableColumn<T>, width?: number): string {
-  if (width !== undefined) return `${String(width)}px`;
-  if (typeof column.width === 'number') return `${String(column.width)}px`;
+function isFlexibleColumn<T>(column: TableColumn<T>, resizedWidth?: number): boolean {
+  if (resizedWidth !== undefined) return false;
+  if (column.width === undefined) return true;
+  if (typeof column.width === 'string') {
+    return /(fr|auto)/.test(column.width);
+  }
+  return false;
+}
+
+function columnTrack<T>(column: TableColumn<T>, width?: number, fill = false): string {
+  if (width !== undefined) return fill ? `minmax(${String(width)}px, 1fr)` : `${String(width)}px`;
+  if (typeof column.width === 'number') {
+    return fill ? `minmax(${String(column.width)}px, 1fr)` : `${String(column.width)}px`;
+  }
   if (typeof column.width === 'string') return column.width;
   return 'minmax(160px, 1fr)';
+}
+
+interface ColumnSettingsProps<T> {
+  columns: TableColumn<T>[];
+  hiddenColumnIds: string[];
+  onHiddenColumnIdsChange: (ids: string[]) => void;
+  onColumnOrderChange: (ids: string[]) => void;
+  portalContainer?: HTMLElement | null;
+  label?: string;
+}
+
+function SortableColumnItem<T>({
+  column,
+  checked,
+  disabled,
+  onCheckedChange,
+}: {
+  column: TableColumn<T>;
+  checked: boolean;
+  disabled: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: column.id,
+  });
+
+  const style: CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'flex items-center gap-2 rounded-md px-2 py-1 text-caption text-fg-primary',
+        isDragging && 'bg-sunken shadow-sm',
+      )}
+    >
+      <button
+        type="button"
+        aria-label="Перетащить"
+        className="flex size-6 shrink-0 cursor-grab items-center justify-center rounded text-fg-muted transition-colors hover:bg-surface hover:text-fg-primary active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-4" />
+      </button>
+      <Switch
+        label={typeof column.header === 'string' ? column.header : column.id}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckedChange}
+        className="flex-1 justify-between"
+      />
+    </div>
+  );
+}
+
+function ColumnSettings<T>({
+  columns,
+  hiddenColumnIds,
+  onHiddenColumnIdsChange,
+  onColumnOrderChange,
+  portalContainer,
+  label = 'Настроить колонки',
+}: ColumnSettingsProps<T>) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const items = useMemo(() => columns.map((column) => column.id), [columns]);
+  const hiddenSet = useMemo(() => new Set(hiddenColumnIds), [hiddenColumnIds]);
+  const visibleCount = columns.length - hiddenSet.size;
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = items.indexOf(String(active.id));
+    const newIndex = items.indexOf(String(over.id));
+    onColumnOrderChange(arrayMove(items, oldIndex, newIndex));
+  };
+
+  const toggleColumn = (id: string, checked: boolean) => {
+    const next = checked ? hiddenColumnIds.filter((item) => item !== id) : [...hiddenColumnIds, id];
+    onHiddenColumnIdsChange(next);
+  };
+
+  return (
+    <Dropdown>
+      <DropdownTrigger>
+        <button
+          type="button"
+          aria-label={label}
+          className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-fg-muted transition-colors hover:bg-sunken hover:text-fg-primary focus-visible:ring-3 focus-visible:ring-brand-primary/40 focus-visible:outline-none"
+        >
+          <Settings2 className="size-4" />
+        </button>
+      </DropdownTrigger>
+      <DropdownContent portalContainer={portalContainer} align="end" className="w-64 p-2">
+        <div className="mb-2 px-2 text-body-s font-bold text-fg-primary">Колонки</div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis]}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={items} strategy={verticalListSortingStrategy}>
+            <div className="flex flex-col gap-0.5">
+              {columns.map((column) => {
+                const checked = !hiddenSet.has(column.id);
+                const disabled = visibleCount === 1 && checked;
+                return (
+                  <SortableColumnItem
+                    key={column.id}
+                    column={column}
+                    checked={checked}
+                    disabled={disabled}
+                    onCheckedChange={(value) => {
+                      toggleColumn(column.id, value);
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </DropdownContent>
+    </Dropdown>
+  );
 }
 
 /** Universal table: optional selection, sorting and a row-actions menu, resizable columns. */
@@ -186,6 +370,14 @@ function Table<T>({
   onRowClick,
   portalContainer,
   className,
+  showColumnSettings = false,
+  columnSettingsLabel,
+  hiddenColumnIds,
+  defaultHiddenColumnIds,
+  onHiddenColumnIdsChange,
+  columnOrder,
+  defaultColumnOrder,
+  onColumnOrderChange,
 }: TableProps<T>) {
   const [innerSelectedIds, setInnerSelectedIds] = useState<(string | number)[]>(
     defaultSelectedIds ?? [],
@@ -194,6 +386,13 @@ function Table<T>({
   const [resizedWidths, setResizedWidths] = useState<Record<string, number>>({});
   const resizeRef = useRef<{ columnId: string; startWidth: number; startX: number } | null>(null);
 
+  const [innerHiddenColumnIds, setInnerHiddenColumnIds] = useState<string[]>(
+    defaultHiddenColumnIds ?? [],
+  );
+  const [innerColumnOrder, setInnerColumnOrder] = useState<string[]>(
+    defaultColumnOrder ?? columns.map((column) => column.id),
+  );
+
   const isControlledSelection = selectedIds !== undefined;
   const selected = isControlledSelection ? selectedIds : innerSelectedIds;
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -201,10 +400,52 @@ function Table<T>({
   const isControlledSort = sort !== undefined;
   const activeSort = isControlledSort ? sort : innerSort;
 
+  const isControlledHidden = hiddenColumnIds !== undefined;
+  const activeHiddenColumnIds = isControlledHidden ? hiddenColumnIds : innerHiddenColumnIds;
+
+  const isControlledOrder = columnOrder !== undefined;
+  const activeColumnOrder = isControlledOrder ? columnOrder : innerColumnOrder;
+
+  const setHiddenColumnIds = (ids: string[]) => {
+    if (!isControlledHidden) setInnerHiddenColumnIds(ids);
+    onHiddenColumnIdsChange?.(ids);
+  };
+
+  const setColumnOrder = (ids: string[]) => {
+    if (!isControlledOrder) setInnerColumnOrder(ids);
+    onColumnOrderChange?.(ids);
+  };
+
+  const orderedColumns = useMemo(() => {
+    const byId = new Map(columns.map((column) => [column.id, column]));
+    const ordered = activeColumnOrder
+      .map((id) => byId.get(id))
+      .filter((column): column is TableColumn<T> => column !== undefined);
+    const rest = columns.filter((column) => !activeColumnOrder.includes(column.id));
+    return [...ordered, ...rest];
+  }, [columns, activeColumnOrder]);
+
+  const visibleColumns = useMemo(
+    () => orderedColumns.filter((column) => !activeHiddenColumnIds.includes(column.id)),
+    [orderedColumns, activeHiddenColumnIds],
+  );
+
+  const hasFlexibleVisibleColumn = visibleColumns.some((column) =>
+    isFlexibleColumn(column, resizedWidths[column.id]),
+  );
+
+  const hasActionsColumn = actions ?? showColumnSettings;
+
   const template = useMemo(() => {
-    const tracks = columns.map((column) => columnTrack(column, resizedWidths[column.id]));
-    return [...(selectable ? ['44px'] : []), ...tracks, ...(actions ? ['48px'] : [])].join(' ');
-  }, [columns, selectable, actions, resizedWidths]);
+    const tracks = visibleColumns.map((column, index) => {
+      const isLast = index === visibleColumns.length - 1;
+      const fill = !hasFlexibleVisibleColumn && isLast;
+      return columnTrack(column, resizedWidths[column.id], fill);
+    });
+    return [...(selectable ? ['44px'] : []), ...tracks, ...(hasActionsColumn ? ['48px'] : [])].join(
+      ' ',
+    );
+  }, [visibleColumns, selectable, hasActionsColumn, resizedWidths, hasFlexibleVisibleColumn]);
 
   const sortedData = useMemo(() => {
     if (!activeSort) return data;
@@ -314,7 +555,7 @@ function Table<T>({
             />
           </div>
         ) : null}
-        {columns.map((column) => {
+        {visibleColumns.map((column) => {
           const sortedAsc = activeSort?.columnId === column.id && activeSort.direction === 'asc';
           const sortedDesc = activeSort?.columnId === column.id && activeSort.direction === 'desc';
           const content = (
@@ -382,9 +623,19 @@ function Table<T>({
             </div>
           );
         })}
-        {actions ? (
-          <div role="columnheader" className={cn(headerClass, 'justify-end px-3')}>
+        {hasActionsColumn ? (
+          <div role="columnheader" className={cn(headerClass, 'justify-end gap-2 px-3')}>
             <span className="sr-only">{actionLabel}</span>
+            {showColumnSettings ? (
+              <ColumnSettings
+                columns={orderedColumns}
+                hiddenColumnIds={activeHiddenColumnIds}
+                onHiddenColumnIdsChange={setHiddenColumnIds}
+                onColumnOrderChange={setColumnOrder}
+                portalContainer={portalContainer}
+                label={columnSettingsLabel}
+              />
+            ) : null}
             {headerActions}
           </div>
         ) : null}
@@ -405,7 +656,7 @@ function Table<T>({
                 <Skeleton className="size-5" />
               </div>
             ) : null}
-            {columns.map((column, columnIndex) => (
+            {visibleColumns.map((column, columnIndex) => (
               <div
                 key={column.id}
                 role="cell"
@@ -417,7 +668,7 @@ function Table<T>({
                 <Skeleton className={cn('h-4', columnIndex % 3 === 0 ? 'w-3/4' : 'w-1/2')} />
               </div>
             ))}
-            {actions ? (
+            {hasActionsColumn ? (
               <div role="cell" className={rowIndex === 4 ? 'border-b-0' : 'border-b border-line'} />
             ) : null}
           </TableRow>
@@ -483,7 +734,7 @@ function Table<T>({
                   />
                 </div>
               ) : null}
-              {columns.map((column) => (
+              {visibleColumns.map((column) => (
                 <div
                   key={column.id}
                   role="cell"
@@ -505,7 +756,7 @@ function Table<T>({
                   ) : null}
                 </div>
               ))}
-              {actions ? (
+              {hasActionsColumn ? (
                 <div
                   role="cell"
                   onClick={(event) => {

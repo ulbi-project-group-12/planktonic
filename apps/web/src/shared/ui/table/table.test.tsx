@@ -266,4 +266,63 @@ describe('Table', () => {
     // jsdom offsetWidth is 0, so the width clamps to the 64 px minimum
     expect(grid.getAttribute('style')).toContain('64px');
   });
+
+  it('renders a column settings trigger when showColumnSettings is set', async () => {
+    const user = userEvent.setup();
+    renderTable({ showColumnSettings: true });
+
+    const trigger = screen.getByRole('button', { name: 'Настроить колонки' });
+    expect(trigger).toBeInTheDocument();
+
+    await user.click(trigger);
+    expect(screen.getByRole('switch', { name: 'ID' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Задача' })).toBeInTheDocument();
+  });
+
+  it('hides a column via the settings menu and reports the change', async () => {
+    const user = userEvent.setup();
+    const onHiddenColumnIdsChange = vi.fn();
+    renderTable({ showColumnSettings: true, onHiddenColumnIdsChange });
+
+    await user.click(screen.getByRole('button', { name: 'Настроить колонки' }));
+    await user.click(screen.getByRole('switch', { name: 'ID' }));
+
+    expect(onHiddenColumnIdsChange).toHaveBeenLastCalledWith(['id']);
+    expect(screen.queryByRole('columnheader', { name: /ID/i })).toBeNull();
+  });
+
+  it('disables the last visible column switch in the settings menu', async () => {
+    const user = userEvent.setup();
+    renderTable({
+      showColumnSettings: true,
+      defaultHiddenColumnIds: ['title', 'priority', 'due'],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Настроить колонки' }));
+    expect(screen.getByRole('switch', { name: 'ID' })).toBeDisabled();
+  });
+
+  it('renders columns in the controlled order prop', () => {
+    renderTable({ columnOrder: ['due', 'title', 'id', 'priority'] });
+    const headers = screen.getAllByRole('columnheader').map((header) => header.textContent);
+    expect(headers).toEqual(['Срок', 'Задача', 'ID', 'Приоритет']);
+  });
+
+  it('fills the table width when all visible columns have fixed widths', () => {
+    const fixedColumns: TableColumn<Task>[] = [
+      { id: 'id', header: 'ID', accessor: (task) => task.id, width: 80 },
+      { id: 'title', header: 'Title', accessor: (task) => task.title, width: 120 },
+    ];
+    render(
+      <Table<Task>
+        data={tasks}
+        columns={fixedColumns}
+        rowKey={(task) => task.id}
+        caption="Fixed"
+      />,
+    );
+    const grid = screen.getByRole('table');
+    // The last visible fixed-width column is made flexible so the grid fills the container.
+    expect(grid.getAttribute('style')).toContain('minmax(120px, 1fr)');
+  });
 });

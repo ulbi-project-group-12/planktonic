@@ -1,34 +1,20 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import { Settings2 } from 'lucide-react';
 import {
   Button,
   Checkbox,
   Chip,
   Dropdown,
   DropdownContent,
-  DropdownItem,
-  DropdownLabel,
   DropdownTrigger,
   Pagination,
   Select,
-  Switch,
   Table,
 } from '@/shared/ui';
 import type { TableSort } from '@/shared/ui';
 import { TableRow } from './table';
 import { TASKS, buildColumns, rowActions } from './table.demo';
 import type { Task, TaskStatus } from './table.demo';
-
-const allColumns: { id: string; label: string }[] = [
-  { id: 'id', label: 'ID' },
-  { id: 'title', label: 'Задача' },
-  { id: 'status', label: 'Статус' },
-  { id: 'priority', label: 'Приоритет' },
-  { id: 'assignee', label: 'Исполнитель' },
-  { id: 'due', label: 'Срок' },
-  { id: 'updated', label: 'Обновлено' },
-];
 
 interface FilterChip {
   id: number;
@@ -142,62 +128,6 @@ function FilterBuilder({
   );
 }
 
-/** Column visibility — demo-only: visibility state lives outside the Table atom. */
-function ColumnsSettings({
-  portalContainer,
-  hidden,
-  onToggle,
-  onReset,
-}: {
-  portalContainer: HTMLElement | null;
-  hidden: Set<string>;
-  onToggle: (columnId: string, visible: boolean) => void;
-  onReset: () => void;
-}) {
-  return (
-    <Dropdown>
-      <DropdownTrigger>
-        <button
-          type="button"
-          aria-label="Настроить колонки"
-          className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-fg-muted transition-colors hover:bg-sunken hover:text-fg-primary focus-visible:ring-3 focus-visible:ring-brand-primary/40 focus-visible:outline-none"
-        >
-          <Settings2 className="size-4" />
-        </button>
-      </DropdownTrigger>
-      <DropdownContent portalContainer={portalContainer} align="end" className="w-60">
-        <DropdownLabel>Колонки</DropdownLabel>
-        {allColumns.map((column) => (
-          <div
-            key={column.id}
-            className="flex h-7 items-center gap-2 rounded-md px-2 text-caption text-fg-primary"
-          >
-            <span aria-hidden className="text-fg-muted">
-              ⠿
-            </span>
-            <Switch
-              label={column.label}
-              checked={!hidden.has(column.id)}
-              onCheckedChange={(checked) => {
-                onToggle(column.id, checked);
-              }}
-              className="flex-1 justify-between"
-            />
-          </div>
-        ))}
-        <DropdownItem
-          className="mt-1"
-          onSelect={() => {
-            onReset();
-          }}
-        >
-          Сбросить по умолчанию
-        </DropdownItem>
-      </DropdownContent>
-    </Dropdown>
-  );
-}
-
 function EmptyState({ onReset }: { onReset?: () => void }) {
   return (
     <div className="flex flex-col items-center gap-2 py-12">
@@ -241,14 +171,8 @@ function TaskTableDemo({
     { id: 1, field: 'status', value: 'В работе' },
     { id: 2, field: 'assignee', value: 'Мария С.' },
   ]);
-  const [hidden, setHidden] = useState<Set<string>>(() => new Set(['updated']));
   const [page, setPage] = useState(1);
   const filterIdRef = useRef(3);
-
-  const columns = useMemo(
-    () => buildColumns().filter((column) => !hidden.has(column.id)),
-    [hidden],
-  );
 
   const filtered = useMemo(() => {
     if (filters.length === 0) return TASKS;
@@ -296,7 +220,7 @@ function TaskTableDemo({
 
       <Table<Task>
         data={filtered}
-        columns={columns}
+        columns={buildColumns()}
         rowKey={(task) => task.id}
         caption="Задачи проекта"
         selectable
@@ -305,21 +229,8 @@ function TaskTableDemo({
         sort={sort}
         onSortChange={setSort}
         actions={rowActions}
-        headerActions={
-          <ColumnsSettings
-            portalContainer={portalContainer}
-            hidden={hidden}
-            onToggle={(columnId, visible) => {
-              const next = new Set(hidden);
-              if (visible) next.delete(columnId);
-              else next.add(columnId);
-              setHidden(next);
-            }}
-            onReset={() => {
-              setHidden(new Set());
-            }}
-          />
-        }
+        showColumnSettings
+        defaultHiddenColumnIds={['updated']}
         empty={
           <EmptyState
             onReset={() => {
@@ -363,7 +274,7 @@ function TableSpec({
     <div className="flex flex-col gap-10">
       <div>
         <h4 className="mb-3 text-body-s font-bold text-fg-primary">
-          Table · id, чекбоксы, сортировка, действия (фильтры и колонки — снаружи)
+          Table · id, чекбоксы, сортировка, действия и настройки колонок
         </h4>
         <TaskTableDemo portalContainer={portalContainer} instance={instance} />
       </div>
@@ -462,8 +373,8 @@ function ThemeBlock({ theme }: { theme: 'light' | 'dark' }) {
           instance={theme === 'light' ? 'светлая тема' : 'тёмная тема'}
         />
         <p className="mt-6 text-[11px] text-fg-muted">
-          Сортировка string/number/date · выбор строк · меню действий · ресайз колонок · скролл по
-          ширине
+          Сортировка string/number/date · выбор строк · меню действий · настройки колонок · ресайз
+          колонок · скролл по ширине
         </p>
       </div>
     </div>
@@ -497,14 +408,22 @@ export const Playground: StoryObj = {
     loading: { control: 'boolean' },
     withActions: { control: 'boolean' },
     sorted: { control: 'boolean' },
+    withColumnSettings: { control: 'boolean' },
   },
-  args: { selectable: true, loading: false, withActions: true, sorted: true },
+  args: {
+    selectable: true,
+    loading: false,
+    withActions: true,
+    sorted: true,
+    withColumnSettings: true,
+  },
   render: (args) => {
-    const { selectable, loading, withActions, sorted } = args as {
+    const { selectable, loading, withActions, sorted, withColumnSettings } = args as {
       selectable: boolean;
       loading: boolean;
       withActions: boolean;
       sorted: boolean;
+      withColumnSettings: boolean;
     };
     return (
       <div className="p-8">
@@ -520,6 +439,8 @@ export const Playground: StoryObj = {
           selectable={selectable}
           loading={loading}
           actions={withActions ? rowActions : undefined}
+          showColumnSettings={withColumnSettings}
+          defaultHiddenColumnIds={['updated']}
         />
       </div>
     );
