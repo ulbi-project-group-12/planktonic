@@ -33,7 +33,7 @@
 
   --text-primary: #171a21;
   --text-secondary: #5b6472;
-  --text-muted: #66707f; /* 4.68:1 on bg-app / 5.01:1 on surface (12 px hint text) */
+  --text-muted: #626c7a; /* 4.68:1 on bg-sunken / 4.99:1 on bg-app / 5.32:1 on surface (12 px hint text) */
 
   --border-default: #e3e6eb;
   --border-strong: #c9cfd8;

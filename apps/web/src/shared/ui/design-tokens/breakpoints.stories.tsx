@@ -79,8 +79,8 @@ function BreakpointRow({ token, width }: { token: BreakpointToken; width: number
         <div
           className={
             isBoundary
-              ? 'absolute top-0 left-0 flex h-full items-center rounded-md bg-brand-subtle pl-2 text-micro font-bold text-brand-primary'
-              : 'absolute top-0 left-0 flex h-full items-center rounded-md bg-brand-primary/25 pl-2 text-micro font-bold text-fg-secondary'
+              ? 'absolute top-0 left-0 flex h-full items-center rounded-md bg-brand-subtle pl-2 text-micro font-bold text-brand-text'
+              : 'absolute top-0 left-0 flex h-full items-center rounded-md bg-brand-primary/25 pl-2 text-micro font-bold text-fg-primary'
           }
           style={{ width: `${String((token.px / DESKTOP_L) * 100)}%` }}
         >
