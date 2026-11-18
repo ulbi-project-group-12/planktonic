@@ -174,7 +174,11 @@ const priorityClass: Record<TaskPriority, string> = {
 
 function formatDue(task: Task): string {
   if (!task.due) return '—';
-  return new Date(task.due).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  return new Date(task.due).toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
 }
 
 export function buildColumns(): TableColumn<Task>[] {

@@ -26,7 +26,7 @@ function Separator({
   className,
 }: SeparatorProps) {
   const thick = tone === 'thick' || tone === 'brand';
-  const line = (stretch: boolean) => (
+  const line = (stretch: boolean, lineClassName?: string) => (
     <SeparatorPrimitive.Root
       decorative={decorative}
       orientation="horizontal"
@@ -37,17 +37,17 @@ function Separator({
         tone === 'strong' && 'bg-line-strong',
         tone === 'brand' && 'bg-brand-primary',
         tone !== 'strong' && tone !== 'brand' && 'bg-line',
-        className,
+        lineClassName,
       )}
     />
   );
 
   if (children === undefined) {
-    return line(false);
+    return line(false, className);
   }
 
   return (
-    <div data-slot="separator-labeled" className="flex w-full items-center gap-3">
+    <div data-slot="separator-labeled" className={cn('flex w-full items-center gap-3', className)}>
       {line(true)}
       <span
         className={cn(
