@@ -32,6 +32,12 @@ describe('ClientMsgId', () => {
     expect(ClientMsgId.safeParse('019a8f00-0000-7000-8000-000000000004').success).toBe(true);
   });
 
+  it('lowercases the key, as Postgres returns it', () => {
+    expect(ClientMsgId.parse('019A8F00-0000-7000-8000-00000000000A')).toBe(
+      '019a8f00-0000-7000-8000-00000000000a',
+    );
+  });
+
   it.each(['550e8400-e29b-41d4-a716-446655440000', 'not-a-uuid', ''])('rejects %j', (value) => {
     expect(ClientMsgId.safeParse(value).success).toBe(false);
   });

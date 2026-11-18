@@ -61,7 +61,11 @@ async function newChannel(): Promise<string> {
   return channel.id;
 }
 
-function post(channelId: string, body: string, clientMsgId = randomUUIDv7()): Promise<Response> {
+function post(
+  channelId: string,
+  body: string,
+  clientMsgId: string = randomUUIDv7(),
+): Promise<Response> {
   return fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -201,6 +205,34 @@ describe('idempotent send (UL-126)', () => {
     expect(theirs?.row.id).not.toBe(mine?.row.id);
     expect([mine?.row.seq, theirs?.row.seq]).toEqual([1n, 2n]);
     expect(await rowsWithKey(key)).toHaveLength(2);
+  });
+
+  it('the same key racing into two channels: one 201, one 409, no seq spent by the loser', async () => {
+    const channels = [await newChannel(), await newChannel()];
+    const key = randomUUIDv7();
+
+    const responses = await Promise.all(channels.map((id) => post(id, 'racing', key)));
+
+    expect(responses.map((r) => r.status).sort()).toEqual([201, 409]);
+    const winner = channels[responses.findIndex((r) => r.status === 201)] ?? '';
+    const loser = channels[responses.findIndex((r) => r.status === 409)] ?? '';
+    expect(await lastSeq(winner)).toBe(1n);
+    expect(await lastSeq(loser)).toBe(0n);
+    expect(await rowsWithKey(key)).toHaveLength(1);
+  });
+
+  it('an uppercase key is stored and returned lowercase, so retries still match', async () => {
+    const channelId = await newChannel();
+    const key = randomUUIDv7();
+
+    const first = MessageResponse.parse(
+      await (await post(channelId, 'hi', key.toUpperCase())).json(),
+    );
+    const retry = MessageResponse.parse(await (await post(channelId, 'hi', key)).json());
+
+    expect(first.clientMsgId).toBe(key);
+    expect(retry).toEqual(first);
+    expect(await lastSeq(channelId)).toBe(1n);
   });
 
   it('reusing a key in another channel returns 409 and spends no seq there', async () => {

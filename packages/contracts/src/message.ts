@@ -6,8 +6,10 @@ export const MESSAGE_BODY_MAX_LENGTH = 4000;
 /**
  * Idempotency key of a message: a UUIDv7 the client makes once per message (not per retry) and
  * sends again on every retry (UL-126, STACK §4.3). Unique per author, not globally.
+ * Lowercased on parse: Postgres returns `uuid` in lowercase, so the key the client sent and the
+ * key in the response compare equal as strings.
  */
-export const ClientMsgId = z.uuidv7();
+export const ClientMsgId = z.uuidv7().toLowerCase();
 
 export type ClientMsgId = z.infer<typeof ClientMsgId>;
 

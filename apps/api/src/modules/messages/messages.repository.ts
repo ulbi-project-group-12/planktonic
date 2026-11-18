@@ -56,8 +56,11 @@ export class MessagesRepository {
    * Idempotent on `(authorId, clientMsgId)` (UL-126): a retry hits the unique index, the whole
    * transaction rolls back (so `last_seq` is not advanced and no number is spent), and the stored
    * row is read afterwards. The read must run outside the failed transaction: Postgres rejects every
-   * statement in an aborted transaction. A check before the insert would not do: two concurrent
-   * requests would both pass it; only the index decides.
+   * statement in an aborted transaction.
+   *
+   * A lookup before the transaction is only a fast path: a late retry then takes no channel lock and
+   * spends no transaction, so a retry storm does not queue behind real sends. It is not the guard;
+   * two concurrent requests both miss it, and the index decides between them.
    *
    * Returns null when the channel does not exist.
    */
@@ -67,6 +70,10 @@ export class MessagesRepository {
     clientMsgId: string,
     body: string,
   ): Promise<CreateMessageRowResult | null> {
+    const earlier = await this.findByKey(authorId, clientMsgId);
+    if (earlier !== null) {
+      return { row: earlier, created: false };
+    }
     try {
       const row = await this.prisma.$transaction(async (tx) => {
         const rows = await tx.$queryRaw<{ last_seq: bigint }[]>`
@@ -84,14 +91,18 @@ export class MessagesRepository {
       if (!isUniqueViolation(error)) {
         throw error;
       }
-      const existing = await this.prisma.message.findUnique({
-        where: { authorId_clientMsgId: { authorId, clientMsgId } },
-      });
+      const existing = await this.findByKey(authorId, clientMsgId);
       // No row under this key means the violation came from another constraint: not a retry.
       if (existing === null) {
         throw error;
       }
       return { row: existing, created: false };
     }
+  }
+
+  private findByKey(authorId: string, clientMsgId: string): Promise<MessageRow | null> {
+    return this.prisma.message.findUnique({
+      where: { authorId_clientMsgId: { authorId, clientMsgId } },
+    });
   }
 }
