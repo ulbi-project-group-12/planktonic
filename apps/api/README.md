@@ -12,10 +12,26 @@ Run these commands from the repo root after installing dependencies and copying
 ```sh
 pnpm services:up
 pnpm db:migrate
+pnpm --filter @app/contracts build
+pnpm --filter @app/api generate
+pnpm db:seed
 ```
 
+`generate` writes the Prisma client to `src/generated/prisma` (git-ignored), which the seed
+imports. `@app/contracts` is read from its built `dist/index.js` at runtime. Turbo builds
+contracts and runs `generate` before `dev`, `build` and `test`, but `db:seed` and the commands
+below that call vitest directly do not.
+`pnpm db:seed` (`prisma db seed`, run by `tsx`) upserts one test user and one test channel,
+`00000000-0000-7000-8000-000000000001`.
+
 Then `pnpm dev` (web + api) or `pnpm --filter @app/api dev` (api only) runs it in watch mode on
-http://127.0.0.1:3001/api.
+http://127.0.0.1:3001/api. With the api running, try the messages endpoints:
+
+```sh
+curl -X POST -H 'content-type: application/json' -d '{"body":"hello"}' \
+  http://127.0.0.1:3001/api/channels/00000000-0000-7000-8000-000000000001/messages
+curl http://127.0.0.1:3001/api/channels/00000000-0000-7000-8000-000000000001/messages
+```
 
 Two compiled replicas behind Traefik start only with the compose profile `realtime`:
 `docker compose --profile realtime up -d --build`, then http://127.0.0.1:58080/api/health
@@ -115,6 +131,12 @@ duplicate is still connecting to an unreachable Redis.
   migration after a schema change; it is interactive, so run it in a terminal.
 - The first migration, `init`, only runs `CREATE EXTENSION IF NOT EXISTS vector`. Product tables
   arrive with their features.
+- Models live in `prisma/schema/*.prisma` (one file per model). Names are `camelCase` in Prisma and
+  `snake_case` in Postgres through `@@map`/`@map` (`channels.last_seq`), so raw SQL in a
+  repository needs no quotes. Sequence counters (`seq`, `last_seq`) are `BigInt` and go over the
+  wire as decimal strings (UL-212).
+- Seed: `prisma/seed.ts`, run with `tsx`. Node 26's own TypeScript runner cannot load it: the
+  generated client imports its siblings as `.js`, which exist only as `.ts`.
 
 ## Health endpoints
 
@@ -143,12 +165,14 @@ An `unhealthy` status alone does not trigger `restart: unless-stopped`. Phase 4 
 | `generate`         | `prisma generate`                                               |
 | `db:migrate`       | `prisma migrate deploy` (committed migrations)                  |
 | `db:migrate:dev`   | `prisma migrate dev` (new migration, interactive)               |
+| `db:seed`          | `prisma db seed` (test user and channel)                        |
 | `typecheck`        | `tsc --noEmit`                                                  |
 | `lint`             | ESLint with the `nest()` preset, `--max-warnings=0`             |
 | `test`             | `vitest run`                                                    |
 | `test:integration` | `vitest run` on `vitest.integration.config.ts` (needs services) |
 
-The root scripts `pnpm db:migrate` and `pnpm db:migrate:dev` forward to the two migrate scripts.
+The root scripts `pnpm db:migrate`, `pnpm db:migrate:dev` and `pnpm db:seed` forward to the api
+scripts.
 
 ## Tests
 
@@ -164,6 +188,7 @@ without exposing database credentials or the host and port.
 Run only these tests from the repo root with:
 
 ```sh
+pnpm --filter @app/contracts build
 pnpm --filter @app/api generate
 pnpm --filter @app/api exec vitest run test/health.e2e-spec.ts
 ```
@@ -177,9 +202,19 @@ never does, so CI (no services yet) skips them. Both URLs must be exported: unde
 
 ```sh
 pnpm services:up
+pnpm db:migrate
+pnpm --filter @app/contracts build
+pnpm --filter @app/api generate
 DATABASE_URL=postgresql://app:app_dev_password@127.0.0.1:55432/app \
 REDIS_URL=redis://127.0.0.1:56379 pnpm --filter @app/api test:integration
 ```
+
+`generate` and the contracts build are needed because the specs import the git-ignored Prisma
+client and `@app/contracts` (from its `dist`), and `test:integration` does not go through Turbo. The URLs above are the `.env.example` defaults.
+
+`test/integration/messages.int-spec.ts` (UL-125) sends 20 parallel POSTs to one channel and
+expects `seq` 1..20 with no gaps and no duplicates. Each test creates its own channel and deletes
+it afterwards.
 
 `test/integration/realtime.int-spec.ts` (UL-124) creates NestJS applications with explicit
 instance IDs (`test-api-1`, `test-api-2`), each with its own Socket.IO client, and checks that:

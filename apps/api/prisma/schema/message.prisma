@@ -1,0 +1,17 @@
+// Таблица сообщений
+model Message {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  channelId String   @map("channel_id") @db.Uuid
+  channel   Channel  @relation(fields: [channelId], references: [id])
+  /// Per-channel sequence number, gapless from 1 (taken from `channels.last_seq` in the insert transaction).
+  seq       BigInt
+  authorId  String   @map("author_id") @db.Uuid
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  // Also the index for reading a channel in `seq` order.
+  @@unique([channelId, seq])
+  @@index([authorId])
+  @@map("messages")
+}

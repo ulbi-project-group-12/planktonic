@@ -1,0 +1,13 @@
+// Таблица каналов
+model Channel {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  name        String
+  description String?
+  /// Last `seq` handed out in this channel; 0 before the first message (UL-125, UL-212).
+  lastSeq     BigInt   @default(0) @map("last_seq")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  messages Message[]
+
+  @@map("channels")
+}

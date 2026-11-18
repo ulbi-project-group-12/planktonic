@@ -16,10 +16,11 @@
       "dependsOn": ["transit"]
     },
     "test": {
-      "dependsOn": ["transit"],
+      "dependsOn": ["transit", "^build"],
       "outputs": []
     },
     "dev": {
+      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     }

@@ -25,6 +25,7 @@
     "services:reset": "docker compose --profile \"*\" down -v",
     "db:migrate": "pnpm --filter @app/api db:migrate",
     "db:migrate:dev": "pnpm --filter @app/api db:migrate:dev",
+    "db:seed": "pnpm --filter @app/api db:seed",
     "check:all": "pnpm format:check && pnpm check:pins && pnpm lint:root && turbo run lint typecheck test build && pnpm check:name && pnpm test:root && pnpm --filter @app/web lint:fsd && pnpm --filter @app/web build-storybook"
   },
   "prettier": "@app/config/prettier",

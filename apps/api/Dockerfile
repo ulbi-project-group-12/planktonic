@@ -22,7 +22,10 @@ COPY packages/ ./packages/
 # Every app, so the frozen lockfile finds all of its importers; only the api is deployed.
 COPY apps/ ./apps/
 RUN pnpm install --frozen-lockfile --ignore-pnpmfile --filter "@app/api..."
-# Outside Turbo the generate -> build order is explicit. No DATABASE_URL is needed for it.
+# Outside Turbo the build order is explicit: @app/contracts first (the API imports its
+# dist/index.js at runtime and .dockerignore drops dist), then generate -> build. No DATABASE_URL
+# is needed for it.
+RUN pnpm --filter @app/contracts build
 RUN pnpm --filter @app/api generate
 RUN pnpm --filter @app/api build
 # Copies the package `files` (dist), package.json and production node_modules only.
