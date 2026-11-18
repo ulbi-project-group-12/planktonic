@@ -7,7 +7,7 @@ An ADR is a short record of one architectural decision: the context, what we cho
 - File name: `NNNN-kebab-case-title.md`, a four-digit number and an English slug (`0003-data-model.md`).
 - Numbers are never reused. A number is taken when the ticket that will write the ADR is created, so ADRs may be merged out of order.
 - An accepted ADR is not rewritten. To change a decision, write a new ADR and set the old one to `Superseded by ADR-NNNN`.
-- Status: `Proposed` → `Accepted` (the lead approves in the PR) → `Superseded by ADR-NNNN` or `Deprecated`.
+- Status: `Proposed` → `Accepted` (the lead accepts it, in the PR or in its ticket) → `Superseded by ADR-NNNN` or `Deprecated`.
 - Prose may be in Russian, like the tracker docs; identifiers, table and column names stay in English.
 
 ## Index
@@ -16,7 +16,7 @@ An ADR is a short record of one architectural decision: the context, what we cho
 | -------------------------- | --------------------------------- | -------- | ------ |
 | 0001                       | Realtime protocol                 | Planned  | UL-134 |
 | 0002                       | Permission model                  | Planned  | UL-136 |
-| [0003](0003-data-model.md) | Data model                        | Proposed | UL-212 |
+| [0003](0003-data-model.md) | Data model                        | Accepted | UL-212 |
 | 0004                       | Observability (Alloy / GlitchTip) | Planned  | UL-167 |
 
 > UL-167 and UL-170 used to call the observability ADR "ADR-0003". That number belongs to the data model (UL-212, created first), so observability is ADR-0004.
