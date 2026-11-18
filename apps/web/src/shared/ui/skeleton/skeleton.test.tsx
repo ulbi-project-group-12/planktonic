@@ -10,4 +10,9 @@ describe('Skeleton', () => {
     expect(skeleton).toHaveAttribute('aria-hidden', 'true');
     expect(skeleton).toHaveClass('bg-sunken', 'rounded-sm', 'h-4', 'w-32');
   });
+
+  it('stops pulsing under prefers-reduced-motion', () => {
+    const { container } = render(<Skeleton />);
+    expect(container.firstChild).toHaveClass('animate-pulse', 'motion-reduce:animate-none');
+  });
 });

@@ -85,7 +85,7 @@ function Toast({
           <ToastPrimitive.Action
             altText={action.label}
             onClick={action.onClick}
-            className="cursor-pointer rounded-md px-1 text-caption font-bold text-brand-primary transition-colors hover:underline"
+            className="cursor-pointer rounded-md px-1 text-caption font-bold text-brand-text transition-colors hover:underline"
           >
             {action.label}
           </ToastPrimitive.Action>
