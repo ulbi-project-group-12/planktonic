@@ -12,12 +12,15 @@ Run these commands from the repo root after installing dependencies and copying
 ```sh
 pnpm services:up
 pnpm db:migrate
+pnpm --filter @app/contracts build
 pnpm --filter @app/api generate
 pnpm db:seed
 ```
 
 `generate` writes the Prisma client to `src/generated/prisma` (git-ignored), which the seed
-imports; Turbo runs it before `dev`, `build` and `test`, but `db:seed` does not.
+imports. `@app/contracts` is read from its built `dist/index.js` at runtime. Turbo builds
+contracts and runs `generate` before `dev`, `build` and `test`, but `db:seed` and the commands
+below that call vitest directly do not.
 `pnpm db:seed` (`prisma db seed`, run by `tsx`) upserts one test user and one test channel,
 `00000000-0000-7000-8000-000000000001`.
 
@@ -185,6 +188,7 @@ without exposing database credentials or the host and port.
 Run only these tests from the repo root with:
 
 ```sh
+pnpm --filter @app/contracts build
 pnpm --filter @app/api generate
 pnpm --filter @app/api exec vitest run test/health.e2e-spec.ts
 ```
@@ -199,13 +203,14 @@ never does, so CI (no services yet) skips them. Both URLs must be exported: unde
 ```sh
 pnpm services:up
 pnpm db:migrate
+pnpm --filter @app/contracts build
 pnpm --filter @app/api generate
 DATABASE_URL=postgresql://app:app_dev_password@127.0.0.1:55432/app \
 REDIS_URL=redis://127.0.0.1:56379 pnpm --filter @app/api test:integration
 ```
 
-`generate` is needed because the specs import the git-ignored Prisma client and
-`test:integration` does not go through Turbo. The URLs above are the `.env.example` defaults.
+`generate` and the contracts build are needed because the specs import the git-ignored Prisma
+client and `@app/contracts` (from its `dist`), and `test:integration` does not go through Turbo. The URLs above are the `.env.example` defaults.
 
 `test/integration/messages.int-spec.ts` (UL-125) sends 20 parallel POSTs to one channel and
 expects `seq` 1..20 with no gaps and no duplicates. Each test creates its own channel and deletes

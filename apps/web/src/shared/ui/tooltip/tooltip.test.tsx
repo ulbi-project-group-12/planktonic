@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Tooltip, TooltipProvider } from './tooltip';
 
@@ -56,5 +57,40 @@ describe('Tooltip', () => {
       </TooltipProvider>,
     );
     expect(onOpenChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('Tooltip (клавиатура и Escape)', () => {
+  it('opens on keyboard focus and closes with Escape', async () => {
+    render(
+      <TooltipProvider>
+        <Tooltip content="Создать задачу">
+          <button type="button">Создать</button>
+        </Tooltip>
+        <button type="button">Далее</button>
+      </TooltipProvider>,
+    );
+    await userEvent.tab();
+    const trigger = screen.getByRole('button', { name: 'Создать' });
+    expect(trigger).toHaveFocus();
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Создать задачу');
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    // focus stays on the trigger — Escape only dismisses the overlay
+    expect(trigger).toHaveFocus();
+  });
+
+  it('opens on hover and closes with Escape', async () => {
+    render(
+      <TooltipProvider>
+        <Tooltip content="Создать задачу">
+          <button type="button">Создать</button>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+    await userEvent.hover(screen.getByRole('button', { name: 'Создать' }));
+    expect(await screen.findByRole('tooltip')).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('tooltip')).toBeNull();
   });
 });

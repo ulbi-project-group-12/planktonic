@@ -38,4 +38,22 @@ describe('Checkbox', () => {
     render(<Checkbox checked aria-label="Принимаю условия" />);
     expect(screen.getByRole('checkbox', { name: 'Принимаю условия' })).toBeInTheDocument();
   });
+
+  it('toggles with the keyboard: Space', async () => {
+    const user = userEvent.setup();
+    render(<Checkbox defaultChecked={false} label="Уведомления" />);
+    const checkbox = screen.getByRole('checkbox');
+    checkbox.focus();
+    await user.keyboard(' ');
+    expect(checkbox).toHaveAttribute('data-state', 'checked');
+    await user.keyboard(' ');
+    expect(checkbox).toHaveAttribute('data-state', 'unchecked');
+  });
+
+  it('renders a dash in the indeterminate state and keeps checked a plain boolean', () => {
+    render(<Checkbox checked={false} indeterminate aria-label="чекбокс" />);
+    const checkbox = screen.getByRole('checkbox');
+    expect(checkbox).toHaveAttribute('data-state', 'indeterminate');
+    expect(checkbox).toHaveAttribute('aria-checked', 'mixed');
+  });
 });

@@ -6,12 +6,17 @@ import { cn } from '@/shared/lib';
 const alertPalettes = ['success', 'warning', 'danger', 'info'] as const;
 type AlertPalette = (typeof alertPalettes)[number];
 
-/** Banners per the mockup: fill {pal}.subtle, border and title in the palette color. */
+/** Banners per the mockup: fill {pal}.subtle, border and title in the palette color.
+ *  warning/info titles use the -hover step in the light theme: the raw hues fail AA
+ *  on the blended subtle backgrounds (3.3 and 4.49). */
 const paletteClasses: Record<AlertPalette, { box: string; title: string }> = {
   success: { box: 'border-success bg-success-subtle', title: 'text-success' },
-  warning: { box: 'border-warning bg-warning-subtle', title: 'text-warning' },
+  warning: {
+    box: 'border-warning bg-warning-subtle',
+    title: 'text-warning-hover dark:text-warning',
+  },
   danger: { box: 'border-danger bg-danger-subtle', title: 'text-danger' },
-  info: { box: 'border-info bg-info-subtle', title: 'text-info' },
+  info: { box: 'border-info bg-info-subtle', title: 'text-info-hover dark:text-info' },
 };
 
 const paletteIcons: Record<AlertPalette, typeof CircleCheck> = {

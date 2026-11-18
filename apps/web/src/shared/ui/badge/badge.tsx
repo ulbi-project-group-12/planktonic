@@ -7,12 +7,14 @@ type BadgeVariant = (typeof badgeVariants)[number];
 const OVERFLOW_CAP = 99;
 
 const variantClasses: Record<BadgeVariant, string> = {
+  // Solids sit on the constant --*-fill scale so white text is AA in both themes
+  // (5.35-7.44:1); muted uses fg-secondary (fg-muted gives 4.43 on sunken).
   brand: 'bg-brand-primary text-on-brand',
-  success: 'bg-success text-on-brand',
-  warning: 'bg-warning text-on-brand',
-  danger: 'bg-danger text-on-brand',
-  info: 'bg-info text-on-brand',
-  muted: 'bg-sunken text-fg-muted',
+  success: 'bg-success-fill text-on-brand',
+  warning: 'bg-warning-fill text-on-brand',
+  danger: 'bg-danger-fill text-on-brand',
+  info: 'bg-info-fill text-on-brand',
+  muted: 'bg-sunken text-fg-secondary',
 };
 
 const dotClasses: Record<BadgeVariant, string> = {

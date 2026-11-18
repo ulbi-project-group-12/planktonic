@@ -42,7 +42,9 @@ export {
   type DropdownItemProps,
   type DropdownProps,
 } from './dropdown';
+export { Field, type FieldProps } from './field';
 export { Input } from './input';
+export { Label, type LabelProps } from './label';
 export { Link, linkVariants, type LinkProps, type LinkVariant } from './link';
 export {
   LoadMore,
@@ -57,10 +59,24 @@ export {
 export { Modal, modalSizes, type ModalAction, type ModalProps, type ModalSize } from './modal';
 export { Progress, type ProgressProps } from './progress';
 export { Select, type SelectOption, type SelectProps } from './select';
+export { Separator, separatorTones, type SeparatorProps, type SeparatorTone } from './separator';
 export { Skeleton } from './skeleton';
 export { Spinner, spinnerSizes, type SpinnerSize } from './spinner';
 export { Switch, type SwitchProps } from './switch';
+export {
+  Table,
+  TableRow,
+  tableSortTypes,
+  type TableAction,
+  type TableColumn,
+  type TableProps,
+  type TableRowProps,
+  type TableSort,
+  type TableSortDirection,
+  type TableSortType,
+} from './table';
 export { Tabs, tabVariants, type TabItem, type TabsProps, type TabVariant } from './tabs';
+export { Textarea, textareaStatuses, type TextareaProps, type TextareaStatus } from './textarea';
 export {
   Toast,
   toastPalettes,

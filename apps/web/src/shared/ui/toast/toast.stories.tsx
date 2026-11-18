@@ -71,7 +71,7 @@ function ToastSpecDemo() {
           show(true);
         }}
       />
-      <ToastProvider>
+      <ToastProvider viewportLabel="Уведомления — живой пример">
         {items.map((item) => (
           <div key={item.id} className={item.dark ? 'dark' : undefined}>
             <Toast
@@ -94,14 +94,18 @@ function ToastSpecDemo() {
 /** Static viewport in flow: toasts are shown next to the row caption. */
 const statesViewport = 'static z-auto w-full max-w-full flex-row flex-wrap gap-2 p-0';
 
-/** All states — static, no auto-dismiss. */
-function ToastStates() {
+/** All states — static, no auto-dismiss. Landmark labels need a suffix: the States story
+ *  renders this block in both theme blocks, and viewport labels must stay unique per page. */
+function ToastStates({ labelSuffix = '' }: { labelSuffix?: string }) {
   const noop = () => undefined;
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-[120px_1fr] items-center gap-4">
         <span className="text-[11px] text-fg-muted">Базовый</span>
-        <ToastProvider viewportClassName={statesViewport}>
+        <ToastProvider
+          viewportClassName={statesViewport}
+          viewportLabel={`Уведомления — базовый${labelSuffix}`}
+        >
           {toastPalettes.map((palette) => (
             <Toast
               key={palette}
@@ -123,7 +127,10 @@ function ToastStates() {
       </div>
       <div className="grid grid-cols-[120px_1fr] items-center gap-4">
         <span className="text-[11px] text-fg-muted">С описанием</span>
-        <ToastProvider viewportClassName={statesViewport}>
+        <ToastProvider
+          viewportClassName={statesViewport}
+          viewportLabel={`Уведомления — с описанием${labelSuffix}`}
+        >
           {toastPalettes.map((palette) => (
             <Toast
               key={palette}
@@ -176,7 +183,7 @@ export const States: Story = {
             <h3 className="mb-4 text-body-l font-bold text-fg-primary">
               Атомы — тосты · состояния · {theme === 'dark' ? 'Dark' : 'Light'}
             </h3>
-            <ToastStates />
+            <ToastStates labelSuffix={theme === 'dark' ? ' · Dark' : ''} />
           </div>
         </div>
       ))}
