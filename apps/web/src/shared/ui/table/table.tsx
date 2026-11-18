@@ -368,6 +368,9 @@ function Table<T>({
                   'absolute top-1/2 right-0 h-5 w-2 -translate-y-1/2 cursor-col-resize touch-none',
                   loading && 'pointer-events-none',
                 )}
+                onClick={(event) => {
+                  event.stopPropagation();
+                }}
                 onPointerDown={(event) => {
                   startResize(event, column);
                 }}
@@ -447,9 +450,20 @@ function Table<T>({
               key={key}
               bare
               selected={isSelected}
-              className={cn('h-11', onRowClick && 'cursor-pointer')}
+              tabIndex={onRowClick ? 0 : undefined}
+              className={cn(
+                'h-11',
+                onRowClick &&
+                  'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40',
+              )}
               onClick={() => {
                 onRowClick?.(row);
+              }}
+              onKeyDown={(event) => {
+                if (onRowClick && (event.key === 'Enter' || event.key === ' ')) {
+                  event.preventDefault();
+                  onRowClick(row);
+                }
               }}
             >
               {selectable ? (

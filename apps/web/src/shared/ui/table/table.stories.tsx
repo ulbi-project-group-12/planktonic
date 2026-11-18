@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { Settings2 } from 'lucide-react';
 import {
@@ -198,7 +198,7 @@ function ColumnsSettings({
   );
 }
 
-function EmptyState() {
+function EmptyState({ onReset }: { onReset?: () => void }) {
   return (
     <div className="flex flex-col items-center gap-2 py-12">
       <div className="flex size-10 items-center justify-center rounded-xl bg-sunken text-fg-muted">
@@ -208,9 +208,11 @@ function EmptyState() {
       <div className="text-caption text-fg-muted">
         Попробуйте изменить фильтры или сбросить поиск
       </div>
-      <Button variant="subtle" size="s" className="mt-1">
-        Сбросить фильтры
-      </Button>
+      {onReset ? (
+        <Button variant="subtle" size="s" className="mt-1" onClick={onReset}>
+          Сбросить фильтры
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -241,21 +243,29 @@ function TaskTableDemo({
   ]);
   const [hidden, setHidden] = useState<Set<string>>(() => new Set(['updated']));
   const [page, setPage] = useState(1);
+  const filterIdRef = useRef(3);
 
   const columns = useMemo(
     () => buildColumns().filter((column) => !hidden.has(column.id)),
     [hidden],
   );
 
-  const filtered = useMemo(
-    () =>
-      TASKS.filter((task) =>
-        filters.every((filter) =>
-          filter.field === 'status' ? task.status === filter.value : task.assignee === filter.value,
-        ),
+  const filtered = useMemo(() => {
+    if (filters.length === 0) return TASKS;
+
+    const valuesByField = new Map<FilterChip['field'], Set<string>>();
+    for (const filter of filters) {
+      const set = valuesByField.get(filter.field) ?? new Set<string>();
+      set.add(filter.value);
+      valuesByField.set(filter.field, set);
+    }
+
+    return TASKS.filter((task) =>
+      [...valuesByField.entries()].every(([field, values]) =>
+        field === 'status' ? values.has(task.status) : values.has(task.assignee),
       ),
-    [filters],
-  );
+    );
+  }, [filters]);
 
   const removeFilter = (id: number) => {
     setFilters(filters.filter((filter) => filter.id !== id));
@@ -279,7 +289,7 @@ function TaskTableDemo({
         <FilterBuilder
           portalContainer={portalContainer}
           onApply={(filter) => {
-            setFilters([...filters, { ...filter, id: Date.now() }]);
+            setFilters((prev) => [...prev, { ...filter, id: filterIdRef.current++ }]);
           }}
         />
       </div>
@@ -310,7 +320,13 @@ function TaskTableDemo({
             }}
           />
         }
-        empty={<EmptyState />}
+        empty={
+          <EmptyState
+            onReset={() => {
+              setFilters([]);
+            }}
+          />
+        }
         portalContainer={portalContainer}
       />
 
