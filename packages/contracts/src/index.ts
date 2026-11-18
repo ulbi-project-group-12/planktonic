@@ -7,3 +7,9 @@ export {
   MessageResponse,
   MessageSeq,
 } from './message.js';
+export {
+  type ClientToServerEvents,
+  MESSAGE_NEW_EVENT,
+  MessageNewEvent,
+  type ServerToClientEvents,
+} from './realtime.js';

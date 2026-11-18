@@ -1,5 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import type { GetMessagesResponse, MessageResponse } from '@app/contracts';
+import { type GetMessagesResponse, MESSAGE_NEW_EVENT, type MessageResponse } from '@app/contracts';
+import { RealtimePublisher } from '../../core/realtime/realtime-publisher.js';
+import { channelRoom } from '../../core/realtime/rooms.js';
 import { type MessageRow, MessagesRepository } from './messages.repository.js';
 
 /** How many of the newest messages GET returns (no pagination yet). */
@@ -32,12 +34,19 @@ export interface CreateMessageResult {
 
 @Injectable()
 export class MessagesService {
-  constructor(private readonly repository: MessagesRepository) {}
+  constructor(
+    private readonly repository: MessagesRepository,
+    private readonly realtime: RealtimePublisher,
+  ) {}
 
   /**
    * Saves a message, idempotently on `(authorId, clientMsgId)`. A retry returns the stored message
    * (even if its `body` differs: the stored one is canonical) and spends no channel `seq`.
    * Throws 404 for a missing channel, 409 when the key was already used in another channel.
+   *
+   * Then announces a fresh message to its channel room (UL-127). The repository's transaction has
+   * committed by the time it resolves, so the event never describes a row a rollback undid (no
+   * emit inside `$transaction`, STACK §4.3). A retry publishes nothing: the first request did.
    */
   async create(
     channelId: string,
@@ -54,7 +63,11 @@ export class MessagesService {
     if (!result.created && result.row.channelId !== channelId.toLowerCase()) {
       throw new ConflictException('clientMsgId was already used in another channel');
     }
-    return { message: toResponse(result.row), created: result.created };
+    const message = toResponse(result.row);
+    if (result.created) {
+      this.realtime.publish(channelRoom(channelId), MESSAGE_NEW_EVENT, { message });
+    }
+    return { message, created: result.created };
   }
 
   async list(channelId: string): Promise<GetMessagesResponse> {
