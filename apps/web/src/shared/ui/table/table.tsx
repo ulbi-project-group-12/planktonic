@@ -711,6 +711,7 @@ function Table<T>({
                 onRowClick?.(row);
               }}
               onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
                 if (onRowClick && (event.key === 'Enter' || event.key === ' ')) {
                   event.preventDefault();
                   onRowClick(row);
