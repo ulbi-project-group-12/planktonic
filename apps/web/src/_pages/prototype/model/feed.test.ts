@@ -158,6 +158,15 @@ describe('feedReducer', () => {
     expect(state.unsent).toEqual([{ clientMsgId: KEY_B, body: 'b', status: 'pending' }]);
   });
 
+  it('matches clientMsgId case-insensitively, like the server', () => {
+    let state = feedReducer(initialFeedState, pending(KEY_A.toUpperCase(), 'a'));
+    state = feedReducer(state, failed(KEY_A));
+    expect(state.unsent[0]?.status).toBe('failed');
+    state = feedReducer(state, merge(delivered(KEY_A, 1, '1', 'a')));
+    expect(state.unsent).toEqual([]);
+    expect(feedReducer(state, pending(KEY_A.toUpperCase(), 'a'))).toBe(state);
+  });
+
   it('does not mutate its input state', () => {
     const state = Object.freeze({
       sent: Object.freeze([msg({ id: 1, seq: '1' })]),

@@ -66,6 +66,14 @@ export type FeedAction =
   | { type: 'pending'; clientMsgId: string; body: string }
   | { type: 'failed'; clientMsgId: string; failure: SendFailure };
 
+/**
+ * The match key for a `clientMsgId`. The server stores it lower-cased (UL-126), so a copy from the
+ * wire may differ in case from the key this client made.
+ */
+function keyOf(clientMsgId: string): string {
+  return clientMsgId.toLowerCase();
+}
+
 /** `rows` with the row at `index` swapped for `row`, as a new array. */
 function replaceAt(
   rows: readonly UnsentRow[],
@@ -87,17 +95,18 @@ export function feedReducer(state: FeedState, action: FeedAction): FeedState {
   switch (action.type) {
     case 'merge': {
       const sent = mergeMessages(state.sent, action.messages);
-      const delivered = new Set(action.messages.map((message) => message.clientMsgId));
-      const unsent = state.unsent.some((row) => delivered.has(row.clientMsgId))
-        ? state.unsent.filter((row) => !delivered.has(row.clientMsgId))
+      const delivered = new Set(action.messages.map((message) => keyOf(message.clientMsgId)));
+      const unsent = state.unsent.some((row) => delivered.has(keyOf(row.clientMsgId)))
+        ? state.unsent.filter((row) => !delivered.has(keyOf(row.clientMsgId)))
         : state.unsent;
       if (sent === state.sent && unsent === state.unsent) return state;
       return { sent, unsent };
     }
     case 'pending': {
       const { clientMsgId, body } = action;
-      if (state.sent.some((message) => message.clientMsgId === clientMsgId)) return state;
-      const index = state.unsent.findIndex((row) => row.clientMsgId === clientMsgId);
+      const key = keyOf(clientMsgId);
+      if (state.sent.some((message) => keyOf(message.clientMsgId) === key)) return state;
+      const index = state.unsent.findIndex((row) => keyOf(row.clientMsgId) === key);
       if (index === -1) {
         return { ...state, unsent: [...state.unsent, { clientMsgId, body, status: 'pending' }] };
       }
@@ -112,7 +121,9 @@ export function feedReducer(state: FeedState, action: FeedAction): FeedState {
       return { ...state, unsent: replaceAt(state.unsent, index, retried) };
     }
     case 'failed': {
-      const index = state.unsent.findIndex((row) => row.clientMsgId === action.clientMsgId);
+      const index = state.unsent.findIndex(
+        (row) => keyOf(row.clientMsgId) === keyOf(action.clientMsgId),
+      );
       const row = state.unsent[index];
       // Gone: the 201 or message:new already won, so the failure is stale.
       if (index === -1 || !row) return state;
