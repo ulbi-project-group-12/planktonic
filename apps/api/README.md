@@ -271,8 +271,18 @@ it('A on instance 1 sends, B on instance 2 receives message:new', async () => {
   servers report (`current_database()`, the Redis connection's database), not only the URLs.
   Arrange data inside the test (or a spec `beforeEach`), not in a spec `beforeAll`: the reset
   wipes it.
-- Apps and clients started inside a test (`stand.startApp`, `stand.connect`) are closed after that
-  test; those from `beforeAll` after the file. Teardown goes clients → apps → Redis → Prisma.
+- Apps, clients and links started inside a test (`stand.startApp`, `stand.connect`, `stand.link`)
+  are closed after that test; those from `beforeAll` after the file. Teardown goes clients → links
+  → apps → Redis → Prisma.
+- A network-like drop (UL-133): `const link = await stand.link(app)` opens a TCP link to the app
+  (`support/network.ts`), and `stand.connect(app, 'B', { through: link })` connects through it with
+  socket.io's own reconnection on (50–200 ms backoff, no jitter). `link.drop()` resets every TCP
+  connection of the link, and every new one until `link.restore()`. Nobody says goodbye: the server
+  sees `transport close` and the client stays `active` and reconnects by itself, to the same app.
+  `client.disconnect()` is the clean exit instead (`client namespace disconnect` on the server),
+  after which socket.io never reconnects, so it does not test a lost network.
+  `waitForDisconnect(client)` resolves with the reason, `waitForReconnect(client)` on the next
+  `connect`, and `withTimeout(promise, what)` names any other wait that times out.
 - `stand.prisma` and `stand.redis` are for arranging and checking data.
 - `waitForEvent(client, event, { timeoutMs, parse, match })` waits for the event itself, never a
   timer, and fails with the event, the client label and its instance:
@@ -300,6 +310,11 @@ The specs:
   then a client that missed five messages while disconnected runs the web client's own `catchUp`
   (`@app/contracts`) over HTTP and gets all five once, in order, and `hasMore` resets it to the
   newest page.
+- `phase2-exit.int-spec.ts` (UL-133), the phase 2 exit test: A on instance 1, B on instance 2
+  behind a link; the link drops, A sends five at once, the link comes back and B's `catchUp` gets
+  exactly those five, `seq` 3..7, once. A message that arrives live and again in the catch-up page
+  is one row (it fails with the dedup in `mergeMessages` turned off). A retry with the same
+  `clientMsgId` on the other instance returns the same message and sends no second `message:new`.
 - `realtime.int-spec.ts` (UL-124): without the Redis Streams adapter a broadcast stays on its app;
   with it, a broadcast from either app reaches both, `POST /api/debug/realtime/ping` crosses
   instances, a socket outside the room gets nothing, and `app.close()` leaves no Redis connection.
