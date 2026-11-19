@@ -56,18 +56,21 @@ export async function openLink(target: string): Promise<NetworkLink> {
       inbound.destroy();
       outbound.destroy();
     };
-    const closed = (hadError: boolean): void => {
-      if (hadError) {
-        teardown();
-        return;
-      }
-      pairs.delete(inbound);
-      pairs.delete(outbound);
-    };
+    // A clean close ends only that socket: the peer may still flush what it has queued, so it
+    // stays in `pairs` (and in reach of drop()/close()) until its own close.
+    const closed =
+      (socket: Socket) =>
+      (hadError: boolean): void => {
+        if (hadError) {
+          teardown();
+          return;
+        }
+        pairs.delete(socket);
+      };
     inbound.on('error', teardown);
     outbound.on('error', teardown);
-    inbound.on('close', closed);
-    outbound.on('close', closed);
+    inbound.on('close', closed(inbound));
+    outbound.on('close', closed(outbound));
     inbound.pipe(outbound);
     outbound.pipe(inbound);
   });
