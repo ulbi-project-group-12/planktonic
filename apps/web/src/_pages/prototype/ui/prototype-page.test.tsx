@@ -379,6 +379,55 @@ describe('PrototypePage', () => {
     expect(posted).toHaveLength(1);
   });
 
+  it('collapses a failed row when message:new arrives with its key', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    postResponder = () => Promise.reject(new TypeError('Failed to fetch'));
+    await renderConnected();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message'), 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await messageList().findByText('Not sent: no connection to the server');
+
+    // The server committed the message; only its answer was lost.
+    const key = posted[0]?.clientMsgId ?? '';
+    act(() => {
+      fake.fire('message:new', { message: { ...msg(1, 'hello'), clientMsgId: key } });
+    });
+    expect(rows()).toEqual(['#1 hello']);
+    expect(messageList().queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+    expect(messageList().queryByText(/^Not sent/)).not.toBeInTheDocument();
+  });
+
+  it('ignores a failure that lands after message:new delivered the message', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const response = deferred<Response>();
+    postResponder = () => response.promise;
+    await renderConnected();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message'), 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => {
+      expect(posted).toHaveLength(1);
+    });
+    const key = posted[0]?.clientMsgId ?? '';
+    act(() => {
+      fake.fire('message:new', { message: { ...msg(1, 'hello'), clientMsgId: key } });
+    });
+    expect(rows()).toEqual(['#1 hello']);
+
+    await act(async () => {
+      response.resolve(json({ message: 'boom' }, 503));
+      await response.promise;
+    });
+    await waitFor(() => {
+      expect(warn).toHaveBeenCalledWith('prototype: send failed', expect.anything());
+    });
+    expect(rows()).toEqual(['#1 hello']);
+    expect(messageList().queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+  });
+
   it('keeps text typed while a send is in flight', async () => {
     const response = deferred<Response>();
     postResponder = () => response.promise;

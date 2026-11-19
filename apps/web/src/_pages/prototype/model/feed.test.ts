@@ -197,3 +197,93 @@ describe('feedRows', () => {
     expect(feedRows(state).map((row) => row.status)).toEqual(['sent', 'pending']);
   });
 });
+
+describe('feedReducer arrival order', () => {
+  const earlier = msg({ id: 1, seq: '1', body: 'earlier' });
+  const start: FeedState = { sent: [earlier], unsent: [] };
+  // Separate objects with the same id, seq and clientMsgId: the merge is by id, not identity.
+  const postCopy = delivered(KEY_A, 2, '2', 'hello');
+  const eventCopy = delivered(KEY_A, 2, '2', 'hello');
+
+  type Step = (state: FeedState) => FeedState;
+  const sendPending: Step = (state) => feedReducer(state, pending(KEY_A, 'hello'));
+  const post201: Step = (state) => feedReducer(state, merge(postCopy));
+  const messageNew: Step = (state) => feedReducer(state, merge(eventCopy));
+
+  const orderings: { name: string; steps: Step[] }[] = [
+    { name: 'pending → 201 → message:new', steps: [sendPending, post201, messageNew] },
+    { name: 'pending → message:new → 201', steps: [sendPending, messageNew, post201] },
+    { name: '201 → pending → message:new', steps: [post201, sendPending, messageNew] },
+    { name: '201 → message:new → pending', steps: [post201, messageNew, sendPending] },
+    { name: 'message:new → pending → 201', steps: [messageNew, sendPending, post201] },
+    { name: 'message:new → 201 → pending', steps: [messageNew, post201, sendPending] },
+  ];
+
+  const run = (steps: Step[]) => steps.reduce((state, step) => step(state), start);
+
+  it.each(orderings)('$name ends in one row for the key', ({ steps }) => {
+    const end = run(steps);
+    expect(end.sent).toHaveLength(2);
+    expect(end.sent.filter((message) => message.clientMsgId === KEY_A)).toHaveLength(1);
+    expect(end.unsent).toEqual([]);
+    expect(feedRows(end).map((row) => row.status)).toEqual(['sent', 'sent']);
+  });
+
+  it.each(orderings)('$name, then a late failure, changes nothing', ({ steps }) => {
+    const end = run(steps);
+    expect(feedReducer(end, failed(KEY_A))).toBe(end);
+  });
+
+  it('collapses a failed row when message:new arrives for its key', () => {
+    let state = feedReducer(start, pending(KEY_A, 'hello'));
+    state = feedReducer(state, failed(KEY_A));
+    state = feedReducer(state, merge(eventCopy));
+    expect(state.sent.filter((message) => message.clientMsgId === KEY_A)).toHaveLength(1);
+    expect(state.unsent).toEqual([]);
+  });
+});
+
+describe('feedReducer identity', () => {
+  const sentA = delivered(KEY_A, 1, '1', 'a');
+
+  it('returns the same state for a merge of nothing', () => {
+    const state = feedReducer(initialFeedState, pending(KEY_A, 'a'));
+    expect(feedReducer(state, merge())).toBe(state);
+  });
+
+  it('returns the same state for pending on a key that is already sent', () => {
+    const state: FeedState = { sent: [sentA], unsent: [] };
+    expect(feedReducer(state, pending(KEY_A, 'a'))).toBe(state);
+  });
+
+  it('returns the same state for pending on a row that is already pending', () => {
+    const state = feedReducer(initialFeedState, pending(KEY_A, 'a'));
+    expect(feedReducer(state, pending(KEY_A, 'a'))).toBe(state);
+  });
+
+  it('returns the same state for a failure on an unknown key', () => {
+    const state = feedReducer(initialFeedState, pending(KEY_A, 'a'));
+    expect(feedReducer(state, failed(KEY_B))).toBe(state);
+  });
+
+  it('keeps the same unsent array when a merge matches no unsent row', () => {
+    const state = feedReducer(initialFeedState, pending(KEY_A, 'a'));
+    const next = feedReducer(state, merge(msg({ id: 5, seq: '5' })));
+    expect(next.unsent).toBe(state.unsent);
+    expect(next).not.toBe(state);
+  });
+
+  it('drops every matching unsent row on a history merge and keeps the rest in order', () => {
+    const KEY_C = '01900000-0000-7000-9000-00000000c003';
+    let state = feedReducer(initialFeedState, pending(KEY_A, 'a'));
+    state = feedReducer(state, pending(KEY_B, 'b'));
+    state = feedReducer(state, pending(KEY_C, 'c'));
+    state = feedReducer(state, failed(KEY_C));
+    state = feedReducer(
+      state,
+      merge(msg({ id: 7, seq: '7' }), delivered(KEY_A, 8, '8', 'a'), delivered(KEY_C, 9, '9', 'c')),
+    );
+    expect(seqs(state.sent)).toEqual(['7', '8', '9']);
+    expect(state.unsent).toEqual([{ clientMsgId: KEY_B, body: 'b', status: 'pending' }]);
+  });
+});
