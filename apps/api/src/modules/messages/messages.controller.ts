@@ -1,5 +1,10 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import { CreateMessageBody, type GetMessagesResponse, type MessageResponse } from '@app/contracts';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import {
+  CreateMessageBody,
+  GetMessagesQuery,
+  type GetMessagesResponse,
+  type MessageResponse,
+} from '@app/contracts';
 import { DEFAULT_AUTHOR_ID } from './default-author.js';
 import { MessagesService } from './messages.service.js';
 
@@ -24,8 +29,12 @@ export class MessagesController {
     return message;
   }
 
+  /** `?afterSeq=&limit=` (both optional, strings on the wire; see `GetMessagesQuery`). */
   @Get()
-  list(@Param('channelId', new ParseUUIDPipe()) channelId: string): Promise<GetMessagesResponse> {
-    return this.messagesService.list(channelId);
+  list(
+    @Param('channelId', new ParseUUIDPipe()) channelId: string,
+    @Query({ schema: GetMessagesQuery }) query: GetMessagesQuery,
+  ): Promise<GetMessagesResponse> {
+    return this.messagesService.list(channelId, query);
   }
 }

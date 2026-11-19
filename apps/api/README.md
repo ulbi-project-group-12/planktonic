@@ -34,6 +34,16 @@ curl -X POST -H 'content-type: application/json' \
 curl http://127.0.0.1:3001/api/channels/00000000-0000-7000-8000-000000000001/messages
 ```
 
+`GET` returns one page, oldest first, as `{ messages, hasMore }` (UL-130):
+
+- no query: the newest `limit` messages; `hasMore` means older ones exist;
+- `?afterSeq=<seq>`: the first `limit` messages with a greater `seq` (the client's catch-up after
+  a reconnect); `hasMore` means it fell more than a page behind, and the client then reloads the
+  newest page instead of paging forward;
+- `?limit=` is `1..100`, default `100`. Both values are digits only (`1e2` or ` 7` are a 400),
+  and `afterSeq` must fit a Postgres `bigint`. `hasMore` comes from reading one row past the page,
+  not from a second query.
+
 `POST` is idempotent (UL-126). `clientMsgId` is a UUIDv7 the client makes once per message and
 sends again on every retry. A retry with a key the author already used returns the stored
 message: same `id` and `seq`, `201` again, and nothing new is saved. The stored message wins
@@ -286,6 +296,10 @@ The specs:
 - `message-new.int-spec.ts` (UL-127, UL-132): a message sent on instance 1 reaches the client on
   instance 2 as `message:new` after the commit, and nothing is published for a rollback, a retry or
   a missing channel.
+- `catch-up.int-spec.ts` (UL-130): `afterSeq`/`limit` pages and `hasMore` at the limit boundary;
+  then a client that missed five messages while disconnected runs the web client's own `catchUp`
+  (`@app/contracts`) over HTTP and gets all five once, in order, and `hasMore` resets it to the
+  newest page.
 - `realtime.int-spec.ts` (UL-124): without the Redis Streams adapter a broadcast stays on its app;
   with it, a broadcast from either app reaches both, `POST /api/debug/realtime/ping` crosses
   instances, a socket outside the room gets nothing, and `app.close()` leaves no Redis connection.

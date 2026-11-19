@@ -38,14 +38,29 @@ export class MessagesRepository {
     return count > 0;
   }
 
-  /** Newest `limit` messages of the channel, oldest first. */
-  async findLatest(channelId: string, limit: number): Promise<MessageRow[]> {
+  /**
+   * Newest `take` messages of the channel, oldest first. The caller asks for one more row than it
+   * returns to learn whether older ones exist without a second query.
+   */
+  async findLatest(channelId: string, take: number): Promise<MessageRow[]> {
     const rows = await this.prisma.message.findMany({
       where: { channelId },
       orderBy: { seq: 'desc' },
-      take: limit,
+      take,
     });
     return rows.reverse();
+  }
+
+  /**
+   * The first `take` messages of the channel with `seq > afterSeq`, oldest first (the reconnect
+   * catch-up, UL-130). Served by the `(channel_id, seq)` unique index.
+   */
+  findAfter(channelId: string, afterSeq: bigint, take: number): Promise<MessageRow[]> {
+    return this.prisma.message.findMany({
+      where: { channelId, seq: { gt: afterSeq } },
+      orderBy: { seq: 'asc' },
+      take,
+    });
   }
 
   /**
