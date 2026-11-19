@@ -19,6 +19,9 @@ COPY packages/ ./packages/
 # Every app, so the frozen lockfile finds all of its importers; only the web app is built.
 COPY apps/ ./apps/
 RUN pnpm install --frozen-lockfile --ignore-pnpmfile --filter "@app/web..."
+# Outside Turbo the build order is explicit: @app/contracts first (the web imports its
+# dist/index.js and .dockerignore drops dist), then next build.
+RUN pnpm --filter @app/contracts build
 # Plain next build. It type-checks on its own (Next runs tsc unless ignoreBuildErrors is set), so
 # a type error fails the image too; ESLint runs only in CI through Turbo, not in the image.
 RUN pnpm --filter @app/web build
