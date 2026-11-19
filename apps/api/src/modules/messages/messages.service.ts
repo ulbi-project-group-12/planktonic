@@ -50,7 +50,8 @@ export class MessagesService {
       throw new NotFoundException('Channel not found');
     }
     // A key is per message, so a "retry" into another channel is a client bug, not a retry.
-    if (!result.created && result.row.channelId !== channelId) {
+    // ParseUUIDPipe keeps the path's letter case and Postgres returns lowercase: compare lowercased.
+    if (!result.created && result.row.channelId !== channelId.toLowerCase()) {
       throw new ConflictException('clientMsgId was already used in another channel');
     }
     return { message: toResponse(result.row), created: result.created };

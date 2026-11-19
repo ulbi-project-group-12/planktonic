@@ -53,6 +53,13 @@ describe('MessagesService', () => {
     expect(result.message).toMatchObject({ id: row.id, seq: '7', body: 'hello' });
   });
 
+  it('treats an uppercase channel id in the path as the same channel', async () => {
+    const service = await setup({ create: vi.fn().mockResolvedValue({ row, created: false }) });
+
+    const result = await service.create(CHANNEL.toUpperCase(), AUTHOR, KEY, 'hello');
+    expect(result).toMatchObject({ created: false, message: { id: row.id } });
+  });
+
   it('throws 409 when the key was already used in another channel', async () => {
     const elsewhere = { ...row, channelId: '00000000-0000-7000-8000-000000000009' };
     const service = await setup({

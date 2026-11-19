@@ -235,6 +235,18 @@ describe('idempotent send (UL-126)', () => {
     expect(await lastSeq(channelId)).toBe(1n);
   });
 
+  it('a retry to the same channel written in uppercase still gets the stored message', async () => {
+    const channelId = await newChannel();
+    const key = randomUUIDv7();
+
+    const first = MessageResponse.parse(await (await post(channelId, 'hi', key)).json());
+    const retry = await post(channelId.toUpperCase(), 'hi', key);
+
+    expect(retry.status).toBe(201);
+    expect(MessageResponse.parse(await retry.json())).toEqual(first);
+    expect(await lastSeq(channelId)).toBe(1n);
+  });
+
   it('reusing a key in another channel returns 409 and spends no seq there', async () => {
     const firstChannel = await newChannel();
     const secondChannel = await newChannel();
