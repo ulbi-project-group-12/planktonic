@@ -117,7 +117,7 @@ remains disabled; missed messages will be retrieved through REST.
 Rooms are assigned on the server only: there is no client `join` event. `RealtimeService` is the
 emitter that services and controllers use; the gateway only binds the Socket.IO server and assigns
 rooms. While `REALTIME_DEBUG=true` (always under `NODE_ENV=test`) every socket joins the
-diagnostic room `debug:channel`, and `POST /api/debug/realtime/ping` broadcasts `debug:ping` with
+diagnostic room `debug`, and `POST /api/debug/realtime/ping` broadcasts `debug:ping` with
 the sender's `instanceId` to it (202 with the same payload). While it is off the endpoint answers
 404 and sockets join no room. The compose profile `realtime` turns it on; a deployment leaves it
 unset.

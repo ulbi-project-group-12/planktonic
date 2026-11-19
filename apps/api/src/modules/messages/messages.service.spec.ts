@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
+import { RealtimePublisher } from '../../core/realtime/realtime-publisher.js';
 import { type MessageRow, MessagesRepository } from './messages.repository.js';
 import { MessagesService } from './messages.service.js';
 
@@ -18,9 +19,16 @@ const row: MessageRow = {
   createdAt: new Date('2026-11-16T10:00:00.000Z'),
 };
 
+const publish = vi.fn();
+
 async function setup(repository: Partial<MessagesRepository>) {
+  publish.mockReset();
   const moduleRef = await Test.createTestingModule({
-    providers: [MessagesService, { provide: MessagesRepository, useValue: repository }],
+    providers: [
+      MessagesService,
+      { provide: MessagesRepository, useValue: repository },
+      { provide: RealtimePublisher, useValue: { publish } },
+    ],
   }).compile();
   return moduleRef.get(MessagesService);
 }
@@ -77,6 +85,64 @@ describe('MessagesService', () => {
     await expect(service.create(CHANNEL, AUTHOR, KEY, 'hi')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('publishes message:new to the channel room after the repository resolves', async () => {
+    let committed = false;
+    const create = vi.fn(async () => {
+      await Promise.resolve();
+      committed = true;
+      return { row, created: true };
+    });
+    // After setup: setup() resets the publish mock, implementation included.
+    const service = await setup({ create });
+    let committedAtPublish: boolean | undefined;
+    publish.mockImplementation(() => {
+      committedAtPublish = committed;
+    });
+
+    const { message } = await service.create(CHANNEL, AUTHOR, KEY, 'hello');
+
+    expect(committedAtPublish).toBe(true);
+
+    expect(publish).toHaveBeenCalledExactlyOnceWith(`channel:${CHANNEL}`, 'message:new', {
+      message,
+    });
+  });
+
+  it('publishes nothing for a retry (created: false)', async () => {
+    const service = await setup({ create: vi.fn().mockResolvedValue({ row, created: false }) });
+
+    await service.create(CHANNEL, AUTHOR, KEY, 'hello');
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('publishes nothing when the key belongs to another channel (409)', async () => {
+    const elsewhere = { ...row, channelId: '00000000-0000-7000-8000-000000000009' };
+    const service = await setup({
+      create: vi.fn().mockResolvedValue({ row: elsewhere, created: false }),
+    });
+
+    await expect(service.create(CHANNEL, AUTHOR, KEY, 'hi')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('publishes nothing when the transaction fails', async () => {
+    const service = await setup({ create: vi.fn().mockRejectedValue(new Error('rolled back')) });
+
+    await expect(service.create(CHANNEL, AUTHOR, KEY, 'hi')).rejects.toThrow('rolled back');
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('publishes nothing for a missing channel', async () => {
+    const service = await setup({ create: vi.fn().mockResolvedValue(null) });
+
+    await expect(service.create(CHANNEL, AUTHOR, KEY, 'hi')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(publish).not.toHaveBeenCalled();
   });
 
   it('lists messages of an existing channel', async () => {
