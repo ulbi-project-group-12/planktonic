@@ -460,6 +460,7 @@ describe('PrototypePage', () => {
     expect(rows()).toEqual(['#1 hello']);
     expect(messageList().queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
     expect(messageList().queryByText(/^Not sent/)).not.toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Send status' })).toHaveTextContent('Message sent.');
   });
 
   it('ignores a failure that lands after message:new delivered the message', async () => {
@@ -489,6 +490,8 @@ describe('PrototypePage', () => {
     });
     expect(rows()).toEqual(['#1 hello']);
     expect(messageList().queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+    // The live region follows the feed, not the stale failure.
+    expect(screen.getByRole('status', { name: 'Send status' })).toHaveTextContent('Message sent.');
   });
 
   it('keeps text typed while a send is in flight', async () => {

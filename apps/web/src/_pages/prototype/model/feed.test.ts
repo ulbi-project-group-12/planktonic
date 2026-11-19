@@ -1,13 +1,16 @@
 import type { MessageResponse } from '@app/contracts';
 import { describe, expect, it } from 'vitest';
 import {
+  announcedFeedReducer,
   type FeedState,
   feedReducer,
   feedRows,
+  initialAnnouncedFeed,
   initialFeedState,
   mergeMessages,
   PROTOTYPE_CHANNEL_ID,
   type SendFailure,
+  sendAnnouncement,
 } from './feed';
 
 const AUTHOR_ID = '00000000-0000-7000-8000-0000000000aa';
@@ -294,5 +297,51 @@ describe('feedReducer identity', () => {
     );
     expect(seqs(state.sent)).toEqual(['7', '8', '9']);
     expect(state.unsent).toEqual([{ clientMsgId: KEY_B, body: 'b', status: 'pending' }]);
+  });
+});
+
+describe('send announcements', () => {
+  const REFUSED: SendFailure = {
+    retryable: false,
+    reason: 'the server rejected the message (400)',
+  };
+  const run = (...actions: Parameters<typeof feedReducer>[1][]) =>
+    actions.reduce(announcedFeedReducer, initialAnnouncedFeed).announcement;
+
+  it('says Sending for a new or retried row', () => {
+    expect(run(pending(KEY_A, 'a'))).toBe('Sending message…');
+    expect(run(pending(KEY_A, 'a'), failed(KEY_A), pending(KEY_A, 'a'))).toBe('Sending message…');
+  });
+
+  it('says Not sent with the Retry hint, or that retrying will not help', () => {
+    expect(run(pending(KEY_A, 'a'), failed(KEY_A))).toBe(
+      'Message not sent: no connection to the server. Press Retry to try again.',
+    );
+    expect(run(pending(KEY_A, 'a'), failed(KEY_A, REFUSED))).toBe(
+      'Message not sent: the server rejected the message (400). Retrying will not help.',
+    );
+  });
+
+  it('says Sent, and ignores a failure after message:new confirmed the message', () => {
+    expect(run(pending(KEY_A, 'a'), merge(delivered(KEY_A, 1, '1', 'a')))).toBe('Message sent.');
+    expect(run(pending(KEY_A, 'a'), merge(delivered(KEY_A, 1, '1', 'a')), failed(KEY_A))).toBe(
+      'Message sent.',
+    );
+  });
+
+  it('says Sent when message:new confirms a row that already failed', () => {
+    expect(run(pending(KEY_A, 'a'), failed(KEY_A), merge(delivered(KEY_A, 1, '1', 'a')))).toBe(
+      'Message sent.',
+    );
+  });
+
+  it("stays quiet for messages that are not this client's sends", () => {
+    expect(run(merge(delivered(KEY_B, 1, '1', 'b')))).toBe('');
+    expect(sendAnnouncement(initialFeedState, initialFeedState)).toBeNull();
+  });
+
+  it('returns the same state when the feed does not change', () => {
+    const state = announcedFeedReducer(initialAnnouncedFeed, pending(KEY_A, 'a'));
+    expect(announcedFeedReducer(state, failed(KEY_B))).toBe(state);
   });
 });

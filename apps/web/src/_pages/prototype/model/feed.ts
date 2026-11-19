@@ -153,3 +153,51 @@ export function feedRows(state: FeedState): readonly FeedRow[] {
     ...state.unsent.map((row): FeedRow => ({ ...row, key: `unsent:${row.clientMsgId}` })),
   ];
 }
+
+/** What the failed row says, read out by the "Send status" live region. */
+function failureText(failure: SendFailure): string {
+  const hint = failure.retryable ? 'Press Retry to try again.' : 'Retrying will not help.';
+  return `Message not sent: ${failure.reason}. ${hint}`;
+}
+
+/**
+ * What changed for this client's own sends between two feed states, as one sentence for a screen
+ * reader, or `null` when nothing did. It is derived from the feed itself, so it always matches the
+ * rows: a failure the reducer ignored (the message was already delivered) is never announced, and a
+ * failed row that `message:new` or history confirms later is announced as sent. When one step
+ * changes several rows, the last change wins.
+ */
+export function sendAnnouncement(prev: FeedState, next: FeedState): string | null {
+  if (prev.unsent === next.unsent) return null;
+  let said: string | null = null;
+  const before = new Map(prev.unsent.map((row) => [keyOf(row.clientMsgId), row]));
+  const after = new Set(next.unsent.map((row) => keyOf(row.clientMsgId)));
+  for (const row of prev.unsent) {
+    const key = keyOf(row.clientMsgId);
+    if (!after.has(key) && next.sent.some((message) => keyOf(message.clientMsgId) === key)) {
+      said = 'Message sent.';
+    }
+  }
+  for (const row of next.unsent) {
+    const old = before.get(keyOf(row.clientMsgId));
+    if (old?.status === row.status && (row.status !== 'failed' || old === row)) continue;
+    said = row.status === 'pending' ? 'Sending message…' : failureText(row.failure);
+  }
+  return said;
+}
+
+/** The feed plus the last thing the "Send status" live region said. */
+export interface AnnouncedFeed {
+  readonly feed: FeedState;
+  readonly announcement: string;
+}
+
+export const initialAnnouncedFeed: AnnouncedFeed = { feed: initialFeedState, announcement: '' };
+
+/** `feedReducer`, plus the announcement for whatever it changed (`sendAnnouncement`). */
+export function announcedFeedReducer(state: AnnouncedFeed, action: FeedAction): AnnouncedFeed {
+  const feed = feedReducer(state.feed, action);
+  if (feed === state.feed) return state;
+  const said = sendAnnouncement(state.feed, feed);
+  return { feed, announcement: said ?? state.announcement };
+}
