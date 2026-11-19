@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { uuidv7 } from '@/shared/lib';
 import { PROTOTYPE_CHANNEL_ID } from '../model/feed';
 import { PrototypePage } from './prototype-page';
 
@@ -377,6 +378,23 @@ describe('PrototypePage', () => {
     expect(messageList().getByRole('button', { name: 'Retry' })).toBeInTheDocument();
     expect(messageList().queryByText('Retrying will not help.')).not.toBeInTheDocument();
     expect(posted).toHaveLength(1);
+  });
+
+  it('fails the row with Retry when the 201 is for another clientMsgId', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    postResponder = (payload) =>
+      Promise.resolve(json({ ...msg(7, payload.body), clientMsgId: uuidv7() }, 201));
+    await renderConnected();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message'), 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(
+      await messageList().findByText('Not sent: the server sent an unexpected response'),
+    ).toBeInTheDocument();
+    expect(messageList().getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(messageList().queryByText('Sending…')).not.toBeInTheDocument();
+    expect(rows()).toHaveLength(1);
   });
 
   it('collapses a failed row when message:new arrives with its key', async () => {

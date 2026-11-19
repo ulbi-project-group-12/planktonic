@@ -74,12 +74,14 @@ export class SendMessageError extends Error {
 }
 
 /**
- * `POST` a message and return the stored copy. Every failure is a `SendMessageError`:
+ * `POST` a message and return the stored copy. Every failure is a `SendMessageError`, except a
+ * fetch rejection of any other kind (such as an `AbortError`), which is rethrown unchanged:
  * - `network`: fetch rejected with a TypeError (offline, DNS, connection refused);
  * - `timeout`: no answer within `REQUEST_TIMEOUT_MS` (`AbortSignal.timeout`'s TimeoutError);
  * - `server`: 5xx, 408 or 429, the server could not take it right now;
  * - `rejected`: any other 4xx, the server refused this message (the only final kind);
- * - `invalid-response`: a 201 whose body is not JSON or not a valid message, or a non-201 2xx/3xx.
+ * - `invalid-response`: a 201 whose body is not JSON, not a valid message or not the message that
+ *   was sent (another `clientMsgId` or channel), or a non-201 2xx/3xx.
  * Everything but `rejected` may be retried with the same `clientMsgId`: the server is idempotent
  * on (author, clientMsgId), so a resend after a lost or malformed 201 loses nothing and adds nothing.
  */
@@ -126,6 +128,16 @@ export async function sendMessage(
   if (!result.success) {
     console.warn('prototype: invalid POST message response', result.error);
     throw new SendMessageError('invalid-response', { status, cause: result.error });
+  }
+  // The feed replaces the local row by `clientMsgId`, so a 201 for another key or channel would
+  // leave that row on "Sending…" forever. Treat it as a malformed answer: the row fails with Retry.
+  // Both ids are compared lower-cased: the server stores the key lower-cased (UL-126).
+  if (
+    result.data.clientMsgId.toLowerCase() !== payload.clientMsgId.toLowerCase() ||
+    result.data.channelId.toLowerCase() !== channelId.toLowerCase()
+  ) {
+    console.warn('prototype: POST message response is for another message');
+    throw new SendMessageError('invalid-response', { status });
   }
   return result.data;
 }

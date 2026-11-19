@@ -105,6 +105,25 @@ describe('sendMessage', () => {
     );
   });
 
+  it.each([
+    { name: 'another clientMsgId', patch: { clientMsgId: '01900000-0000-7000-9000-0000000000ff' } },
+    { name: 'another channel', patch: { channelId: '01900000-0000-7000-8000-0000000000ff' } },
+  ])('turns a 201 for $name into a retryable invalid-response', async ({ patch }) => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    stubFetch(() => Promise.resolve(raw(JSON.stringify({ ...MESSAGE, ...patch }), 201)));
+    const error: unknown = await sendMessage(PROTOTYPE_CHANNEL_ID, PAYLOAD).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(SendMessageError);
+    expect(error).toMatchObject({ kind: 'invalid-response', status: 201, retryable: true });
+  });
+
+  it('accepts a 201 whose ids differ only in case', async () => {
+    const upper = { ...PAYLOAD, clientMsgId: PAYLOAD.clientMsgId.toUpperCase() };
+    stubFetch(() => Promise.resolve(raw(JSON.stringify(MESSAGE), 201)));
+    await expect(sendMessage(PROTOTYPE_CHANNEL_ID.toUpperCase(), upper)).resolves.toEqual(MESSAGE);
+  });
+
   it('turns a 201 with unparseable JSON into a retryable invalid-response', async () => {
     stubFetch(() => Promise.resolve(raw('not json', 201)));
     const sending = sendMessage(PROTOTYPE_CHANNEL_ID, PAYLOAD);
