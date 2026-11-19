@@ -47,17 +47,27 @@ export async function openLink(target: string): Promise<NetworkLink> {
     const outbound = connect({ host: hostname, port: Number(port), noDelay: true });
     pairs.add(inbound);
     pairs.add(outbound);
-    // One side closing or failing takes the other with it, like a single TCP flow.
+    // Like a single TCP flow: a clean end (FIN) travels through `pipe`, after what was still
+    // queued (say a server's DISCONNECT packet and close frame); a failure on one side takes
+    // the other with it at once.
     const teardown = (): void => {
       pairs.delete(inbound);
       pairs.delete(outbound);
       inbound.destroy();
       outbound.destroy();
     };
+    const closed = (hadError: boolean): void => {
+      if (hadError) {
+        teardown();
+        return;
+      }
+      pairs.delete(inbound);
+      pairs.delete(outbound);
+    };
     inbound.on('error', teardown);
     outbound.on('error', teardown);
-    inbound.on('close', teardown);
-    outbound.on('close', teardown);
+    inbound.on('close', closed);
+    outbound.on('close', closed);
     inbound.pipe(outbound);
     outbound.pipe(inbound);
   });

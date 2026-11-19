@@ -138,13 +138,12 @@ async function closeApps(scope: Scope): Promise<void> {
   );
 }
 
-/** Links, then apps (even if a link failed to close): a link pipes into an app. */
+/** Links, then apps (even if a link failed to close): a link pipes into an app. Both errors count. */
 async function closeLinksAndApps(scope: Scope): Promise<void> {
-  try {
-    await closeLinks(scope);
-  } finally {
-    await closeApps(scope);
-  }
+  const errors: unknown[] = [];
+  await closeLinks(scope).catch((error: unknown) => errors.push(error));
+  await closeApps(scope).catch((error: unknown) => errors.push(error));
+  if (errors.length > 0) throw new AggregateError(errors, 'Failed to close test links and apps');
 }
 
 const STREAM_NAME = 'socket.io'; // the adapter's default; realtime.setup.ts does not change it

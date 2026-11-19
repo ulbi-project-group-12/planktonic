@@ -87,13 +87,16 @@ function serverDisconnectOf(app: INestApplication, client: Socket): Promise<stri
  * disconnect`), and B is still `active`, so socket.io is reconnecting it by itself.
  */
 async function dropNetwork(link: NetworkLink, b: Socket): Promise<void> {
-  const clientReason = waitForDisconnect(b);
+  // The server socket first: it throws at once if B is not there, before any wait is pending.
   const serverReason = serverDisconnectOf(two(), b);
+  const clientReason = waitForDisconnect(b);
   link.drop();
-  expect(await clientReason).toMatch(/^transport (close|error)$/);
-  expect(await withTimeout(serverReason, 'the server side of B to disconnect')).toBe(
-    'transport close',
-  );
+  const [client, server] = await Promise.all([
+    clientReason,
+    withTimeout(serverReason, 'the server side of B to disconnect'),
+  ]);
+  expect(client).toMatch(/^transport (close|error)$/);
+  expect(server).toBe('transport close');
   expect(b.active).toBe(true);
 }
 

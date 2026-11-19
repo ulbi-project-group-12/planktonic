@@ -266,11 +266,18 @@ export function waitForReconnect(
     const onFailed = (): void => {
       fail(new Error(`${who} gave up reconnecting`));
     };
+    // `disconnect()` on a client that is reconnecting emits no `disconnect`; its Manager closes
+    // with `forced close` and stops retrying, so the wait settles now, not at its timeout.
+    const onClose = (reason: string): void => {
+      if (reason === 'forced close') fail(new Error(`${who} was disconnected while reconnecting`));
+    };
     client.once('connect', onConnect);
     client.io.once('reconnect_failed', onFailed);
+    client.io.on('close', onClose);
     return () => {
       client.off('connect', onConnect);
       client.io.off('reconnect_failed', onFailed);
+      client.io.off('close', onClose);
     };
   });
 }
