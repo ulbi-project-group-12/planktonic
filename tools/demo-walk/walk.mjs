@@ -27,16 +27,18 @@
 import { spawnSync } from 'node:child_process';
 import {
   appendFileSync,
-  existsSync,
-  mkdtempSync,
   copyFileSync,
+  existsSync,
+  lstatSync,
+  mkdtempSync,
+  realpathSync,
   mkdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { BEATS, CAPTIONS } from './beats.mjs';
@@ -105,6 +107,26 @@ function ffmpeg(args, what) {
     stdio: 'inherit',
   });
   if (r.status !== 0) throw new Error(`ffmpeg could not ${what}`);
+}
+
+/**
+ * A pointer file is only a hint: delete what it names only when it is, canonically, one of this
+ * tool's mkdtemp directories directly in the temp folder, a real directory (not a symlink), owned
+ * by the current user. Anything else is left alone.
+ */
+function isOwnFramesDir(path) {
+  try {
+    const stat = lstatSync(path);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) return false;
+    if (typeof process.getuid === 'function' && stat.uid !== process.getuid()) return false;
+    const real = realpathSync(path);
+    return (
+      dirname(real) === realpathSync(tmpdir()) &&
+      /^demo-walk-frames-[A-Za-z0-9]{6}$/.test(basename(real))
+    );
+  } catch {
+    return false;
+  }
 }
 
 /* ── what is drawn into the app pages ──────────────────────────────────────────────────────── */
@@ -347,16 +369,26 @@ class Walk {
   }
 
   /** --stills: both windows as the viewer sees them, in the frame, without the pointer. */
-  async still(tag) {
-    if (!STILLS) return;
+  /**
+   * `holds` (optional): checked right after B's screenshot; if it no longer holds, the still is
+   * not saved (returns false), so a still never carries a name its picture does not show.
+   */
+  async still(tag, { holds, settle = 400 } = {}) {
+    if (!STILLS) return false;
     const id = this.marks.at(-1)?.id ?? 'pre';
-    await sleep(400);
-    const name = `${String(++this.stills).padStart(3, '0')}-${id}-${tag}`;
+    await sleep(settle);
+    const name = `${String(this.stills + 1).padStart(3, '0')}-${id}-${tag}`;
     const pa = join(FRAMES, `${name}-A.png`);
     const pb = join(FRAMES, `${name}-B.png`);
-    await this.a.screenshot(pa);
     await this.b.screenshot(pb);
+    if (holds && !(await holds())) {
+      log(`still ${id}-${tag} skipped: the screen moved on during the capture`);
+      return false;
+    }
+    await this.a.screenshot(pa);
+    this.stills += 1;
     composeStill(this.bgFiles[this.caption ?? 'none'], pa, pb, join(STILL_DIR, `${name}.png`));
+    return true;
   }
 
   /** A wait the video should not show (the ping timeout, a reconnect): cut out of the recording. */
@@ -522,7 +554,8 @@ async function scenario(w) {
 
   // Back online on a slow link (latency only), so the short `syncing` state stays on screen long
   // enough to read. The reconnect back-off wait is cut; the catch-up itself is not.
-  await b.network({ offline: false, latency: 700 });
+  // A stills run screenshots during `syncing`, so it gives the catch-up longer.
+  await b.network({ offline: false, latency: STILLS ? 1500 : 700 });
   await w.skip(() =>
     b.waitFor(
       `['connecting', 'syncing', 'connected'].includes(document.querySelector('[data-state]')?.dataset.state)`,
@@ -533,10 +566,14 @@ async function scenario(w) {
   // No `open` still here: it would take long enough to miss `syncing`; the loop takes one instead.
   await w.beat('b-online', { still: false });
   const seen = new Set();
+  let syncingStill = false;
+  const isSyncing = async () => (await b.state()) === 'syncing';
   const until = Date.now() + 30_000;
   for (;;) {
     const state = await b.state();
-    if (state === 'syncing' && !seen.has('syncing')) await w.still('syncing');
+    if (state === 'syncing' && !syncingStill) {
+      syncingStill = await w.still('syncing', { holds: isSyncing, settle: 0 });
+    }
     seen.add(state);
     if (seen.has('syncing') && (await b.state()) === 'connected') break;
     if ((await b.state()) === 'connected' && (await b.rows()).length >= 7) break;
@@ -546,6 +583,8 @@ async function scenario(w) {
   log(`B states after online: ${[...seen].join(' → ')}`);
   // The caption says `syncing` shows: a run that never saw it must not become the video.
   if (!seen.has('syncing')) throw new Error('B never showed syncing on its way back online');
+  if (STILLS && !syncingStill)
+    throw new Error('no still caught B in syncing: run the stills walk again');
   await b.network({ offline: false, latency: 0 });
   await b.waitFor(hasRow(`#7 ${five[4]}`), '#7 in B');
 
@@ -813,7 +852,7 @@ async function main() {
   }
   mkdirSync(FRAMES, { recursive: true });
   // The previous walk's frames go once a new walk owns the pointer; only our own temp dirs.
-  if (previousFrames?.startsWith(FRAMES_PREFIX) && previousFrames !== FRAMES) {
+  if (previousFrames && previousFrames !== FRAMES && isOwnFramesDir(previousFrames)) {
     rmSync(previousFrames, { recursive: true, force: true });
   }
   writeFileSync(FRAMES_POINTER, `${FRAMES}\n`);
