@@ -81,34 +81,151 @@ describe('createFeedSync', () => {
     expect(seqs()).toEqual([1, 2, 3]);
   });
 
-  it('a gap is not merged and reports gap; the catch-up brings the missing one', async () => {
+  it('a gap is merged at once and asks for a catch-up from below it, which fills it', async () => {
     let server = range(1, 41);
-    const { sync, seqs } = setup(() => server);
+    const { sync, fetchPage, seqs } = setup(() => server);
     await sync.run();
     server = range(1, 43);
 
-    expect(sync.receive(msg(43))).toBe('gap');
-    expect(seqs().at(-1)).toBe(41);
+    expect(sync.receive(msg(43))).toBe('catch-up');
+    expect(seqs().slice(-2)).toEqual([41, 43]);
     await sync.run();
     expect(seqs().slice(-3)).toEqual([41, 42, 43]);
+    expect(fetchPage.mock.calls.at(-1)?.[0]).toEqual({ afterSeq: '41', limit: '100' });
   });
 
-  it('the next seq and a repeat are merged, a repeat as one row', () => {
-    const { sync, seqs } = setup(() => []);
-    expect(sync.receive(msg(1))).toBe('merged');
-    expect(sync.receive(msg(1))).toBe('merged');
-    expect(seqs()).toEqual([1]);
+  it("the user's own 201 above a hole asks for the catch-up too (CR-01)", async () => {
+    let server = range(1, 41);
+    const { sync, seqs } = setup(() => server);
+    await sync.run();
+    // 42-44 came while the socket was away; the user's own POST got 45.
+    server = range(1, 45);
+
+    expect(sync.receive(msg(45))).toBe('catch-up');
+    await sync.run();
+    expect(seqs().slice(-5)).toEqual([41, 42, 43, 44, 45]);
+  });
+
+  it('a reconnect after an own 201 above a hole asks from below the hole', async () => {
+    let server = range(1, 41);
+    const { sync, fetchPage } = setup(() => server);
+    await sync.run();
+    server = range(1, 45);
+    sync.receive(msg(45));
+
+    await sync.run();
+    expect(fetchPage.mock.calls.at(-1)?.[0]).toEqual({ afterSeq: '41', limit: '100' });
+  });
+
+  it('the next seq and a repeat are merged without a catch-up, a repeat as one row', async () => {
+    const { sync, seqs } = setup(() => range(1, 1));
+    await sync.run();
+    expect(sync.receive(msg(2))).toBe('ok');
+    expect(sync.receive(msg(2))).toBe('ok');
+    expect(seqs()).toEqual([1, 2]);
   });
 
   it('before the first load, a live message is merged and does not become the baseline', async () => {
     const server = range(1, 43);
     const { sync, fetchPage, seqs } = setup(() => server);
 
-    expect(sync.receive(msg(43))).toBe('merged');
+    expect(sync.receive(msg(43))).toBe('ok');
     await sync.run();
 
     expect(fetchPage.mock.calls[0]?.[0]).toEqual({ limit: '100' });
     expect(seqs()).toHaveLength(43);
+  });
+
+  it('an empty channel at load: a live 2 means 1 was lost, and the catch-up brings it (WR-02)', async () => {
+    let server: MessageResponse[] = [];
+    const { sync, fetchPage, seqs } = setup(() => server);
+    await sync.run();
+    server = range(1, 2);
+
+    expect(sync.receive(msg(2))).toBe('catch-up');
+    await sync.run();
+    expect(seqs()).toEqual([1, 2]);
+    expect(fetchPage.mock.calls.at(-1)?.[0]).toEqual({ limit: '100' });
+  });
+
+  it('an empty channel at load: a live 1 is just merged', async () => {
+    const { sync, seqs } = setup(() => []);
+    await sync.run();
+    expect(sync.receive(msg(1))).toBe('ok');
+    expect(seqs()).toEqual([1]);
+  });
+
+  it('a hole made while a pass runs is filled by one follow-up pass, not one per event', async () => {
+    let server = range(1, 2);
+    const { sync, fetchPage, seqs } = setup(() => server);
+    await sync.run();
+    let release!: () => void;
+    const gate = new Promise<void>((done) => {
+      release = done;
+    });
+    // The catch-up's GET is answered with the server as it was when it was sent (up to 4).
+    fetchPage.mockImplementationOnce(async (query) => {
+      const answer = { messages: range(3, 4), hasMore: false };
+      expect(query.afterSeq).toBe('2');
+      await gate;
+      return answer;
+    });
+    server = range(1, 4);
+    const running = sync.run();
+    // While it is in flight, 6 and 7 arrive live (5 was lost): no new catch-up is asked for.
+    server = range(1, 7);
+    expect(sync.receive(msg(6))).toBe('ok');
+    expect(sync.receive(msg(7))).toBe('ok');
+    release();
+    await running;
+
+    expect(seqs()).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(fetchPage).toHaveBeenCalledTimes(3);
+  });
+
+  it('a run requested while a pass fails still gets its pass (WR-01)', async () => {
+    const { sync, fetchPage, onResult, seqs } = setup(() => range(1, 2));
+    let fail!: (error: Error) => void;
+    fetchPage.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          fail = reject;
+        }),
+    );
+    const first = sync.run();
+    // A reconnect while the GET hangs.
+    void sync.run();
+    fail(new Error('timeout'));
+    await first;
+
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    expect(seqs()).toEqual([1, 2]);
+    expect(onResult).toHaveBeenLastCalledWith({ ok: true });
+  });
+
+  it('after a failed pass, a hole waits for Retry instead of a GET per live message', async () => {
+    let server = range(1, 2);
+    const { sync, fetchPage } = setup(() => server);
+    await sync.run();
+    fetchPage.mockRejectedValueOnce(new Error('503'));
+    await sync.run();
+    server = range(1, 6);
+
+    expect(sync.receive(msg(5))).toBe('ok');
+    expect(sync.receive(msg(6))).toBe('ok');
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    await sync.run();
+    expect(sync.receive(msg(7))).toBe('ok');
+  });
+
+  it('a run() right after a pass settles starts a new pass (IN-01)', async () => {
+    const { sync, fetchPage } = setup(() => range(1, 1));
+    const first = sync.run();
+    await first;
+    const second = sync.run();
+    expect(second).not.toBe(first);
+    await second;
+    expect(fetchPage).toHaveBeenCalledTimes(2);
   });
 
   it('hasMore resets the feed to the newest page', async () => {

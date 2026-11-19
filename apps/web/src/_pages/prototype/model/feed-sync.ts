@@ -1,9 +1,10 @@
 import {
   catchUp,
   type FetchMessagesPage,
-  isSeqGap,
+  maxSeq,
   MESSAGES_PAGE_LIMIT,
   type MessageResponse,
+  syncedSeq,
 } from '@app/contracts';
 import { createStore, type StoreApi } from 'zustand';
 import {
@@ -50,20 +51,32 @@ export interface FeedSyncOptions {
 export interface FeedSync {
   /**
    * Brings the feed up to date (STACK §4.4): the newest page the first time, then the messages
-   * after the last known `seq`, or the newest page again when the server says `hasMore`. Single
-   * flight: a call while a pass runs makes one more pass after it and shares its promise, so a
-   * reconnect during a gap catch-up (or two gaps) never runs two requests side by side. Never
-   * rejects; a failure goes to `onResult`.
+   * after the end of the gapless run (`syncedSeq`), or the newest page again when the server says
+   * `hasMore`. Single flight: a call while a pass runs makes one more pass after it and shares its
+   * promise, so a reconnect during a gap catch-up never runs two requests side by side, and a call
+   * that lands while a pass fails still gets its pass. If the feed still has a hole after a pass
+   * (a message arrived above the page meanwhile), one more pass runs, once. Never rejects; a
+   * failure goes to `onResult`.
    */
   run(): Promise<void>;
   /**
-   * A live `message:new` for this channel. A message that skips a seq (the feed ends at 41 and 43
-   * arrives) is not merged: it only reports `gap`, and the caller runs the catch-up, which still
-   * asks `afterSeq=41` and so brings 42 and 43 together. Merging 43 first would move the last
-   * known seq past 42, and 42 would never come. Anything else is merged (`merged`); a repeat or a
-   * message already in a page is one row (`mergeMessages` by `id`).
+   * A confirmed message from outside the catch-up: a live `message:new` for this channel, or this
+   * client's own `POST` 201. It is always merged (by `id`, so a repeat is one row). It returns
+   * `catch-up` when it shows that the feed missed something and the caller should `run()`:
+   * - it sits above a hole (the feed is complete to 41 and 43 arrives, or the user's own 201 is
+   *   45 while 42-44 never came); the catch-up asks from 41, so the hole fills;
+   * - the channel was empty at load and the first message is not seq 1.
+   *
+   * It returns `ok` otherwise, and also while a pass runs (that pass's end checks for holes) or
+   * after a failed pass: those wait for Retry or the next reconnect, so a broken api is not asked
+   * again on every live message.
    */
-  receive(message: MessageResponse): 'merged' | 'gap';
+  receive(message: MessageResponse): 'ok' | 'catch-up';
+}
+
+/** Whether the confirmed feed misses a seq below its greatest one. */
+function hasHole(sent: readonly MessageResponse[]): boolean {
+  return sent.length > 0 && syncedSeq(sent) !== maxSeq(sent);
 }
 
 export function createFeedSync(options: FeedSyncOptions): FeedSync {
@@ -71,33 +84,59 @@ export function createFeedSync(options: FeedSyncOptions): FeedSync {
   const limit = options.limit ?? MESSAGES_PAGE_LIMIT;
   let running: Promise<void> | null = null;
   // `run()` sets it while `loop` awaits; read through a function, since flow analysis cannot see
-  // that write and would treat the loop condition as always false.
+  // that write and would treat the loop conditions as always false.
   let again = false;
   const rerunRequested = () => again;
   // Until the first pass succeeds the feed has no baseline: live messages merged meanwhile must not
   // become the `afterSeq` (1..42 would be skipped), so the pass loads the newest page instead.
   let loaded = false;
+  // The next pass loads the newest page even though the feed is not empty (WR-02: the channel was
+  // empty at load and a live 2 arrived, so 1 is missing and no `afterSeq` would find it).
+  let fromLatest = false;
+  // The last pass failed: holes wait for Retry or a reconnect instead of a GET per live message.
+  let failed = false;
 
   const pass = async () => {
-    const result = await catchUp(loaded ? feed.sent() : [], fetchPage, limit);
+    const base = loaded && !fromLatest ? feed.sent() : [];
+    const result = await catchUp(base, fetchPage, limit);
     if (signal.aborted) return;
     feed.dispatch({
       type: result.kind === 'append' ? 'merge' : 'reset',
       messages: result.messages,
     });
     loaded = true;
+    fromLatest = false;
   };
 
   const loop = async () => {
-    try {
-      do {
-        again = false;
+    let followedUp = false;
+    for (;;) {
+      again = false;
+      try {
         await pass();
-      } while (rerunRequested() && !signal.aborted);
-      if (!signal.aborted) onResult?.({ ok: true });
-    } catch (error) {
-      if (!signal.aborted) onResult?.({ ok: false, error });
+      } catch (error) {
+        if (signal.aborted) break;
+        // A trigger that came in while this pass failed (a reconnect, say) gets its own try.
+        if (rerunRequested()) continue;
+        failed = true;
+        onResult?.({ ok: false, error });
+        break;
+      }
+      if (signal.aborted) break;
+      if (rerunRequested()) continue;
+      // A message merged above the page while it was in flight can leave a hole: one more pass.
+      // Only once, so a hole the server cannot fill never turns into a request loop.
+      if (!followedUp && (fromLatest || hasHole(feed.sent()))) {
+        followedUp = true;
+        continue;
+      }
+      failed = false;
+      onResult?.({ ok: true });
+      break;
     }
+    // Cleared in the same tick as the last `again` check, so no `run()` can slip in between and
+    // get a promise that settles without running a pass for it.
+    running = null;
   };
 
   return {
@@ -106,15 +145,16 @@ export function createFeedSync(options: FeedSyncOptions): FeedSync {
         again = true;
         return running;
       }
-      running = loop().finally(() => {
-        running = null;
-      });
+      running = loop();
       return running;
     },
     receive(message) {
-      if (loaded && isSeqGap(feed.sent(), message)) return 'gap';
+      const emptyBefore = feed.sent().length === 0;
       feed.dispatch({ type: 'merge', messages: [message] });
-      return 'merged';
+      if (!loaded) return 'ok';
+      if (emptyBefore && BigInt(message.seq) > 1n) fromLatest = true;
+      if (!fromLatest && !hasHole(feed.sent())) return 'ok';
+      return running || failed ? 'ok' : 'catch-up';
     },
   };
 }

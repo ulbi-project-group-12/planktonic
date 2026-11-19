@@ -103,7 +103,7 @@ export function PrototypePage() {
       }
       if (result.data.message.channelId !== PROTOTYPE_CHANNEL_ID) return;
       // A skipped seq (41 → 43) means an event was lost on a live connection: same catch-up.
-      if (sync.receive(result.data.message) === 'gap') void syncWith(() => sync.run());
+      if (sync.receive(result.data.message) === 'catch-up') void syncWith(() => sync.run());
     };
 
     // Listeners first, so nothing the socket emits after connect() is missed.
@@ -138,7 +138,11 @@ export function PrototypePage() {
     dispatch({ type: 'pending', clientMsgId, body });
     try {
       const message = await sendMessage(PROTOTYPE_CHANNEL_ID, { clientMsgId, body });
-      dispatch({ type: 'merge', messages: [message] });
+      // Through the catch-up runner like a live event: the 201 can be the first sign of a hole
+      // (others' messages lost while this client was away), and its seq must not hide it.
+      const sync = syncRef.current;
+      if (!sync) dispatch({ type: 'merge', messages: [message] });
+      else if (sync.receive(message) === 'catch-up') void syncWith(() => sync.run());
     } catch (error) {
       console.warn('prototype: send failed', error);
       dispatch({ type: 'failed', clientMsgId, failure: classifySendError(error) });

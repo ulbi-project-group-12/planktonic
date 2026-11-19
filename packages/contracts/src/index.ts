@@ -21,6 +21,7 @@ export {
   maxSeq,
   mergeMessages,
   resetFeed,
+  syncedSeq,
 } from './feed-sync.js';
 export {
   type ClientToServerEvents,

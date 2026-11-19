@@ -138,11 +138,15 @@ How it works:
    §4.4). Connection State Recovery is off, so what the socket missed comes over REST:
    - the first time it loads the newest page (one request per connect, not a history load plus
      a catch-up);
-   - after that it asks `GET …/messages?afterSeq=<last known seq>&limit=100`, and merges the page;
+   - after that it asks `GET …/messages?afterSeq=<seq>&limit=100`, where `<seq>` is the end of
+     the feed's gapless run, not its greatest seq, and merges the page;
    - if the answer says `hasMore`, the client missed more than a page: the feed resets to the
      newest page (keeping anything newer that arrived meanwhile) instead of paging on;
-   - a live `message:new` that skips a seq (41, then 43) is not merged; it runs the same catch-up
-     from 41, so 42 and 43 arrive together.
+   - a message that lands above a hole runs the same catch-up from below the hole. That covers a
+     live `message:new` that skips a seq (41, then 43) and the user's own `POST` 201 (45 while
+     42–44 never came). 43 shows at once, and 42 fills in when the page arrives. While a pass
+     runs, holes wait for its end (one follow-up pass at most); after a failed pass they wait for
+     Retry or the next reconnect.
 
    The catch-up logic (`catchUp`, `mergeMessages`, `resetFeed`) is in `@app/contracts`, so the
    api's integration tests run the same code. Its runner (`model/feed-sync.ts`) runs one pass at a

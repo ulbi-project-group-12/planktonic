@@ -796,6 +796,23 @@ describe('PrototypePage', () => {
       expect(historyGets().at(-1)).toBe(`GET ${MESSAGES_URL}?afterSeq=2&limit=100`);
     });
 
+    it("the user's own 201 above messages it never got fetches them (no lost messages)", async () => {
+      history = range(1, 2);
+      await renderConnected();
+      await screen.findByText('#2 m2');
+      // 3 and 4 were sent by others and never reached this client's socket.
+      history = [...range(1, 4), msg(5, 'mine')];
+      postResponder = (payload) => created(payload, 5);
+
+      const user = userEvent.setup();
+      await user.type(screen.getByLabelText('Message'), 'mine');
+      await user.click(screen.getByRole('button', { name: 'Send' }));
+
+      expect(await screen.findByText('#3 m3')).toBeInTheDocument();
+      expect(rows()).toEqual([...labels(1, 4), '#5 mine']);
+      expect(historyGets().at(-1)).toBe(`GET ${MESSAGES_URL}?afterSeq=2&limit=100`);
+    });
+
     it('on hasMore it resets the feed to the newest page instead of paging on', async () => {
       history = range(1, 2);
       await renderConnected();

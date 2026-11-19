@@ -49,12 +49,38 @@ export function maxSeq(messages: readonly MessageResponse[]): string | null {
 }
 
 /**
- * Whether a live message shows that something before it was lost: the feed holds seq 41 and 43
- * arrives, so 42 never came (a Redis hiccup on a live connection, STACK §4.4). An empty feed has
- * nothing to be behind of, an old or repeated seq is not a gap, and neither is the next one.
+ * The end of the gapless run of seqs that starts at the feed's lowest one, or `null` for an empty
+ * feed: for 1, 2, 3, 5 it is 3. A channel's seqs have no holes (UL-125), so a hole in the feed is
+ * a message this client never got, and the catch-up must ask from below it. The greatest seq
+ * would not do: the user's own `POST` 201 (or a live event kept through a reset) can sit above a
+ * hole, and asking after it would skip the hole for good.
  */
-export function isSeqGap(feed: readonly MessageResponse[], incoming: MessageResponse): boolean {
-  const known = maxSeq(feed);
+export function syncedSeq(messages: readonly MessageResponse[]): string | null {
+  if (messages.length === 0) return null;
+  const seqs = [...new Set(messages.map((message) => BigInt(message.seq)))].sort((a, b) =>
+    a < b ? -1 : a > b ? 1 : 0,
+  );
+  let end = seqs[0] ?? 0n;
+  for (const seq of seqs.slice(1)) {
+    if (seq !== end + 1n) break;
+    end = seq;
+  }
+  return end.toString();
+}
+
+/**
+ * Whether `incoming` shows that something before it was lost: the feed is complete up to 41 and
+ * 43 arrives, so 42 never came (a Redis hiccup on a live connection, STACK §4.4). A message above
+ * a hole the feed already has is a gap too. An old or repeated seq is not, and neither is the next
+ * one. An empty feed compares against `baseline`: `'0'` once a load has shown the channel empty
+ * (so a live 2 means 1 was lost), `null` (the default) when nothing is known yet.
+ */
+export function isSeqGap(
+  feed: readonly MessageResponse[],
+  incoming: MessageResponse,
+  baseline: string | null = null,
+): boolean {
+  const known = syncedSeq(feed) ?? baseline;
   if (known === null) return false;
   return BigInt(incoming.seq) > BigInt(known) + 1n;
 }
@@ -70,7 +96,7 @@ export type FetchMessagesPage = (query: GetMessagesQueryInput) => Promise<CatchU
 
 /**
  * What the feed should do with the result:
- * - `append`: merge `messages` into the feed (they are the ones after its last `seq`);
+ * - `append`: merge `messages` into the feed (they are the ones after its gapless run);
  * - `reset`: the feed is too far behind or empty; replace its confirmed messages with `messages`,
  *   the newest page (keeping anything newer that arrived while the request ran, see `resetFeed`).
  */
@@ -82,7 +108,8 @@ export type CatchUpResult =
  * The catch-up after a reconnect or a seq gap (STACK §4.4, step 2), for one channel:
  * - an empty feed loads the newest page (`reset`), which also makes it the initial load, so the
  *   first `connect` sends one request, not a history load plus a catch-up;
- * - otherwise it asks for the messages after the feed's greatest `seq`, one page of `limit`;
+ * - otherwise it asks for the messages after the end of the feed's gapless run (`syncedSeq`), one
+ *   page of `limit`, so a hole below a later message is filled too;
  * - if the server says `hasMore`, the client missed more than a page: rather than paging forward
  *   without end, it loads the newest page once and the feed resets to it (`reset`).
  *
@@ -94,7 +121,7 @@ export async function catchUp(
   fetchPage: FetchMessagesPage,
   limit: number = MESSAGES_PAGE_LIMIT,
 ): Promise<CatchUpResult> {
-  const afterSeq = maxSeq(feed);
+  const afterSeq = syncedSeq(feed);
   const pageLimit = String(limit);
   if (afterSeq === null) {
     const latest = await fetchPage({ limit: pageLimit });

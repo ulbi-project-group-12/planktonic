@@ -109,17 +109,22 @@ const catchUps = new Set<CatchUpTask>();
 // Catch-ups started and not yet settled. `syncing` ends when the last one does, so a catch-up from
 // an earlier connection that ends late does not cut the current one short.
 let running = 0;
+// Bumped by the test reset: a catch-up started before it must not touch the new counter.
+let generation = 0;
 
 /** Runs `task`, counted as a running catch-up; never rejects (the task reports its own errors). */
 async function track(task: () => Promise<unknown>): Promise<void> {
+  const mine = generation;
   running += 1;
   try {
     await task();
   } catch (error) {
     console.warn('connection: a catch-up failed', error);
   } finally {
-    running -= 1;
-    if (running === 0) apply({ type: 'sync_done' });
+    if (mine === generation) {
+      running -= 1;
+      if (running === 0) apply({ type: 'sync_done' });
+    }
   }
 }
 
@@ -148,6 +153,7 @@ export function syncWith(task: CatchUpTask): Promise<void> {
 export function resetConnectionStore(): void {
   catchUps.clear();
   running = 0;
+  generation += 1;
   connectionStore.setState(INITIAL, true);
 }
 

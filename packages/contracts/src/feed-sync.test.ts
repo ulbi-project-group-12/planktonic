@@ -8,6 +8,7 @@ import {
   maxSeq,
   mergeMessages,
   resetFeed,
+  syncedSeq,
 } from './feed-sync.js';
 import type { GetMessagesQueryInput, MessageResponse } from './message.js';
 
@@ -70,6 +71,19 @@ describe('maxSeq', () => {
   });
 });
 
+describe('syncedSeq', () => {
+  it('is null for an empty feed and the end of the gapless run otherwise', () => {
+    expect(syncedSeq([])).toBeNull();
+    expect(syncedSeq([msg(3), msg(1), msg(2)])).toBe('3');
+    expect(syncedSeq([msg(1), msg(2), msg(3), msg(5)])).toBe('3');
+    expect(syncedSeq([msg(9), msg(10), msg(12)])).toBe('10');
+  });
+
+  it('counts a repeated seq once', () => {
+    expect(syncedSeq([msg(1), msg(1), msg(2)])).toBe('2');
+  });
+});
+
 describe('isSeqGap', () => {
   it('41 then 43 is a gap', () => {
     expect(isSeqGap([msg(40), msg(41)], msg(43))).toBe(true);
@@ -82,8 +96,16 @@ describe('isSeqGap', () => {
     expect(isSeqGap(feed, msg(41))).toBe(false);
   });
 
-  it('an empty feed has no gap', () => {
+  it('an empty feed has no gap unless a load set the baseline', () => {
     expect(isSeqGap([], msg(43))).toBe(false);
+    expect(isSeqGap([], msg(1), '0')).toBe(false);
+    expect(isSeqGap([], msg(2), '0')).toBe(true);
+  });
+
+  it('a message above an existing hole is a gap, even if it is max + 1', () => {
+    // 42-44 were lost; the user's own 201 put 45 in the feed.
+    const feed = [msg(40), msg(41), msg(45)];
+    expect(isSeqGap(feed, msg(46))).toBe(true);
   });
 });
 
@@ -116,6 +138,24 @@ describe('catchUp', () => {
 
     expect(result).toEqual({ kind: 'reset', messages: [msg(9), msg(10)] });
     expect(fetchPage.mock.calls).toEqual([[{ afterSeq: '2', limit: '2' }], [{ limit: '2' }]]);
+  });
+
+  it('asks from below a hole, not after the greatest seq (own 201 above the hole)', async () => {
+    const fetchPage = fetcher({
+      '41': { messages: [msg(42), msg(43), msg(44), msg(45)], hasMore: false },
+    });
+
+    const result = await catchUp([msg(40), msg(41), msg(45)], fetchPage);
+
+    expect(fetchPage.mock.calls).toEqual([[{ afterSeq: '41', limit: '100' }]]);
+    expect(seqs(applyCatchUp([msg(40), msg(41), msg(45)], result))).toEqual([
+      '40',
+      '41',
+      '42',
+      '43',
+      '44',
+      '45',
+    ]);
   });
 
   it('a failed request rejects and is not retried', async () => {

@@ -123,16 +123,27 @@ describe('GET messages pages (UL-130)', () => {
     expect((await getMessages(apps[0]!, channelId, { limit: '101' })).status).toBe(400);
   });
 
-  it.each([{ afterSeq: 'abc' }, { afterSeq: '-1' }, { afterSeq: '1e2' }, { limit: '0' }])(
-    'returns 400 for %j and reads nothing',
-    async (query) => {
-      const channelId = await createChannel(stand.prisma);
+  it.each([
+    { afterSeq: 'abc' },
+    { afterSeq: '-1' },
+    { afterSeq: '1e2' },
+    { afterSeq: '9223372036854775808' },
+    { limit: '0' },
+  ])('returns 400 for %j', async (query) => {
+    const channelId = await createChannel(stand.prisma);
 
-      const response = await getMessages(apps[0]!, channelId, query);
+    const response = await getMessages(apps[0]!, channelId, query);
 
-      expect(response.status).toBe(400);
-    },
-  );
+    expect(response.status).toBe(400);
+  });
+
+  it('the largest bigint afterSeq is a valid, empty page (no database error)', async () => {
+    const channelId = await createChannel(stand.prisma);
+    expect(await page(channelId, { afterSeq: '9223372036854775807' })).toEqual({
+      seqs: [],
+      hasMore: false,
+    });
+  });
 
   it('a missing channel is 404 with afterSeq too', async () => {
     expect((await getMessages(apps[0]!, randomUUID(), { afterSeq: '1' })).status).toBe(404);
