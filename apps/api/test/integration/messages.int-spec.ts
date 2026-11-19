@@ -6,80 +6,38 @@
 // UL-126 adds idempotency: a retry with the same clientMsgId returns the stored message and does
 // not advance channels.last_seq, also when the copies race each other.
 import { randomUUID, randomUUIDv7 } from 'node:crypto';
-import type { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { GetMessagesResponse, MessageResponse } from '@app/contracts';
-import { AppModule } from '../../src/app.module.js';
-import { configureApp } from '../../src/app.setup.js';
-import { PrismaClient } from '../../src/generated/prisma/client.js';
 import { DEFAULT_AUTHOR_ID } from '../../src/modules/messages/default-author.js';
 import { MessagesRepository } from '../../src/modules/messages/messages.repository.js';
+import { createChannel, getMessages, postMessage } from './support/http.js';
+import { useStand } from './support/stand.js';
 
 const PARALLEL_SENDS = 20;
 const N = String(PARALLEL_SENDS);
 const PARALLEL_RETRIES = 10;
-const OTHER_AUTHOR_ID = randomUUIDv7();
 
-let app: INestApplication;
-let baseUrl: string;
-let prisma: PrismaClient;
-let repository: MessagesRepository;
-const createdChannels: string[] = [];
-
-beforeAll(async () => {
-  prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
-  });
-  await prisma.user.upsert({
-    where: { id: DEFAULT_AUTHOR_ID },
-    update: {},
-    create: { id: DEFAULT_AUTHOR_ID, name: 'test-user' },
-  });
-  await prisma.user.create({ data: { id: OTHER_AUTHOR_ID, name: 'it-other-author' } });
-
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-  app = configureApp(moduleRef.createNestApplication({ logger: false }));
-  await app.listen(0, '127.0.0.1');
-  baseUrl = await app.getUrl();
-  repository = app.get(MessagesRepository);
-});
-
-afterAll(async () => {
-  await app.close();
-  // Each test owns a fresh channel; remove them so reruns start clean.
-  await prisma.message.deleteMany({ where: { channelId: { in: createdChannels } } });
-  await prisma.channel.deleteMany({ where: { id: { in: createdChannels } } });
-  await prisma.user.delete({ where: { id: OTHER_AUTHOR_ID } });
-  await prisma.$disconnect();
-});
-
-async function newChannel(): Promise<string> {
-  const channel = await prisma.channel.create({ data: { name: `it-${randomUUID()}` } });
-  createdChannels.push(channel.id);
-  return channel.id;
+// One app is enough here; no realtime adapter, as before the stand.
+const stand = useStand({ instances: ['test-api-1'], realtime: false });
+function newChannel(): Promise<string> {
+  return createChannel(stand.prisma);
 }
 
-function post(
-  channelId: string,
-  body: string,
-  clientMsgId: string = randomUUIDv7(),
-): Promise<Response> {
-  return fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ clientMsgId, body }),
-  });
+function post(channelId: string, body: string, clientMsgId?: string): Promise<Response> {
+  return postMessage(stand.apps[0]!, channelId, body, clientMsgId);
+}
+
+function repository(): MessagesRepository {
+  return stand.apps[0]!.get(MessagesRepository);
 }
 
 async function lastSeq(channelId: string): Promise<bigint> {
-  const channel = await prisma.channel.findUniqueOrThrow({ where: { id: channelId } });
+  const channel = await stand.prisma.channel.findUniqueOrThrow({ where: { id: channelId } });
   return channel.lastSeq;
 }
 
 function rowsWithKey(clientMsgId: string) {
-  return prisma.message.findMany({ where: { clientMsgId } });
+  return stand.prisma.message.findMany({ where: { clientMsgId } });
 }
 
 describe('messages against Postgres', () => {
@@ -91,9 +49,9 @@ describe('messages against Postgres', () => {
     expect(response.status).toBe(201);
     const message = MessageResponse.parse(await response.json());
     expect(message).toMatchObject({ seq: '1', channelId, authorId: DEFAULT_AUTHOR_ID });
-    const row = await prisma.message.findUniqueOrThrow({ where: { id: message.id } });
+    const row = await stand.prisma.message.findUniqueOrThrow({ where: { id: message.id } });
     expect(row.seq).toBe(1n);
-    const channel = await prisma.channel.findUniqueOrThrow({ where: { id: channelId } });
+    const channel = await stand.prisma.channel.findUniqueOrThrow({ where: { id: channelId } });
     expect(channel.lastSeq).toBe(1n);
   });
 
@@ -113,7 +71,7 @@ describe('messages against Postgres', () => {
     expect(seqs).toEqual(Array.from({ length: PARALLEL_SENDS }, (_, i) => i + 1));
 
     // GET returns exactly those messages, ascending by seq.
-    const list = await fetch(`${baseUrl}/api/channels/${channelId}/messages`);
+    const list = await getMessages(stand.apps[0]!, channelId);
     expect(list.status).toBe(200);
     const { messages } = GetMessagesResponse.parse(await list.json());
     expect(messages.map((m) => m.seq)).toEqual(seqs.map(String));
@@ -124,7 +82,7 @@ describe('messages against Postgres', () => {
     const missing = randomUUID();
 
     expect((await post(missing, 'hello')).status).toBe(404);
-    expect((await fetch(`${baseUrl}/api/channels/${missing}/messages`)).status).toBe(404);
+    expect((await getMessages(stand.apps[0]!, missing)).status).toBe(404);
   });
 });
 
@@ -185,7 +143,7 @@ describe('idempotent send (UL-126)', () => {
 
     const results = await Promise.all(
       Array.from({ length: PARALLEL_RETRIES }, () =>
-        repository.create(channelId, DEFAULT_AUTHOR_ID, key, 'racing'),
+        repository().create(channelId, DEFAULT_AUTHOR_ID, key, 'racing'),
       ),
     );
 
@@ -197,9 +155,11 @@ describe('idempotent send (UL-126)', () => {
   it('the same key from another author is a different message', async () => {
     const channelId = await newChannel();
     const key = randomUUIDv7();
+    const OTHER_AUTHOR_ID = randomUUIDv7();
+    await stand.prisma.user.create({ data: { id: OTHER_AUTHOR_ID, name: 'it-other-author' } });
 
-    const mine = await repository.create(channelId, DEFAULT_AUTHOR_ID, key, 'mine');
-    const theirs = await repository.create(channelId, OTHER_AUTHOR_ID, key, 'theirs');
+    const mine = await repository().create(channelId, DEFAULT_AUTHOR_ID, key, 'mine');
+    const theirs = await repository().create(channelId, OTHER_AUTHOR_ID, key, 'theirs');
 
     expect([mine?.created, theirs?.created]).toEqual([true, true]);
     expect(theirs?.row.id).not.toBe(mine?.row.id);

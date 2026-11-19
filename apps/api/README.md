@@ -207,37 +207,88 @@ pnpm --filter @app/api exec vitest run test/health.e2e-spec.ts
 
 ### Integration tests (real services)
 
-Specs in `test/integration/` as `*.int-spec.ts` boot the whole `AppModule` against the services
-from `pnpm services:up`. `vitest.integration.config.ts` runs them one file at a time; `pnpm test`
-never does, so CI (no services yet) skips them. Both URLs must be exported: under `NODE_ENV`
-`test` nothing reads `.env`, and a missing URL fails the run rather than skipping it.
+Specs in `test/integration/` as `*.int-spec.ts` run against real Postgres and Redis.
+`vitest.integration.config.ts` runs them one file at a time; `pnpm test` never does and needs no
+services. Both URLs must be set: under `NODE_ENV` `test` nothing reads `.env`, and a missing
+URL fails the run rather than skipping it.
+
+The stand wipes both stores before every test, so it only accepts a database whose name ends with
+`_test` and a Redis database other than 0. Use the compose services with their own test database
+(`pnpm db:migrate` creates `app_test` on first run) and Redis database 1:
 
 ```sh
 pnpm services:up
-pnpm db:migrate
 pnpm --filter @app/contracts build
 pnpm --filter @app/api generate
-DATABASE_URL=postgresql://app:app_dev_password@127.0.0.1:55432/app \
-REDIS_URL=redis://127.0.0.1:56379 pnpm --filter @app/api test:integration
+DATABASE_URL=postgresql://app:app_dev_password@127.0.0.1:55432/app_test pnpm db:migrate
+DATABASE_URL=postgresql://app:app_dev_password@127.0.0.1:55432/app_test \
+REDIS_URL=redis://127.0.0.1:56379/1 pnpm --filter @app/api test:integration
 ```
 
+The URLs are set per command, not exported, so a later `pnpm dev` or `pnpm db:migrate` in the
+same shell still uses the dev database.
+
 `generate` and the contracts build are needed because the specs import the git-ignored Prisma
-client and `@app/contracts` (from its `dist`), and `test:integration` does not go through Turbo. The URLs above are the `.env.example` defaults.
+client and `@app/contracts` (from its `dist`), and `test:integration` does not go through Turbo.
+The host, ports and password are the `.env.example` defaults. In CI the `integration` job runs the
+same commands against Postgres and Redis service containers.
 
-`test/integration/messages.int-spec.ts` (UL-125) sends 20 parallel POSTs to one channel and
-expects `seq` 1..20 with no gaps and no duplicates. Each test creates its own channel and deletes
-it afterwards.
+#### The stand (`test/integration/support/`)
 
-`test/integration/realtime.int-spec.ts` (UL-124) creates NestJS applications with explicit
-instance IDs (`test-api-1`, `test-api-2`), each with its own Socket.IO client, and checks that:
+Every integration spec builds on one helper (UL-132), so realtime tests in later phases do not
+grow their own copies:
 
-- without the Redis Streams adapter a room broadcast does not reach the client on the other app;
-- with it, a broadcast from either app reaches the clients on both, with the sender's `instanceId`;
-- `POST /api/debug/realtime/ping` on one app reaches the client on the other;
-- a socket outside the room receives nothing;
-- `app.close()` leaves none of the app's three Redis connections open.
+```ts
+const stand = useStand({ instances: ['test-api-1', 'test-api-2'] });
 
-UL-132 adds Redis and Postgres to CI as service containers and runs this config there.
+it('A on instance 1 sends, B on instance 2 receives message:new', async () => {
+  const channelId = await createChannel(stand.prisma);
+  const b = await stand.connect(stand.apps[1]!, 'B');
+  const received = waitForEvent(b, MESSAGE_NEW_EVENT, { parse: MessageNewEvent.parse });
+  await postMessage(stand.apps[0]!, channelId, 'hello');
+  expect(await received).toMatchObject({ message: { body: 'hello' } });
+});
+```
+
+- `useStand` registers its own hooks. `beforeAll` starts one full `AppModule` per entry of
+  `instances` on port 0, with the Redis Streams adapter (`realtime: false` leaves the default
+  adapter). Each app gets its instance id through `overrideProvider(INSTANCE_ID)`: in one process
+  every app has the same `os.hostname()`, and `ConfigModule` caches one `process.env`.
+- `startApp` returns once the app's Redis Streams reader is polling, so an app started inside a
+  test receives what other instances emit right away.
+- `beforeEach` truncates every table except Prisma's migration history, seeds the placeholder
+  author and flushes the Redis database. Before the first write the stand also checks what the
+  servers report (`current_database()`, the Redis connection's database), not only the URLs.
+  Arrange data inside the test (or a spec `beforeEach`), not in a spec `beforeAll`: the reset
+  wipes it.
+- Apps and clients started inside a test (`stand.startApp`, `stand.connect`) are closed after that
+  test; those from `beforeAll` after the file. Teardown goes clients → apps → Redis → Prisma.
+- `stand.prisma` and `stand.redis` are for arranging and checking data.
+- `waitForEvent(client, event, { timeoutMs, parse, match })` waits for the event itself, never a
+  timer, and fails with the event, the client label and its instance:
+  `Timed out after 5000 ms waiting for "message:new" on client "B" (instance test-api-2)`. It also
+  fails at once if the client disconnects. `recordEvents` keeps the full list for tests that prove
+  "this and nothing else" with a control event, and `waitForCount(n)` says how many arrived.
+- `support/http.ts` has `createChannel`, `postMessage` and `getMessages`.
+- The stand's hooks run around the spec's own (Vitest's `stack` order). A spec `afterEach` or
+  `afterAll` that throws stops the hooks after it, the stand's cleanup included, so keep them
+  from throwing.
+- Redis database 1 separates keys and the stream, not pub/sub channels, which Redis shares across
+  databases. Stop a local `pnpm dev` api while the suite runs, or its adapter may answer the test
+  apps' cluster requests.
+
+The specs:
+
+- `stand.int-spec.ts` checks the stand itself: explicit instance ids, the reset, teardown, the
+  store guards and the error texts.
+- `messages.int-spec.ts` (UL-125, UL-126): 20 parallel POSTs to one channel get `seq` 1..20 with
+  no gaps and no duplicates; retries with the same `clientMsgId`, also racing, make one row.
+- `message-new.int-spec.ts` (UL-127, UL-132): a message sent on instance 1 reaches the client on
+  instance 2 as `message:new` after the commit, and nothing is published for a rollback, a retry or
+  a missing channel.
+- `realtime.int-spec.ts` (UL-124): without the Redis Streams adapter a broadcast stays on its app;
+  with it, a broadcast from either app reaches both, `POST /api/debug/realtime/ping` crosses
+  instances, a socket outside the room gets nothing, and `app.close()` leaves no Redis connection.
 
 #### Manual check on two replicas
 
