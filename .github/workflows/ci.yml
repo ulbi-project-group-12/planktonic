@@ -76,9 +76,10 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm turbo run build
 
-  # api integration suite (UL-132) on real Postgres and Redis service containers. Not a required
-  # check yet: the lead decides whether to add it to the ruleset. `pnpm test` (the test job) stays
-  # service-free. The images and digests are the ones in compose.yaml; keep them in step.
+  # api integration suite (UL-132) on real Postgres and Redis service containers. A required
+  # check: its name is a required status context in .github/rulesets/main.json (see the header
+  # comment). `pnpm test` (the test job) stays service-free. The images and digests are the ones
+  # in compose.yaml; keep them in step.
   # Credentials are throwaway literals for a container that lives only as long as this job.
   integration:
     name: integration
