@@ -94,12 +94,16 @@ describe('MessagesService', () => {
       committed = true;
       return { row, created: true };
     });
-    publish.mockImplementation(() => {
-      expect(committed).toBe(true);
-    });
+    // After setup: setup() resets the publish mock, implementation included.
     const service = await setup({ create });
+    let committedAtPublish: boolean | undefined;
+    publish.mockImplementation(() => {
+      committedAtPublish = committed;
+    });
 
     const { message } = await service.create(CHANNEL, AUTHOR, KEY, 'hello');
+
+    expect(committedAtPublish).toBe(true);
 
     expect(publish).toHaveBeenCalledExactlyOnceWith(`channel:${CHANNEL}`, 'message:new', {
       message,

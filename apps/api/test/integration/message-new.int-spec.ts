@@ -22,6 +22,7 @@ import { channelRoom } from '../../src/core/realtime/rooms.js';
 import { PrismaClient } from '../../src/generated/prisma/client.js';
 import { DEFAULT_AUTHOR_ID } from '../../src/modules/messages/default-author.js';
 import { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway.js';
+import { RealtimeService } from '../../src/modules/realtime/realtime.service.js';
 
 const EVENT_TIMEOUT_MS = 5_000;
 
@@ -226,12 +227,22 @@ describe('message:new after commit, across instances', () => {
     const { channelId, on } = await channelWithListeners();
     const [, remote] = on;
 
-    const missing = await post(apps[0]!, randomUUID(), 'nowhere');
-    expect(missing.status).toBe(404);
+    // No socket can be in a missing channel's room, so watch the publisher itself as well.
+    const publish = vi.spyOn(apps[0]!.get(RealtimeService), 'publish');
+    try {
+      const missing = await post(apps[0]!, randomUUID(), 'nowhere');
+      expect(missing.status).toBe(404);
+      expect(publish).not.toHaveBeenCalled();
 
-    const control = await post(apps[0]!, channelId, 'control');
-    const message = MessageResponse.parse(await control.json());
-    await expect.poll(() => remote.events, { timeout: EVENT_TIMEOUT_MS }).toEqual([{ message }]);
+      const control = await post(apps[0]!, channelId, 'control');
+      const message = MessageResponse.parse(await control.json());
+      expect(publish).toHaveBeenCalledExactlyOnceWith(channelRoom(channelId), MESSAGE_NEW_EVENT, {
+        message,
+      });
+      await expect.poll(() => remote.events, { timeout: EVENT_TIMEOUT_MS }).toEqual([{ message }]);
+    } finally {
+      publish.mockRestore();
+    }
   });
 
   it('keeps events of different channels in their own rooms', async () => {
