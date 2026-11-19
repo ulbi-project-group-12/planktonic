@@ -182,3 +182,119 @@ export function recordEvents<T = unknown>(
     },
   };
 }
+
+/**
+ * One-shot wait for a client's own lifecycle event: `on` settles it with a value, `fail` events
+ * reject it. Tracked like the waits above, so the stand cancels it when it closes the client.
+ */
+function waitForLifecycle<T>(
+  client: Socket,
+  what: string,
+  timeoutMs: number,
+  subscribe: (resolve: (value: T) => void, reject: (error: Error) => void) => () => void,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const cleanup = (): void => {
+      clearTimeout(timer);
+      unsubscribe();
+      untrack();
+    };
+    const untrack = track(client, cleanup);
+    // cleanup() runs only from callbacks, after the consts below are initialised.
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Timed out after ${String(timeoutMs)} ms waiting for ${what}`));
+    }, timeoutMs);
+    const unsubscribe = subscribe(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
+}
+
+/**
+ * Resolves with the reason once `client` loses its connection (`transport close`, `io client
+ * disconnect`, ...). Start waiting before the cause; rejects at once if it is not connected.
+ */
+export function waitForDisconnect(
+  client: Socket,
+  timeoutMs: number = EVENT_TIMEOUT_MS,
+): Promise<string> {
+  if (!client.connected) {
+    return Promise.reject(new Error(`${describeClient(client)} is not connected`));
+  }
+  return waitForLifecycle(
+    client,
+    `the disconnect of ${describeClient(client)}`,
+    timeoutMs,
+    (done) => {
+      const onDisconnect = (reason: string): void => {
+        done(reason);
+      };
+      client.on('disconnect', onDisconnect);
+      return () => client.off('disconnect', onDisconnect);
+    },
+  );
+}
+
+/**
+ * Resolves on the next `connect` of a client that socket.io is reconnecting by itself (one from
+ * `stand.connect(app, label, { through: link })` after `link.drop()`). Rejects on timeout, when
+ * the Manager gives up (`reconnect_failed`), or at once if the client will not reconnect (it is
+ * connected, it was disconnected on purpose, or it has no reconnection).
+ */
+export function waitForReconnect(
+  client: Socket,
+  timeoutMs: number = EVENT_TIMEOUT_MS,
+): Promise<void> {
+  const who = describeClient(client);
+  if (client.connected) return Promise.reject(new Error(`${who} is still connected`));
+  // `active` alone is not enough: it stays true after a transport loss without reconnection too.
+  if (!client.active || !client.io.reconnection()) {
+    return Promise.reject(new Error(`${who} is not reconnecting`));
+  }
+  return waitForLifecycle(client, `the reconnect of ${who}`, timeoutMs, (done, fail) => {
+    const onConnect = (): void => {
+      done(undefined);
+    };
+    const onFailed = (): void => {
+      fail(new Error(`${who} gave up reconnecting`));
+    };
+    // `disconnect()` on a client that is reconnecting emits no `disconnect`; its Manager closes
+    // with `forced close` and stops retrying, so the wait settles now, not at its timeout.
+    const onClose = (reason: string): void => {
+      if (reason === 'forced close') fail(new Error(`${who} was disconnected while reconnecting`));
+    };
+    client.once('connect', onConnect);
+    client.io.once('reconnect_failed', onFailed);
+    client.io.on('close', onClose);
+    return () => {
+      client.off('connect', onConnect);
+      client.io.off('reconnect_failed', onFailed);
+      client.io.off('close', onClose);
+    };
+  });
+}
+
+/** `promise`, or a rejection naming `what` after `timeoutMs`: for waits that are not events. */
+export function withTimeout<T>(
+  promise: Promise<T>,
+  what: string,
+  timeoutMs: number = EVENT_TIMEOUT_MS,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`Timed out after ${String(timeoutMs)} ms waiting for ${what}`));
+    }, timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    clearTimeout(timer);
+  });
+}
