@@ -215,6 +215,10 @@ describe('phase 2 exit: retry with the same clientMsgId (UL-133)', () => {
     // First POST on instance 1; the retry (as after a lost response) on instance 2, so the
     // idempotency holds in the database, not in one process's memory.
     const original = await post(one(), channelId, 'hello', clientMsgId);
+    // Wait for its event first: it reaches B through instance 2's stream reader, while the
+    // retry and the control below are instance 2's own broadcasts, and the two paths are not
+    // ordered against each other.
+    await live.waitForCount(1);
     const retried = await post(two(), channelId, 'hello', clientMsgId);
     expect(retried).toEqual(original);
     expect(retried.seq).toBe('1');
