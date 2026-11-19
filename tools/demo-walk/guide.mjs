@@ -57,8 +57,8 @@ const html = `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Прототип фазы 2</title>
 <style>
-  :root { --bg: #f8fafc; --fg: #0f172a; --muted: #475569; --card: #fff; --line: #e2e8f0; --accent: #2563eb; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #0b1120; --fg: #e2e8f0; --muted: #94a3b8; --card: #111827; --line: #1e293b; --accent: #60a5fa; } }
+  :root { --bg: #f8fafc; --fg: #0f172a; --muted: #475569; --card: #fff; --line: #e2e8f0; --accent: #2563eb; --on-accent: #fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0b1120; --fg: #e2e8f0; --muted: #94a3b8; --card: #111827; --line: #1e293b; --accent: #60a5fa; --on-accent: #0b1120; } }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; }
   main { max-width: 1240px; margin: 0 auto; padding: 24px 16px 40px; }
@@ -69,7 +69,7 @@ const html = `<!doctype html>
   figcaption { padding: 14px 18px; font-size: 18px; min-height: 4.2em; }
   .bar { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
   button { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   button:disabled { opacity: .4; cursor: default; }
   button:focus-visible, .dots button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .count { color: var(--muted); min-width: 7em; }

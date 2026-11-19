@@ -37,7 +37,9 @@ stills never go into git. A run writes `recording.mp4`, `captions.srt`, `poster.
 `timeline.json` (beat and caption times on the video's clock, the two instance ids) and
 `walk.log`; the stills run writes `stills/`, `stills.json` and `walk-stills.log`. After a change to
 the assembly only, `pnpm demo:walk --out <out> --assemble` rebuilds the video from the last walk's
-frames.
+frames. The raw frames go to a fresh private temp directory per walk (`DEMO_WALK_FRAMES` to choose
+one); `<out>/.frames` remembers it for `--assemble`, and the next walk into the same `<out>`
+removes it.
 
 `stand.sh` defaults to the compose project `demo-walk` with Postgres `55190`, Redis `56190`, S3
 `58190` and Traefik `58290`; `DEMO_PROJECT`, `DEMO_PG_PORT`, `DEMO_REDIS_PORT`, `DEMO_S3_PORT` and
@@ -73,6 +75,7 @@ project.
   the walk, so a broken build cannot be recorded as a working one.
 - **Clean channel.** The walk stops if the test channel already has messages; `stand.sh reset` empties
   it.
+- **`syncing` must show.** The walk stops if B never shows `syncing` on its way back online.
 - **Chrome is always closed.** `cdp.mjs` kills the Chrome it launched and removes its profile in a
   `finally`, and on Ctrl-C.
 

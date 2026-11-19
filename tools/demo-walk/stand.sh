@@ -21,7 +21,11 @@ export REDIS_PORT="${DEMO_REDIS_PORT:-56190}"
 export S3_PORT="${DEMO_S3_PORT:-58190}"
 export TRAEFIK_PORT="${DEMO_TRAEFIK_PORT:-58290}"
 COMPOSE=(docker compose -f compose.yaml -f tools/demo-walk/compose.demo.yaml --profile realtime)
-DB_URL="postgresql://app:app_dev_password@127.0.0.1:${POSTGRES_PORT}"
+# Compose reads the same variables, so the stand and every command here use one database.
+export POSTGRES_USER="${POSTGRES_USER:-app}"
+export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-app_dev_password}"
+export POSTGRES_DB="${POSTGRES_DB:-app}"
+DB_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_PORT}"
 CHANNEL='00000000-0000-7000-8000-000000000001'
 
 case "${1:-}" in
@@ -34,22 +38,22 @@ case "${1:-}" in
       exit 1
     fi
     "${COMPOSE[@]}" up -d --build --wait api web traefik
-    DATABASE_URL="$DB_URL/app" pnpm --filter @app/api generate
-    DATABASE_URL="$DB_URL/app" pnpm db:migrate
-    DATABASE_URL="$DB_URL/app" pnpm db:seed
+    DATABASE_URL="$DB_URL/$POSTGRES_DB" pnpm --filter @app/api generate
+    DATABASE_URL="$DB_URL/$POSTGRES_DB" pnpm db:migrate
+    DATABASE_URL="$DB_URL/$POSTGRES_DB" pnpm db:seed
     echo "stand: http://127.0.0.1:${TRAEFIK_PORT}/prototype"
     ;;
   reset)
-    "${COMPOSE[@]}" exec -T postgres psql -v ON_ERROR_STOP=1 -U app -d app -c \
+    "${COMPOSE[@]}" exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
       "DELETE FROM messages WHERE channel_id = '$CHANNEL'; UPDATE channels SET last_seq = 0 WHERE id = '$CHANNEL';"
     ;;
   test-log)
     : "${DEMO_OUT:?set DEMO_OUT to the output folder}"
     mkdir -p "$DEMO_OUT"
     pnpm --filter @app/contracts build
-    DATABASE_URL="$DB_URL/app_test" pnpm db:migrate
+    DATABASE_URL="$DB_URL/${POSTGRES_DB}_test" pnpm db:migrate
     # Verbose, so the card lists the three tests; the checkout path is cut out of the log.
-    DATABASE_URL="$DB_URL/app_test" REDIS_URL="redis://127.0.0.1:${REDIS_PORT}/1" NO_COLOR=1 \
+    DATABASE_URL="$DB_URL/${POSTGRES_DB}_test" REDIS_URL="redis://127.0.0.1:${REDIS_PORT}/1" NO_COLOR=1 \
       pnpm --filter @app/api exec vitest run --config vitest.integration.config.ts --reporter=verbose phase2-exit 2>&1 |
       sed "s|$ROOT|.|g" | tee "$DEMO_OUT/test-run.log"
     ;;

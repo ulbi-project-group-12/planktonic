@@ -27,6 +27,8 @@
 import { spawnSync } from 'node:child_process';
 import {
   appendFileSync,
+  existsSync,
+  mkdtempSync,
   copyFileSync,
   mkdirSync,
   readFileSync,
@@ -53,8 +55,24 @@ const { values: argv } = parseArgs({
 const OUT = resolve(argv.out ?? join(HERE, 'out'));
 const STILLS = argv.stills;
 const STILL_DIR = join(OUT, 'stills');
-const FRAMES =
-  process.env.DEMO_WALK_FRAMES || join(tmpdir(), `demo-walk-frames${STILLS ? '-stills' : ''}`);
+/**
+ * The raw frames of a walk. Each walk gets a fresh private directory (mkdtemp: unique, created
+ * by this process, mode 0700), and its path is kept in <out>/.frames(-stills) so `--assemble`
+ * reads the same frames. DEMO_WALK_FRAMES names a directory instead.
+ */
+const FRAMES_POINTER = join(OUT, STILLS ? '.frames-stills' : '.frames');
+const FRAMES_PREFIX = join(tmpdir(), 'demo-walk-frames-');
+const previousFrames = existsSync(FRAMES_POINTER)
+  ? readFileSync(FRAMES_POINTER, 'utf8').trim()
+  : undefined;
+const FRAMES = (() => {
+  if (process.env.DEMO_WALK_FRAMES) return resolve(process.env.DEMO_WALK_FRAMES);
+  if (argv.assemble) {
+    if (!previousFrames) throw new Error(`no earlier walk in ${OUT}: nothing to assemble`);
+    return previousFrames;
+  }
+  return mkdtempSync(FRAMES_PREFIX);
+})();
 const BASE = (argv.base ?? process.env.DEMO_BASE ?? 'http://127.0.0.1:58080').replace(/\/$/, '');
 const PAGE_URL = `${BASE}/prototype`;
 const TEST_LOG = argv['test-log'] ? resolve(argv['test-log']) : undefined;
@@ -526,7 +544,8 @@ async function scenario(w) {
     await sleep(40);
   }
   log(`B states after online: ${[...seen].join(' → ')}`);
-  if (!seen.has('syncing')) log('WARNING: syncing was not seen on screen');
+  // The caption says `syncing` shows: a run that never saw it must not become the video.
+  if (!seen.has('syncing')) throw new Error('B never showed syncing on its way back online');
   await b.network({ offline: false, latency: 0 });
   await b.waitFor(hasRow(`#7 ${five[4]}`), '#7 in B');
 
@@ -793,6 +812,11 @@ async function main() {
     mkdirSync(STILL_DIR, { recursive: true });
   }
   mkdirSync(FRAMES, { recursive: true });
+  // The previous walk's frames go once a new walk owns the pointer; only our own temp dirs.
+  if (previousFrames?.startsWith(FRAMES_PREFIX) && previousFrames !== FRAMES) {
+    rmSync(previousFrames, { recursive: true, force: true });
+  }
+  writeFileSync(FRAMES_POINTER, `${FRAMES}\n`);
   log(`walk ${new Date().toISOString()} on ${PAGE_URL}${STILLS ? ' (stills)' : ''}`);
 
   const chrome = await launchChrome({
