@@ -5,8 +5,13 @@ import { MESSAGE_BODY_MAX_LENGTH, MESSAGE_NEW_EVENT, MessageNewEvent } from '@ap
 import { getSocket } from '@/shared/api';
 import { uuidv7 } from '@/shared/lib';
 import { Button, Input } from '@/shared/ui';
-import { fetchInstanceId, fetchMessages, sendMessage } from '../api/prototype-api';
-import { feedReducer, PROTOTYPE_CHANNEL_ID } from '../model/feed';
+import {
+  classifySendError,
+  fetchInstanceId,
+  fetchMessages,
+  sendMessage,
+} from '../api/prototype-api';
+import { feedReducer, feedRows, initialFeedState, PROTOTYPE_CHANNEL_ID } from '../model/feed';
 import { ConnectionIndicator } from './connection-indicator';
 
 type Instance = { kind: 'loading' } | { kind: 'ready'; id: string } | { kind: 'unavailable' };
@@ -25,15 +30,9 @@ function isAbortError(error: unknown): boolean {
  * different replicas see each other's messages without a reload, in `seq` order.
  */
 export function PrototypePage() {
-  const [messages, dispatch] = useReducer(feedReducer, []);
+  const [feed, dispatch] = useReducer(feedReducer, initialFeedState);
   const [instance, setInstance] = useState<Instance>({ kind: 'loading' });
   const [draft, setDraft] = useState('');
-  // The clientMsgId of the last send that did not succeed, bound to the body it was made for. A
-  // resend of that same body reuses it, so a lost response never makes a second message. An edited
-  // draft gets a new key: the server would answer an old key with the stored (old) body.
-  const [pending, setPending] = useState<{ key: string; body: string } | null>(null);
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
   const [historyFailed, setHistoryFailed] = useState(false);
   // The effect's history loader, so the Retry button reuses its abort signal.
   const loadHistoryRef = useRef<(() => Promise<void>) | null>(null);
@@ -119,29 +118,31 @@ export function PrototypePage() {
     };
   }, []);
 
-  const sendDisabled = sending || draft.trim() === '' || draft.length > MESSAGE_BODY_MAX_LENGTH;
-
-  const onSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (sendDisabled) return;
-    // The body goes as typed: the server stores it verbatim.
-    const body = draft;
-    const clientMsgId = pending?.body === body ? pending.key : uuidv7();
-    setPending({ key: clientMsgId, body });
-    setSending(true);
-    setSendError(null);
+  /**
+   * The only send path, used by both Send and Retry. It never throws. Nothing calls it on its own:
+   * no retry on reconnect or `online` (UL-131), and unsent rows live in memory only (UL-193).
+   */
+  const deliver = async (clientMsgId: string, body: string) => {
+    dispatch({ type: 'pending', clientMsgId, body });
     try {
       const message = await sendMessage(PROTOTYPE_CHANNEL_ID, { clientMsgId, body });
       dispatch({ type: 'merge', messages: [message] });
-      // Text typed while the request was in flight stays.
-      setDraft((current) => (current === body ? '' : current));
-      setPending((current) => (current?.key === clientMsgId ? null : current));
     } catch (error) {
       console.warn('prototype: send failed', error);
-      setSendError('Not sent. Press Send to try again.');
-    } finally {
-      setSending(false);
+      dispatch({ type: 'failed', clientMsgId, failure: classifySendError(error) });
     }
+  };
+
+  const sendDisabled = draft.trim() === '' || draft.length > MESSAGE_BODY_MAX_LENGTH;
+
+  const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (sendDisabled) return;
+    // The body goes as typed: the server stores it verbatim. Every Send gets a fresh key; the row
+    // keeps the text, so the draft clears at once.
+    const body = draft;
+    setDraft('');
+    void deliver(uuidv7(), body);
   };
 
   return (
@@ -167,17 +168,41 @@ export function PrototypePage() {
         </div>
       ) : null}
       <ol aria-label="Messages" className="flex flex-col gap-1 text-body-s">
-        {messages.map((message) => (
-          <li key={message.id}>{`#${message.seq} ${message.body}`}</li>
-        ))}
+        {feedRows(feed).map((row) => {
+          if (row.status === 'sent') {
+            return <li key={row.key}>{`#${row.message.seq} ${row.message.body}`}</li>;
+          }
+          if (row.status === 'pending') {
+            return (
+              <li key={row.key} className="flex flex-wrap items-center gap-2">
+                <span>{row.body}</span>
+                <span className="text-fg-secondary">Sending…</span>
+              </li>
+            );
+          }
+          return (
+            <li key={row.key} className="flex flex-wrap items-center gap-2">
+              <span>{row.body}</span>
+              <span className="text-danger">{`Not sent: ${row.failure.reason}`}</span>
+              {row.failure.retryable ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="s"
+                  onClick={() => {
+                    void deliver(row.clientMsgId, row.body);
+                  }}
+                >
+                  Retry
+                </Button>
+              ) : (
+                <span className="text-fg-secondary">Retrying will not help.</span>
+              )}
+            </li>
+          );
+        })}
       </ol>
-      <form
-        aria-label="Send a message"
-        className="flex items-end gap-2"
-        onSubmit={(event) => {
-          void onSubmit(event);
-        }}
-      >
+      <form aria-label="Send a message" className="flex items-end gap-2" onSubmit={onSubmit}>
         <Input
           label="Message"
           value={draft}
@@ -191,11 +216,6 @@ export function PrototypePage() {
           Send
         </Button>
       </form>
-      {sendError ? (
-        <p role="alert" className="text-body-s text-danger">
-          {sendError}
-        </p>
-      ) : null}
     </main>
   );
 }
