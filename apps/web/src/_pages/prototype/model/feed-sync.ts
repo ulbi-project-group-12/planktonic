@@ -55,8 +55,8 @@ export interface FeedSync {
    * `hasMore`. Single flight: a call while a pass runs makes one more pass after it and shares its
    * promise, so a reconnect during a gap catch-up never runs two requests side by side, and a call
    * that lands while a pass fails still gets its pass. If the feed still has a hole after a pass
-   * (a message arrived above the page meanwhile), one more pass runs, once. Never rejects; a
-   * failure goes to `onResult`.
+   * (a message arrived above the page meanwhile), it passes again while each pass fills some of
+   * it (at most `MAX_FOLLOW_UPS`). Never rejects; a failure goes to `onResult`.
    */
   run(): Promise<void>;
   /**
@@ -73,6 +73,9 @@ export interface FeedSync {
    */
   receive(message: MessageResponse): 'ok' | 'catch-up';
 }
+
+/** Most extra passes one `run()` makes for holes that appeared while it ran. */
+const MAX_FOLLOW_UPS = 5;
 
 /** Whether the confirmed feed misses a seq below its greatest one. */
 function hasHole(sent: readonly MessageResponse[]): boolean {
@@ -109,9 +112,10 @@ export function createFeedSync(options: FeedSyncOptions): FeedSync {
   };
 
   const loop = async () => {
-    let followedUp = false;
+    let followUps = 0;
     for (;;) {
       again = false;
+      const before = syncedSeq(feed.sent());
       try {
         await pass();
       } catch (error) {
@@ -124,10 +128,13 @@ export function createFeedSync(options: FeedSyncOptions): FeedSync {
       }
       if (signal.aborted) break;
       if (rerunRequested()) continue;
-      // A message merged above the page while it was in flight can leave a hole: one more pass.
-      // Only once, so a hole the server cannot fill never turns into a request loop.
-      if (!followedUp && (fromLatest || hasHole(feed.sent()))) {
-        followedUp = true;
+      // A message merged above the page while it was in flight can leave a hole: pass again, as
+      // long as each pass moves the gapless run forward (a new loss during a follow-up is filled
+      // too). A pass that fills nothing stops it, and so does the cap, so a hole the server cannot
+      // fill never turns into a request loop.
+      const progressed = before === null || syncedSeq(feed.sent()) !== before;
+      if ((fromLatest || hasHole(feed.sent())) && progressed && followUps < MAX_FOLLOW_UPS) {
+        followUps += 1;
         continue;
       }
       failed = false;

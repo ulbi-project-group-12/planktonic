@@ -183,6 +183,41 @@ describe('createFeedSync', () => {
     expect(fetchPage).toHaveBeenCalledTimes(3);
   });
 
+  it('a loss during the follow-up pass is filled by another one (WR-03)', async () => {
+    let server = range(1, 2);
+    const { sync, fetchPage, seqs } = setup(() => server);
+    await sync.run();
+    // Each GET is answered as the server was when it was sent; one more message is sent (and
+    // lost on this socket, but for the next one) while each of the first two GETs is in flight.
+    const live = [msg(6), msg(8)];
+    fetchPage.mockImplementation((query) => {
+      const after = server.filter((m) => BigInt(m.seq) > BigInt(query.afterSeq ?? '0'));
+      const answer = { messages: after, hasMore: false };
+      const next = live.shift();
+      if (next) {
+        server = range(1, Number(next.seq));
+        sync.receive(next);
+      }
+      return Promise.resolve(answer);
+    });
+    server = range(1, 4);
+
+    await sync.run();
+    expect(seqs()).toEqual(range(1, 8).map((m) => Number(m.seq)));
+  });
+
+  it('a hole the server cannot fill stops after one pass that fills nothing', async () => {
+    // The server lacks 3 for good (it never happens with gapless seqs; this is the loop guard).
+    const server = [...range(1, 2), ...range(4, 5)];
+    const { sync, fetchPage } = setup(() => server);
+    await sync.run();
+
+    expect(sync.receive(msg(6))).toBe('catch-up');
+    fetchPage.mockClear();
+    await sync.run();
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+  });
+
   it('a run requested while a pass fails still gets its pass (WR-01)', async () => {
     const { sync, fetchPage, onResult, seqs } = setup(() => range(1, 2));
     let fail!: (error: Error) => void;
