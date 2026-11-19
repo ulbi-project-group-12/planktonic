@@ -46,10 +46,16 @@ const { fake, calls, connectSnapshot } = vi.hoisted(() => {
   return { fake, calls, connectSnapshot };
 });
 
-vi.mock('@/shared/api', () => ({ getSocket: () => fake }));
+// The connection store is covered in shared/api; here it is a constant, so the page only has to show it.
+vi.mock('@/shared/api', () => ({
+  getSocket: () => fake,
+  useConnectionStore: <T,>(selector: (store: { state: string }) => T): T =>
+    selector({ state: 'connected' }),
+}));
 
 const MESSAGES_URL = `/api/channels/${PROTOTYPE_CHANNEL_ID}/messages`;
-const SOCKET_EVENTS = ['connect', 'disconnect', 'connect_error', 'message:new'];
+// The page's own listeners; disconnect/connect_error belong to the connection store (UL-129).
+const SOCKET_EVENTS = ['connect', 'message:new'];
 
 function msg(seq: number, body: string): MessageResponse {
   const tag = seq.toString(16).padStart(12, '0');
@@ -65,6 +71,8 @@ function msg(seq: number, body: string): MessageResponse {
 }
 
 let history: MessageResponse[] = [];
+/** What GET /api/health answers. */
+let instanceId = 'api-test-1';
 /** Answers for the next history GETs, before the normal one: a 500 or a 200 with an invalid body. */
 let historyFaults: ('fail' | 'invalid')[] = [];
 /** Answers each POST; the test sets it. */
@@ -83,7 +91,7 @@ const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
   const method = init?.method ?? 'GET';
   calls.push(`${method} ${url}`);
   if (method === 'GET' && url === '/api/health') {
-    return Promise.resolve(json({ status: 'ok', instanceId: 'api-test-1' }));
+    return Promise.resolve(json({ status: 'ok', instanceId }));
   }
   if (method === 'GET' && url === MESSAGES_URL) {
     const fault = historyFaults.shift();
@@ -127,6 +135,7 @@ beforeEach(() => {
   fake.reset();
   calls.length = 0;
   history = [];
+  instanceId = 'api-test-1';
   historyFaults = [];
   posted.length = 0;
   postResponder = () => Promise.resolve(json({ message: 'unexpected POST' }, 500));
@@ -174,7 +183,7 @@ describe('PrototypePage', () => {
     const lastHealth = calls.lastIndexOf('GET /api/health');
     expect(lastHealth).toBeGreaterThanOrEqual(0);
     expect(lastHealth).toBeLessThan(calls.indexOf('connect'));
-    expect(screen.getByText('Socket: connecting')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Connection: connected');
   });
 
   it('loads the history on connect and renders it in seq order', async () => {
@@ -184,7 +193,6 @@ describe('PrototypePage', () => {
     serverConnects();
     expect(await screen.findByText('#2 second')).toBeInTheDocument();
     expect(rows()).toEqual(['#1 first', '#2 second']);
-    expect(screen.getByText('Socket: connected')).toBeInTheDocument();
   });
 
   it('loads the history without connect() when the singleton is already connected', async () => {
@@ -193,7 +201,6 @@ describe('PrototypePage', () => {
     renderPage();
     expect(await screen.findByText('#1 first')).toBeInTheDocument();
     expect(fake.connect).not.toHaveBeenCalled();
-    expect(screen.getByText('Socket: connected')).toBeInTheDocument();
   });
 
   it('keeps one listener per event under StrictMode and removes them on unmount', async () => {
@@ -394,28 +401,25 @@ describe('PrototypePage', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('tracks disconnects and catches up on reconnect without duplicates', async () => {
+  it('catches up on reconnect without duplicates and re-reads the instance id', async () => {
     history = [msg(1, 'first')];
     await renderConnected();
     await screen.findByText('#1 first');
+    const healthBefore = calls.filter((call) => call === 'GET /api/health').length;
 
     act(() => {
       fake.connected = false;
-      fake.active = true;
       fake.fire('disconnect', 'transport close');
     });
-    expect(screen.getByText('Socket: connecting')).toBeInTheDocument();
-    act(() => {
-      fake.active = false;
-      fake.fire('disconnect', 'io client disconnect');
-    });
-    expect(screen.getByText('Socket: disconnected')).toBeInTheDocument();
 
+    // The reconnect lands on the other replica (Traefik re-picked io_srv).
+    instanceId = 'api-test-2';
     history = [msg(1, 'first'), msg(2, 'second')];
     serverConnects();
     expect(await screen.findByText('#2 second')).toBeInTheDocument();
     expect(rows()).toEqual(['#1 first', '#2 second']);
-    expect(screen.getByText('Socket: connected')).toBeInTheDocument();
+    expect(await screen.findByText('Instance: api-test-2')).toBeInTheDocument();
     expect(calls.filter((call) => call === `GET ${MESSAGES_URL}`)).toHaveLength(2);
+    expect(calls.filter((call) => call === 'GET /api/health')).toHaveLength(healthBefore + 1);
   });
 });

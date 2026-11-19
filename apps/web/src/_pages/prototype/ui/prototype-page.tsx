@@ -7,8 +7,7 @@ import { uuidv7 } from '@/shared/lib';
 import { Button, Input } from '@/shared/ui';
 import { fetchInstanceId, fetchMessages, sendMessage } from '../api/prototype-api';
 import { feedReducer, PROTOTYPE_CHANNEL_ID } from '../model/feed';
-
-type SocketStatus = 'connecting' | 'connected' | 'disconnected';
+import { ConnectionIndicator } from './connection-indicator';
 
 type Instance = { kind: 'loading' } | { kind: 'ready'; id: string } | { kind: 'unavailable' };
 
@@ -28,7 +27,6 @@ function isAbortError(error: unknown): boolean {
 export function PrototypePage() {
   const [messages, dispatch] = useReducer(feedReducer, []);
   const [instance, setInstance] = useState<Instance>({ kind: 'loading' });
-  const [status, setStatus] = useState<SocketStatus>('connecting');
   const [draft, setDraft] = useState('');
   // The clientMsgId of the last send that did not succeed, bound to the body it was made for. A
   // resend of that same body reuses it, so a lost response never makes a second message. An edited
@@ -59,19 +57,29 @@ export function PrototypePage() {
     };
     loadHistoryRef.current = loadHistory;
 
+    const loadInstance = () =>
+      fetchInstanceId(signal).then(
+        (id) => {
+          if (!signal.aborted) setInstance({ kind: 'ready', id });
+        },
+        (error: unknown) => {
+          if (signal.aborted) return;
+          console.warn('prototype: could not load the instance id', error);
+          setInstance({ kind: 'unavailable' });
+        },
+      );
+
     // Every connect, the first and each reconnect, reloads the latest page of history (the api's
     // last 100 messages) and the merge by id drops the overlap. A gap longer than one page is not
     // caught up here: paging after the last known seq (`?afterSeq=`) is UL-130.
+    // A reconnect may land on another replica (Traefik re-picks io_srv when the old one is gone),
+    // so it also re-reads the instance id; the first connect already has it.
+    // The connection state itself is not set here: the lifecycle listeners in @/shared/api own it.
+    let connectedBefore = false;
     const onConnect = () => {
-      setStatus('connected');
+      if (connectedBefore) void loadInstance();
+      connectedBefore = true;
       void loadHistory();
-    };
-    // `active` means Socket.IO will reconnect by itself.
-    const onDisconnect = () => {
-      setStatus(socket.active ? 'connecting' : 'disconnected');
-    };
-    const onConnectError = () => {
-      setStatus(socket.active ? 'connecting' : 'disconnected');
     };
 
     // Wire data is untrusted: anything that fails the contracts schema is dropped, never rendered.
@@ -87,36 +95,21 @@ export function PrototypePage() {
 
     // Listeners first, so nothing the socket emits after connect() is missed.
     socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
-    socket.on('connect_error', onConnectError);
     socket.on(MESSAGE_NEW_EVENT, onMessageNew);
 
     // Health first, then the handshake: Traefik sets io_srv on the health response, so the socket
     // lands on the replica whose instanceId the page shows.
-    void fetchInstanceId(signal)
-      .then(
-        (id) => {
-          if (!signal.aborted) setInstance({ kind: 'ready', id });
-        },
-        (error: unknown) => {
-          if (signal.aborted) return;
-          console.warn('prototype: could not load the instance id', error);
-          setInstance({ kind: 'unavailable' });
-        },
-      )
-      .then(() => {
-        if (signal.aborted) return;
-        // A remount within the same tab finds the singleton already connected.
-        if (socket.connected) onConnect();
-        else socket.connect();
-      });
+    void loadInstance().then(() => {
+      if (signal.aborted) return;
+      // A remount within the same tab finds the singleton already connected.
+      if (socket.connected) onConnect();
+      else socket.connect();
+    });
 
     return () => {
       controller.abort();
       loadHistoryRef.current = null;
       socket.off('connect', onConnect);
-      socket.off('disconnect', onDisconnect);
-      socket.off('connect_error', onConnectError);
       socket.off(MESSAGE_NEW_EVENT, onMessageNew);
       // No disconnect(): the singleton lives as long as the tab.
     };
@@ -152,7 +145,7 @@ export function PrototypePage() {
       <h1 className="text-body-xl font-bold tracking-tight">Realtime prototype</h1>
       <div className="flex flex-col gap-1 text-body-s text-fg-secondary">
         <p>{instanceText(instance)}</p>
-        <p>{`Socket: ${status}`}</p>
+        <ConnectionIndicator />
       </div>
       {historyFailed ? (
         <div role="alert" className="flex items-center gap-2 text-body-s text-danger">

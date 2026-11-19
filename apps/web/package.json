@@ -27,7 +27,8 @@
     "react-dom": "catalog:",
     "socket.io-client": "catalog:",
     "tailwind-merge": "catalog:",
-    "tw-animate-css": "catalog:"
+    "tw-animate-css": "catalog:",
+    "zustand": "catalog:"
   },
   "devDependencies": {
     "@app/config": "workspace:*",
