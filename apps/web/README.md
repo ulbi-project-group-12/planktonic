@@ -122,7 +122,9 @@ Run them as `pnpm --filter @app/web <script>`, or through Turbo from the root (`
 `/prototype` is the client half of the Phase 2 realtime prototype. It shows:
 
 - `Instance: <instanceId>` from `GET /api/health`: the api replica this window is bound to;
-- `Socket: connecting | connected | disconnected`;
+- `Connection: connecting | connected | offline` (UL-129; `syncing` is reserved for UL-130's
+  catch-up): the tab's `useConnectionStore` state, written only by the socket lifecycle listeners
+  that `getSocket()` binds once (the event → state table is in `src/shared/api/connection.ts`);
 - the seeded channel's feed (`00000000-0000-7000-8000-000000000001`) as `#seq body` rows;
 - a message input and a Send button.
 
@@ -170,6 +172,10 @@ fail.
    `127.0.0.1` in one window and reload until they differ.
 5. Send from each window: the message appears in the other one without a reload, in `seq` order,
    and once in the sender's own feed.
+6. Connection indicator: DevTools → Network → Offline turns it `offline` (within the ping
+   timeout if the socket was idle); back online it goes `connecting` → `connected`. Stopping the
+   replica a window is bound to (`docker stop <project>-api-2`) turns it `offline`, then it
+   reconnects to the live replica and the `Instance` value changes.
 
 After a change to the web app, rebuild only its container:
 
