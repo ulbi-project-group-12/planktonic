@@ -1,8 +1,8 @@
 # CI on every pull request and every push to main (D-11, D-12, D-13).
 #
-# The job names lint, typecheck, test, build, steiger, storybook and name-guard are the
-# required status contexts in .github/rulesets/main.json. Renaming one means changing the
-# ruleset in the same PR, or merges block on a check that never reports. Keep them stable,
+# The job names lint, typecheck, test, build, steiger, storybook, name-guard and integration
+# are the required status contexts in .github/rulesets/main.json. Renaming one means changing
+# the ruleset in the same PR, or merges block on a check that never reports. Keep them stable,
 # never add a matrix to them, and never add path filters to this workflow (a skipped workflow
 # leaves required checks pending forever).
 #
