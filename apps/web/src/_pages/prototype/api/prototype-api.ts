@@ -35,7 +35,7 @@ export async function fetchInstanceId(signal?: AbortSignal): Promise<string> {
   throw new Error('GET /api/health returned no instanceId');
 }
 
-/** The channel's messages; an invalid payload is logged and treated as empty. */
+/** The channel's messages. An invalid payload throws, like a failed request, so the page can retry. */
 export async function fetchMessages(
   channelId: string,
   signal?: AbortSignal,
@@ -48,8 +48,8 @@ export async function fetchMessages(
   const payload: unknown = await res.json();
   const result = GetMessagesResponse.safeParse(payload);
   if (!result.success) {
-    console.warn('prototype: ignoring invalid GET messages payload', result.error);
-    return [];
+    console.warn('prototype: invalid GET messages payload', result.error);
+    throw new Error('GET messages returned an invalid payload');
   }
   return result.data.messages;
 }

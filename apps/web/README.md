@@ -138,8 +138,9 @@ How it works:
    that key, so a resend never makes a second message. Editing the draft first gives it a new
    key, because the server answers a used key with the stored body. A failed send shows an error
    and keeps the draft. Every request times out after 10 s.
-4. Every wire payload is checked with the `@app/contracts` schemas; an invalid one is dropped
-   with a `console.warn`, and events for other channels are ignored.
+4. Every wire payload is checked with the `@app/contracts` schemas. An invalid `message:new` is
+   dropped with a `console.warn`, and events for other channels are ignored. A failed or invalid
+   history load shows an error with a Retry button.
 
 The page uses relative `/api` and `/socket.io` URLs, so it works only through Traefik on one
 origin. Under plain `pnpm dev` (web on `:3000`, api on `:3001`) its requests reach Next.js and

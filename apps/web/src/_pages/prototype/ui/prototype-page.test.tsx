@@ -65,8 +65,8 @@ function msg(seq: number, body: string): MessageResponse {
 }
 
 let history: MessageResponse[] = [];
-/** How many history GETs still answer 500. */
-let historyFailures = 0;
+/** Answers for the next history GETs, before the normal one: a 500 or a 200 with an invalid body. */
+let historyFaults: ('fail' | 'invalid')[] = [];
 /** Answers each POST; the test sets it. */
 let postResponder: (payload: CreateMessageBody) => Promise<Response>;
 const posted: CreateMessageBody[] = [];
@@ -86,10 +86,9 @@ const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     return Promise.resolve(json({ status: 'ok', instanceId: 'api-test-1' }));
   }
   if (method === 'GET' && url === MESSAGES_URL) {
-    if (historyFailures > 0) {
-      historyFailures -= 1;
-      return Promise.resolve(json({ message: 'boom' }, 500));
-    }
+    const fault = historyFaults.shift();
+    if (fault === 'fail') return Promise.resolve(json({ message: 'boom' }, 500));
+    if (fault === 'invalid') return Promise.resolve(json({ messages: [{ id: 'nope' }] }));
     return Promise.resolve(json({ messages: history }));
   }
   if (method === 'POST' && url === MESSAGES_URL) {
@@ -128,7 +127,7 @@ beforeEach(() => {
   fake.reset();
   calls.length = 0;
   history = [];
-  historyFailures = 0;
+  historyFaults = [];
   posted.length = 0;
   postResponder = () => Promise.resolve(json({ message: 'unexpected POST' }, 500));
   connectSnapshot.messageNew = null;
@@ -358,7 +357,7 @@ describe('PrototypePage', () => {
 
   it('shows a history load failure and retries it, keeping live messages', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    historyFailures = 1;
+    historyFaults = ['fail'];
     history = [msg(1, 'first')];
     await renderConnected();
     const alert = await screen.findByRole('alert');
@@ -370,6 +369,28 @@ describe('PrototypePage', () => {
     await userEvent.setup().click(within(alert).getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText('#1 first')).toBeInTheDocument();
     expect(rows()).toEqual(['#1 first', '#2 live']);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('keeps Retry after an invalid history payload until a valid one arrives', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    historyFaults = ['fail', 'invalid'];
+    history = [msg(1, 'first')];
+    await renderConnected();
+    const user = userEvent.setup();
+
+    await user.click(
+      within(await screen.findByRole('alert')).getByRole('button', { name: 'Retry' }),
+    );
+    await waitFor(() => {
+      expect(calls.filter((call) => call === `GET ${MESSAGES_URL}`)).toHaveLength(2);
+    });
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Could not load the messages.');
+    expect(rows()).toEqual([]);
+
+    await user.click(within(alert).getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('#1 first')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
