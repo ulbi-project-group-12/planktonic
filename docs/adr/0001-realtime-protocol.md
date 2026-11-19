@@ -12,7 +12,7 @@
 
 Этот документ описывает **то, что уже работает в прототипе** на `main` (`cb5fe1c`) и проверяется в CI, а не план. Каждое решение ссылается на тест. Источники: `.planning/research/STACK.md` §0 (решения 4 и 5), §4.1, §4.3, §4.4, §4.6; итоговые комментарии тикетов UL-123…UL-133; схемы в [`packages/contracts`](../../packages/contracts/src).
 
-Итоговое доказательство — тест выхода фазы 2 [`phase2-exit.int-spec.ts`](../../apps/api/test/integration/phase2-exit.int-spec.ts) (UL-133): A на инстансе 1, B на инстансе 2, связь B рвётся, A шлёт 5 сообщений, B возвращается и получает ровно эти 5, по `seq`, без дублей. Job `integration` прошёл 10 раз подряд: [run 44480015449](https://github.com/ulbi-project-group-12/planktonic/actions/runs/44480015449), попытки 1–10.
+Итоговое доказательство — тест выхода фазы 2 [`phase2-exit.int-spec.ts`](../../apps/api/test/integration/phase2-exit.int-spec.ts) (UL-133): A на инстансе 1, B на инстансе 2, связь B рвётся, A шлёт 5 сообщений, B возвращается и получает ровно эти 5, по `seq`, без дублей. Job `integration` прошёл 10 раз подряд: run 44480015449, попытки 1–10.
 
 ## Схема обмена
 
@@ -43,7 +43,7 @@ sequenceDiagram
 
 - **Выбрали.** Номер выдаёт сервер в той же транзакции, что и вставку: `UPDATE channels SET last_seq = last_seq + 1 … RETURNING last_seq`, затем `INSERT` с этим `seq` ([`messages.repository.ts`](../../apps/api/src/modules/messages/messages.repository.ts)). `UPDATE` блокирует строку канала, поэтому параллельные отправки встают в очередь; упавшая вставка откатывает и номер. `seq` — `BigInt` в базе и десятичная строка на проводе (`MessageSeq`), клиент сравнивает как `BigInt` (ADR-0003, решение 2).
 - **Почему.** Клиент, у которого есть 41 и пришло 43, сам понимает, что 42 потерян, и догружает его. Порядок не зависит от часов клиента и от порядка прихода событий.
-- **Подтверждено.** `messages.int-spec.ts`: «20 parallel POSTs get seq 1..20, no gaps, no duplicates», «POST and GET to a missing channel return 404 and use no number» (UL-125, [PR #9](https://github.com/ulbi-project-group-12/planktonic/pull/9)).
+- **Подтверждено.** `messages.int-spec.ts`: «20 parallel POSTs get seq 1..20, no gaps, no duplicates», «POST and GET to a missing channel return 404 and use no number» (UL-125, PR #9).
 
 ### 2. Идемпотентная отправка: `clientMsgId`
 
@@ -53,23 +53,23 @@ sequenceDiagram
   - Тот же ключ в другом канале — `409`, это ошибка клиента, а не повтор. Несуществующий канал с новым ключом — `404` (с уже использованным ключом быстрый поиск отвечает раньше, и это `409`).
   - Идемпотентность держится в базе, поэтому повтор на другой инстанс даёт тот же ответ.
 - **Почему.** Ответ на POST может потеряться (таймаут, обрыв), и клиент обязан иметь право повторить без дубля.
-- **Подтверждено.** `messages.int-spec.ts`, блок «idempotent send (UL-126)»: последовательный повтор, 10 одновременных POST с одним ключом → одна строка и ровно один `created: true` (на уровне репозитория), другой автор (тоже через репозиторий: по HTTP автор пока один), другой текст, гонка в два канала (один `201`, один `409`), ключ в верхнем регистре. `phase2-exit.int-spec.ts`: «a retry on the other instance returns the same message and sends no second event» (UL-126 [PR #17](https://github.com/ulbi-project-group-12/planktonic/pull/17), UL-133 [PR #26](https://github.com/ulbi-project-group-12/planktonic/pull/26)).
+- **Подтверждено.** `messages.int-spec.ts`, блок «idempotent send (UL-126)»: последовательный повтор, 10 одновременных POST с одним ключом → одна строка и ровно один `created: true` (на уровне репозитория), другой автор (тоже через репозиторий: по HTTP автор пока один), другой текст, гонка в два канала (один `201`, один `409`), ключ в верхнем регистре. `phase2-exit.int-spec.ts`: «a retry on the other instance returns the same message and sends no second event» (UL-126 PR #17, UL-133 PR #26).
 
 ### 3. Отправка по REST, доставка по сокету, событие после коммита
 
 - **Выбрали.** Сообщение отправляется только `POST /api/channels/:channelId/messages`; у сокета нет событий от клиента (`ClientToServerEvents` пуст, [`realtime.ts`](../../packages/contracts/src/realtime.ts)). Сервер шлёт `message:new { message }` — полный `MessageResponse`, тот же объект, что в ответе POST.
   - Сервис публикует через абстракцию `RealtimePublisher` ([`realtime-publisher.ts`](../../apps/api/src/core/realtime/realtime-publisher.ts)) и не знает о gateway. В api её реализует `RealtimeService` (`server.to(room).emit`).
   - Публикация — только после `COMMIT` и только при `created: true`. Откат, повтор, `404` и `409` событий не шлют.
-  - Доставка — не более одного раза; `publish` никогда не бросает исключение в запрос. Потерянное событие клиент восстанавливает по дыре в `seq` или при переподключении (решение 5), поэтому outbox для живой рассылки не нужен.
+  - Доставка — не более одного раза; `publish` никогда не бросает исключение в запрос. Потерянное событие клиент восстанавливает по дыре в `seq` (её видно, когда приходит следующее сообщение канала) или при переподключении (решение 5), поэтому outbox для живой рассылки не нужен. Предел этого: если потеряно последнее сообщение канала, получатель не увидит его до следующего сообщения или переподключения.
   - **Отправитель получает своё событие**: оно идёт всей комнате, без `except`. REST-запрос не знает сокета отправителя, а другим вкладкам того же пользователя событие нужно. Клиент сливает ответ POST и `message:new` по `id` (а ожидающую строку — по `clientMsgId`); в любом порядке получается одна строка: более поздняя копия заменяет такую же раннюю (`mergeMessages`).
 - **Почему.** У REST есть коды ответа, валидация, таймауты и идемпотентный повтор; сокет — не хранилище, его доставка «не более одного раза» (STACK §0, решение 4).
-- **Подтверждено.** `message-new.int-spec.ts`: «A on instance 1 sends, B on instance 2 receives message:new», «publishes nothing when the transaction rolls back after the insert», «publishes nothing for a retry with the same clientMsgId, on either instance», «publishes nothing for a channel that does not exist». `messages.service.spec.ts`: «publishes message:new to the channel room after the repository resolves». Клиент: `feed.test.ts` — «keeps one row when the POST copy is already there and the event copy arrives» и обратный порядок (UL-128 [PR #20](https://github.com/ulbi-project-group-12/planktonic/pull/20)); блок «feedReducer arrival order» — ожидающая строка, ответ POST и `message:new` дают одну строку во всех порядках (UL-131 [PR #24](https://github.com/ulbi-project-group-12/planktonic/pull/24)). Сервер: UL-127 [PR #18](https://github.com/ulbi-project-group-12/planktonic/pull/18).
+- **Подтверждено.** `message-new.int-spec.ts`: «A on instance 1 sends, B on instance 2 receives message:new», «publishes nothing when the transaction rolls back after the insert», «publishes nothing for a retry with the same clientMsgId, on either instance», «publishes nothing for a channel that does not exist». `messages.service.spec.ts`: «publishes message:new to the channel room after the repository resolves». Клиент: `feed.test.ts` — «keeps one row when the POST copy is already there and the event copy arrives» и обратный порядок (UL-128 PR #20); блок «feedReducer arrival order» — ожидающая строка, ответ POST и `message:new` дают одну строку во всех порядках (UL-131 PR #24). Сервер: UL-127 PR #18.
 
 ### 4. Комнаты назначает сервер
 
 - **Выбрали.** Комната канала — `channel:{id}` (`channelRoom()` в [`rooms.ts`](../../apps/api/src/core/realtime/rooms.ts)). Сокет входит в комнаты в Socket.IO-middleware (`server.use`), до пакета CONNECT, поэтому клиент, увидевший `connect`, уже подписан, и догрузка после `connect` не пропустит сообщение между GET и входом в комнату. Если войти не удалось, клиент получает `connect_error`, а не соединение, которое молча теряет события. Клиент никогда не называет комнату сам.
 - **Почему.** Права проверяет сервер (STACK §4.1, §2.3); «join room X» от клиента — дыра в ACL.
-- **Подтверждено.** `realtime.gateway.spec.ts`: «joins every channel room before the connection completes», «refuses the connection when the room join fails» (unit-тесты middleware). `message-new.int-spec.ts`: «keeps events of different channels in their own rooms»; `realtime.int-spec.ts`: «does not deliver room broadcasts to a connected client outside the room» (на debug-комнате) (UL-124 [PR #10](https://github.com/ulbi-project-group-12/planktonic/pull/10), UL-127 [PR #18](https://github.com/ulbi-project-group-12/planktonic/pull/18)).
+- **Подтверждено.** `realtime.gateway.spec.ts`: «joins every channel room before the connection completes», «refuses the connection when the room join fails» (unit-тесты middleware). `message-new.int-spec.ts`: «keeps events of different channels in their own rooms»; `realtime.int-spec.ts`: «does not deliver room broadcasts to a connected client outside the room» (на debug-комнате) (UL-124 PR #10, UL-127 PR #18).
 
 ### 5. Догрузка после переподключения: `afterSeq` и `hasMore`
 
@@ -80,7 +80,7 @@ sequenceDiagram
   - Догрузку запускает каждый `connect` (состояние соединения `connecting → syncing → connected`) и живое сообщение над дырой, если догрузка сейчас не идёт и прошлая не упала (идущая догрузка после конца сама проверит дыры ещё раз); само сообщение сразу попадает в ленту.
   - Дедуп по `id`, сортировка по `seq`. События, пришедшие через `XREAD` с другого инстанса, и локальная рассылка инстанса между собой **не упорядочены**: порядок прихода гарантирован только внутри одного источника. Клиент опирается на `seq` и дедуп, а не на порядок прихода.
 - **Почему.** Сокет не хранит пропущенное (решение 6), поэтому единственный источник истины — база по REST. Максимальный `seq` как `afterSeq` навсегда спрятал бы потерю: собственный `201` с `seq` 45, пока 42–44 не пришли, иначе сдвинул бы границу за дыру.
-- **Подтверждено.** `catch-up.int-spec.ts`: страницы и `hasMore` на границе лимита, «B misses 5 messages while away and gets all of them, in order, once», «B missed more than a page: hasMore resets the feed to the newest page». `feed-sync.test.ts` (contracts): «asks from below a hole, not after the greatest seq (own 201 above the hole)», «on hasMore it loads the newest page and resets, without paging forward». `phase2-exit.int-spec.ts`: «B gets exactly the 5 it missed, in seq order, without duplicates», «a message that comes both live and in the catch-up page is one row». Мутация «дедуп в `mergeMessages` выключен» роняет оба офлайн-теста (UL-130 [PR #25](https://github.com/ulbi-project-group-12/planktonic/pull/25), UL-133 [PR #26](https://github.com/ulbi-project-group-12/planktonic/pull/26)).
+- **Подтверждено.** `catch-up.int-spec.ts`: страницы и `hasMore` на границе лимита, «B misses 5 messages while away and gets all of them, in order, once», «B missed more than a page: hasMore resets the feed to the newest page». `feed-sync.test.ts` (contracts): «asks from below a hole, not after the greatest seq (own 201 above the hole)», «on hasMore it loads the newest page and resets, without paging forward». `phase2-exit.int-spec.ts`: «B gets exactly the 5 it missed, in seq order, without duplicates», «a message that comes both live and in the catch-up page is one row». Мутация «дедуп в `mergeMessages` выключен» роняет оба офлайн-теста (UL-130 PR #25, UL-133 PR #26).
 
 ### 6. Connection State Recovery выключен
 
@@ -95,7 +95,7 @@ sequenceDiagram
   - Две копии api (`deploy.replicas: 2`) за Traefik со **sticky cookie `io_srv`** (`loadbalancer.sticky.cookie.name=io_srv` в [`compose.yaml`](../../compose.yaml)); idle timeout Traefik 60 с — больше `pingInterval + pingTimeout` (45 с, умолчание Socket.IO; api их не меняет). Long-polling остаётся запасным транспортом, клиент `transports` не ограничивает. Клиент сначала делает `GET /api/health` (Traefik ставит cookie), потом `connect()`.
   - Web, `/api` и `/socket.io` — за одним Traefik на одном origin (UL-128): CORS, `withCredentials` и rewrites не нужны; клиент подключается без URL ([`socket.ts`](../../apps/web/src/shared/api/socket.ts)).
 - **Почему.** Long-polling без привязки к инстансу даёт HTTP 400 (STACK §4.1). Cookie распределяет нагрузку ровнее, чем `hash $remote_addr` за NAT оператора, и не требует перечислять апстримы.
-- **Подтверждено.** `realtime.int-spec.ts`: «delivers a ping triggered over HTTP on instance 1 to the client on instance 2», «does not broadcast between independent apps using the default Socket.IO adapter» (контроль). Sticky cookie автотеста не имеет: проверено вручную на стенде compose `--profile realtime` — UL-123 ([PR #5](https://github.com/ulbi-project-group-12/planktonic/pull/5), команды проверки в корневом README) и двумя окнами браузера на разных репликах в UL-128…UL-131 (UL-124 [PR #10](https://github.com/ulbi-project-group-12/planktonic/pull/10)).
+- **Подтверждено.** `realtime.int-spec.ts`: «delivers a ping triggered over HTTP on instance 1 to the client on instance 2», «does not broadcast between independent apps using the default Socket.IO adapter» (контроль). Sticky cookie автотеста не имеет: проверено вручную на стенде compose `--profile realtime` — UL-123 (PR #5, команды проверки в корневом README) и двумя окнами браузера на разных репликах в UL-128…UL-131 (UL-124 PR #10).
 
 ## Решение → тест
 
@@ -138,7 +138,7 @@ sequenceDiagram
 - **Классический `@socket.io/redis-adapter`.** Теряет пакеты между инстансами при кратком разрыве Redis; последний релиз 2024-03-13 (STACK §4.1).
 - **Привязка по `hash $remote_addr` или только транспорт `websocket`.** Хеш по IP неровно распределяет клиентов за NAT оператора; без long-polling хуже на закрытых сетях, а стоит он здесь ничего.
 - **Разные origin для web и api с CORS.** Нужны CORS, `withCredentials` и cookie между доменами; один Traefik на одном origin проще (UL-128).
-- **Outbox для живой рассылки.** Потерянное событие клиент восстанавливает сам по `seq`; outbox нужен только для надёжных побочных эффектов (ниже).
+- **Outbox для живой рассылки.** Потерянное событие клиент восстанавливает сам: по дыре в `seq`, когда приходит следующее сообщение канала, или при переподключении. Последнее сообщение канала, потерянное при рассылке, поэтому остаётся невидимым до следующего сообщения или переподключения; для прототипа это принято. Outbox этого не исправил бы: он делает надёжной запись побочного эффекта, а не доставку в сокет. Если фазе 5 этот случай окажется неприемлем, нужен отдельный механизм восстановления (новый ADR). Outbox нужен только для надёжных побочных эффектов (ниже).
 
 ## Границы прототипа
 
