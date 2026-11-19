@@ -2,7 +2,7 @@
 #
 #   docker compose up -d          # start (first run pulls the images)
 #   docker compose wait s3-init   # exits 0 once the dev services are ready
-#   docker compose --profile realtime up -d --build   # also two api replicas behind Traefik (UL-123)
+#   docker compose --profile realtime up -d --build   # also two api replicas and the web app behind Traefik (UL-123, UL-128)
 #   docker compose down -v        # stop and reset every volume
 #
 # Every value comes from env with defaults equal to .env.example, so the stack starts with no
@@ -85,7 +85,7 @@ services:
   # One-shot job: creates the dev bucket if it is missing; safe to re-run. It starts only when
   # postgres, redis and seaweedfs are all healthy, so its exit code 0 means the dev services are
   # ready: `docker compose wait s3-init` is the ready signal (`up --wait` fails on any one-shot).
-  # The api replicas and Traefik (profile `realtime`) are not part of that signal.
+  # The api replicas, the web app and Traefik (profile `realtime`) are not part of that signal.
   s3-init:
     image: chrislusf/seaweedfs:4.51@sha256:f7a49e3f3972ebed5be2ed4befa4a0c68eb7bdddba6e692d42729ceb545134b8 # pushed 2026-10-26
     depends_on:
@@ -143,7 +143,7 @@ services:
         condition: service_healthy
     labels:
       - traefik.enable=true
-      - traefik.http.routers.api.rule=PathPrefix(`/api`) || PathPrefix(`/socket.io`)
+      - traefik.http.routers.api.rule=Path(`/api`) || PathPrefix(`/api/`) || PathPrefix(`/socket.io/`)
       - traefik.http.routers.api.entrypoints=web
       - traefik.http.services.api.loadbalancer.server.port=3001
       - traefik.http.services.api.loadbalancer.sticky.cookie.name=io_srv
@@ -159,6 +159,31 @@ services:
       start_period: 20s
     deploy:
       replicas: 2
+    restart: unless-stopped
+
+  # The web app sits behind the same Traefik (UL-128), so pages, /api and /socket.io share one
+  # origin. Router priority 1 keeps the longer api rule winning for /api and /socket.io.
+  web:
+    profiles: [realtime]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.web.rule=PathPrefix(`/`)
+      - traefik.http.routers.web.entrypoints=web
+      - traefik.http.routers.web.priority=1
+      - traefik.http.services.web.loadbalancer.server.port=3000
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('node:http').get('http://127.0.0.1:3000/', r => { r.resume(); process.exitCode = r.statusCode === 200 ? 0 : 1 }).on('error', () => { process.exitCode = 1 })"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     restart: unless-stopped
 
   traefik:

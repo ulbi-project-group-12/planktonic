@@ -11,12 +11,13 @@ Run it from the repo root with `pnpm dev` (README "Quick start"); it serves http
 ```
 app/                 Next.js routing only: each file re-exports from src/ (layout.tsx, page.tsx)
 src/_app/            app layer: root layout, metadata, global styles (styles/globals.css)
-src/_pages/          pages layer: one slice per page, e.g. _pages/home
+src/_pages/          pages layer: one slice per page, e.g. _pages/home, _pages/prototype
 src/widgets/         widgets layer (empty for now)
 src/features/        features layer (empty for now)
 src/entities/        entities layer (empty for now)
 src/shared/ui/       the UI kit (shadcn components) and their stories
-src/shared/lib/      shared helpers, e.g. cn()
+src/shared/api/      shared transport: the per-tab Socket.IO singleton (getSocket)
+src/shared/lib/      shared helpers, e.g. cn(), uuidv7()
 .storybook/          Storybook config (main.ts) and preview (loads globals.css)
 ```
 
@@ -115,6 +116,66 @@ themselves, so they set `globals: { theme: 'light' }` and the switch is locked t
 
 Run them as `pnpm --filter @app/web <script>`, or through Turbo from the root (`pnpm lint`,
 `pnpm typecheck`, `pnpm test`, `pnpm build`).
+
+## Prototype page (UL-128)
+
+`/prototype` is the client half of the Phase 2 realtime prototype. It shows:
+
+- `Instance: <instanceId>` from `GET /api/health`: the api replica this window is bound to;
+- `Socket: connecting | connected | disconnected`;
+- the seeded channel's feed (`00000000-0000-7000-8000-000000000001`) as `#seq body` rows;
+- a message input and a Send button.
+
+How it works:
+
+1. One Socket.IO client per tab comes from `getSocket()` (`@/shared/api`). The page connects it
+   only after the health response, so the handshake carries the `io_srv` sticky cookie Traefik set
+   on that response and lands on the same replica.
+2. On every socket connect, the first and each reconnect, the page fetches the channel's history
+   and merges it with live `message:new` events and `POST` responses by `id`, sorted by
+   `BigInt(seq)`. The sender's own message shows once whichever copy arrives first.
+3. Each Send gets a UUIDv7 `clientMsgId`. After a failed send, resending the same text reuses
+   that key, so a resend never makes a second message. Editing the draft first gives it a new
+   key, because the server answers a used key with the stored body. A failed send shows an error
+   and keeps the draft. Every request times out after 10 s.
+4. Every wire payload is checked with the `@app/contracts` schemas. An invalid `message:new` is
+   dropped with a `console.warn`, and events for other channels are ignored. A failed or invalid
+   history load shows an error with a Retry button.
+
+The page uses relative `/api` and `/socket.io` URLs, so it works only through Traefik on one
+origin. Under plain `pnpm dev` (web on `:3000`, api on `:3001`) its requests reach Next.js and
+fail.
+
+### Two-window check
+
+1. Start the stack from the repo root (a second checkout or worktree sets its own
+   `COMPOSE_PROJECT_NAME`, as the root README says):
+
+   ```bash
+   docker compose --profile realtime up -d --build
+   ```
+
+2. Apply the migrations and the seed from the host. Copy the root `.env` from `.env.example`
+   first: its `DATABASE_URL` points at the compose Postgres on `127.0.0.1:55432`. Compose applies
+   no migrations.
+
+   ```bash
+   pnpm db:migrate
+   pnpm db:seed
+   ```
+
+3. Open http://127.0.0.1:58080/prototype in a normal window and in a private window (`58080` is
+   the default `TRAEFIK_PORT`).
+4. Check that the two `Instance` values differ. If they match, delete the `io_srv` cookie for
+   `127.0.0.1` in one window and reload until they differ.
+5. Send from each window: the message appears in the other one without a reload, in `seq` order,
+   and once in the sender's own feed.
+
+After a change to the web app, rebuild only its container:
+
+```bash
+docker compose --profile realtime up -d --build web
+```
 
 ## Image
 

@@ -476,6 +476,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@app/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -497,6 +500,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.3.1(react@19.3.1)
+      socket.io-client:
+        specifier: 'catalog:'
+        version: 4.8.4
       tailwind-merge:
         specifier: 'catalog:'
         version: 3.7.0
