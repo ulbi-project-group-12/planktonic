@@ -34,6 +34,9 @@ export function PrototypePage() {
   const [instance, setInstance] = useState<Instance>({ kind: 'loading' });
   const [draft, setDraft] = useState('');
   const [historyFailed, setHistoryFailed] = useState(false);
+  // What the polite "Send status" live region last said: the rows change outside any live region, so
+  // a screen reader hears about Sending, Not sent (and whether Retry helps) and Sent from here.
+  const [sendAnnouncement, setSendAnnouncement] = useState('');
   // The effect's history loader, so the Retry button reuses its abort signal.
   const loadHistoryRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -124,12 +127,20 @@ export function PrototypePage() {
    */
   const deliver = async (clientMsgId: string, body: string) => {
     dispatch({ type: 'pending', clientMsgId, body });
+    setSendAnnouncement('Sending message…');
     try {
       const message = await sendMessage(PROTOTYPE_CHANNEL_ID, { clientMsgId, body });
       dispatch({ type: 'merge', messages: [message] });
+      setSendAnnouncement('Message sent.');
     } catch (error) {
       console.warn('prototype: send failed', error);
-      dispatch({ type: 'failed', clientMsgId, failure: classifySendError(error) });
+      const failure = classifySendError(error);
+      dispatch({ type: 'failed', clientMsgId, failure });
+      setSendAnnouncement(
+        `Message not sent: ${failure.reason}. ${
+          failure.retryable ? 'Press Retry to try again.' : 'Retrying will not help.'
+        }`,
+      );
     }
   };
 
@@ -167,6 +178,9 @@ export function PrototypePage() {
           </Button>
         </div>
       ) : null}
+      <p role="status" aria-label="Send status" className="sr-only">
+        {sendAnnouncement}
+      </p>
       <ol aria-label="Messages" className="flex flex-col gap-1 text-body-s">
         {feedRows(feed).map((row) => {
           if (row.status === 'sent') {

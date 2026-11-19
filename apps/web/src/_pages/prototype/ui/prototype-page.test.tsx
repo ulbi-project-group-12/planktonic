@@ -198,7 +198,7 @@ describe('PrototypePage', () => {
     const lastHealth = calls.lastIndexOf('GET /api/health');
     expect(lastHealth).toBeGreaterThanOrEqual(0);
     expect(lastHealth).toBeLessThan(calls.indexOf('connect'));
-    expect(screen.getByRole('status')).toHaveTextContent('Connection: syncing');
+    expect(screen.getByText('Connection: syncing')).toBeInTheDocument();
   });
 
   it('loads the history on connect and renders it in seq order', async () => {
@@ -284,6 +284,51 @@ describe('PrototypePage', () => {
       await response.promise;
     });
     expect(rows()).toEqual(['#1 first', '#2 second', '#3 hello']);
+  });
+
+  it('announces Sending, Not sent with whether Retry helps, and Sent in a polite live region', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const first = deferred<Response>();
+    let attempt = 0;
+    postResponder = (payload) => {
+      attempt += 1;
+      if (attempt === 1) {
+        return first.promise.then(() => Promise.reject(new TypeError('Failed to fetch')));
+      }
+      if (attempt === 2) return created(payload, 1);
+      return Promise.resolve(json({ message: 'Bad Request' }, 400));
+    };
+    await renderConnected();
+    const region = screen.getByRole('status', { name: 'Send status' });
+    expect(region).toBeEmptyDOMElement();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message'), 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(region).toHaveTextContent('Sending message…');
+    await act(async () => {
+      first.resolve(json({}, 200));
+      await first.promise;
+    });
+    await waitFor(() => {
+      expect(region).toHaveTextContent(
+        'Message not sent: no connection to the server. Press Retry to try again.',
+      );
+    });
+
+    await user.click(messageList().getByRole('button', { name: 'Retry' }));
+    await waitFor(() => {
+      expect(region).toHaveTextContent('Message sent.');
+    });
+
+    await user.type(screen.getByLabelText('Message'), 'refused');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => {
+      expect(region).toHaveTextContent(
+        'Message not sent: the server rejected the message (400). Retrying will not help.',
+      );
+    });
+    expect(region).not.toHaveFocus();
   });
 
   it('a send without network stays failed with Retry, and Retry delivers it once with the same key', async () => {
