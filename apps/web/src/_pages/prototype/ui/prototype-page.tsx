@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useReducer, useState, type SubmitEvent } from 'react';
+import { useEffect, useReducer, useRef, useState, type SubmitEvent } from 'react';
 import { MESSAGE_BODY_MAX_LENGTH, MESSAGE_NEW_EVENT, MessageNewEvent } from '@app/contracts';
 import { getSocket } from '@/shared/api';
 import { uuidv7 } from '@/shared/lib';
@@ -36,6 +36,9 @@ export function PrototypePage() {
   const [pending, setPending] = useState<{ key: string; body: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [historyFailed, setHistoryFailed] = useState(false);
+  // The effect's history loader, so the Retry button reuses its abort signal.
+  const loadHistoryRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     const socket = getSocket();
@@ -45,14 +48,20 @@ export function PrototypePage() {
     const loadHistory = async () => {
       try {
         const history = await fetchMessages(PROTOTYPE_CHANNEL_ID, signal);
-        if (!signal.aborted) dispatch({ type: 'merge', messages: history });
+        if (signal.aborted) return;
+        dispatch({ type: 'merge', messages: history });
+        setHistoryFailed(false);
       } catch (error) {
-        if (!isAbortError(error)) console.warn('prototype: could not load messages', error);
+        if (signal.aborted || isAbortError(error)) return;
+        console.warn('prototype: could not load messages', error);
+        setHistoryFailed(true);
       }
     };
+    loadHistoryRef.current = loadHistory;
 
-    // Every connect, the first and each reconnect, reloads the history: it catches up on whatever
-    // was missed while the socket was down, and the merge by id drops the overlap.
+    // Every connect, the first and each reconnect, reloads the latest page of history (the api's
+    // last 100 messages) and the merge by id drops the overlap. A gap longer than one page is not
+    // caught up here: paging after the last known seq (`?afterSeq=`) is UL-130.
     const onConnect = () => {
       setStatus('connected');
       void loadHistory();
@@ -104,6 +113,7 @@ export function PrototypePage() {
 
     return () => {
       controller.abort();
+      loadHistoryRef.current = null;
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('connect_error', onConnectError);
@@ -144,6 +154,21 @@ export function PrototypePage() {
         <p>{instanceText(instance)}</p>
         <p>{`Socket: ${status}`}</p>
       </div>
+      {historyFailed ? (
+        <div role="alert" className="flex items-center gap-2 text-body-s text-danger">
+          <span>Could not load the messages.</span>
+          <Button
+            type="button"
+            variant="secondary"
+            size="s"
+            onClick={() => {
+              void loadHistoryRef.current?.();
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      ) : null}
       <ol aria-label="Messages" className="flex flex-col gap-1 text-body-s">
         {messages.map((message) => (
           <li key={message.id}>{`#${message.seq} ${message.body}`}</li>

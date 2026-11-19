@@ -65,6 +65,8 @@ function msg(seq: number, body: string): MessageResponse {
 }
 
 let history: MessageResponse[] = [];
+/** How many history GETs still answer 500. */
+let historyFailures = 0;
 /** Answers each POST; the test sets it. */
 let postResponder: (payload: CreateMessageBody) => Promise<Response>;
 const posted: CreateMessageBody[] = [];
@@ -84,6 +86,10 @@ const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     return Promise.resolve(json({ status: 'ok', instanceId: 'api-test-1' }));
   }
   if (method === 'GET' && url === MESSAGES_URL) {
+    if (historyFailures > 0) {
+      historyFailures -= 1;
+      return Promise.resolve(json({ message: 'boom' }, 500));
+    }
     return Promise.resolve(json({ messages: history }));
   }
   if (method === 'POST' && url === MESSAGES_URL) {
@@ -122,6 +128,7 @@ beforeEach(() => {
   fake.reset();
   calls.length = 0;
   history = [];
+  historyFailures = 0;
   posted.length = 0;
   postResponder = () => Promise.resolve(json({ message: 'unexpected POST' }, 500));
   connectSnapshot.messageNew = null;
@@ -347,6 +354,23 @@ describe('PrototypePage', () => {
       expect(input).toHaveValue('');
     });
     expect(posted).toHaveLength(1);
+  });
+
+  it('shows a history load failure and retries it, keeping live messages', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    historyFailures = 1;
+    history = [msg(1, 'first')];
+    await renderConnected();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Could not load the messages.');
+
+    act(() => {
+      fake.fire('message:new', { message: msg(2, 'live') });
+    });
+    await userEvent.setup().click(within(alert).getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('#1 first')).toBeInTheDocument();
+    expect(rows()).toEqual(['#1 first', '#2 live']);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('tracks disconnects and catches up on reconnect without duplicates', async () => {
