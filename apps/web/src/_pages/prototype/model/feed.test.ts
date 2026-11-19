@@ -340,6 +340,32 @@ describe('send announcements', () => {
     expect(sendAnnouncement(initialFeedState, initialFeedState)).toBeNull();
   });
 
+  it('counts every announcement, so two identical ones in a row stay distinct', () => {
+    let state = announcedFeedReducer(initialAnnouncedFeed, pending(KEY_A, 'a'));
+    state = announcedFeedReducer(state, pending(KEY_B, 'b'));
+    state = announcedFeedReducer(state, merge(delivered(KEY_A, 1, '1', 'a')));
+    const first = state;
+    state = announcedFeedReducer(state, merge(delivered(KEY_B, 2, '2', 'b')));
+    expect(state.announcement).toBe('Message sent.');
+    expect(first.announcement).toBe('Message sent.');
+    expect(state.announcementId).toBe(first.announcementId + 1);
+
+    let failing = announcedFeedReducer(initialAnnouncedFeed, pending(KEY_A, 'a'));
+    failing = announcedFeedReducer(failing, pending(KEY_B, 'b'));
+    failing = announcedFeedReducer(failing, failed(KEY_A));
+    const firstFailure = failing;
+    failing = announcedFeedReducer(failing, failed(KEY_B));
+    expect(failing.announcement).toBe(firstFailure.announcement);
+    expect(failing.announcementId).toBe(firstFailure.announcementId + 1);
+  });
+
+  it('keeps the announcement and its id when a change says nothing', () => {
+    const state = announcedFeedReducer(initialAnnouncedFeed, pending(KEY_A, 'a'));
+    const next = announcedFeedReducer(state, merge(delivered(KEY_B, 1, '1', 'b')));
+    expect(next.announcement).toBe(state.announcement);
+    expect(next.announcementId).toBe(state.announcementId);
+  });
+
   it('returns the same state when the feed does not change', () => {
     const state = announcedFeedReducer(initialAnnouncedFeed, pending(KEY_A, 'a'));
     expect(announcedFeedReducer(state, failed(KEY_B))).toBe(state);

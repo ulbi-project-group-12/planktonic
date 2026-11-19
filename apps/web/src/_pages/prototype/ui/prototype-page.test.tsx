@@ -286,6 +286,47 @@ describe('PrototypePage', () => {
     expect(rows()).toEqual(['#1 first', '#2 second', '#3 hello']);
   });
 
+  it('renders a repeated announcement as a new node, so it is read out again', async () => {
+    const answers = [deferred<Response>(), deferred<Response>()];
+    let attempt = 0;
+    postResponder = () => {
+      const answer = answers[attempt];
+      attempt += 1;
+      if (!answer) throw new Error('unexpected POST');
+      return answer.promise;
+    };
+    await renderConnected();
+    const region = screen.getByRole('status', { name: 'Send status' });
+
+    const user = userEvent.setup();
+    for (const text of ['a', 'b']) {
+      await user.type(screen.getByLabelText('Message'), text);
+      await user.click(screen.getByRole('button', { name: 'Send' }));
+    }
+    await waitFor(() => {
+      expect(posted).toHaveLength(2);
+    });
+
+    const confirm = async (index: number, seq: number) => {
+      const payload = posted[index];
+      const answer = answers[index];
+      if (!payload || !answer) throw new Error('missing POST');
+      await act(async () => {
+        answer.resolve(json({ ...msg(seq, payload.body), clientMsgId: payload.clientMsgId }, 201));
+        await answer.promise;
+      });
+      await waitFor(() => {
+        expect(region).toHaveTextContent('Message sent.');
+      });
+      return region.firstElementChild;
+    };
+    const first = await confirm(0, 1);
+    const second = await confirm(1, 2);
+    expect(rows()).toEqual(['#1 a', '#2 b']);
+    expect(second).toHaveTextContent('Message sent.');
+    expect(second).not.toBe(first);
+  });
+
   it('announces Sending, Not sent with whether Retry helps, and Sent in a polite live region', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const first = deferred<Response>();

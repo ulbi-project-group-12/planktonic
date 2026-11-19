@@ -186,18 +186,29 @@ export function sendAnnouncement(prev: FeedState, next: FeedState): string | nul
   return said;
 }
 
-/** The feed plus the last thing the "Send status" live region said. */
+/**
+ * The feed plus the last thing the "Send status" live region said. `announcementId` grows with every
+ * announcement, so the page can render each one as a new node: two identical sentences in a row
+ * (two sends confirmed, two equal failures) would otherwise leave the region's text unchanged and a
+ * screen reader silent.
+ */
 export interface AnnouncedFeed {
   readonly feed: FeedState;
   readonly announcement: string;
+  readonly announcementId: number;
 }
 
-export const initialAnnouncedFeed: AnnouncedFeed = { feed: initialFeedState, announcement: '' };
+export const initialAnnouncedFeed: AnnouncedFeed = {
+  feed: initialFeedState,
+  announcement: '',
+  announcementId: 0,
+};
 
 /** `feedReducer`, plus the announcement for whatever it changed (`sendAnnouncement`). */
 export function announcedFeedReducer(state: AnnouncedFeed, action: FeedAction): AnnouncedFeed {
   const feed = feedReducer(state.feed, action);
   if (feed === state.feed) return state;
   const said = sendAnnouncement(state.feed, feed);
-  return { feed, announcement: said ?? state.announcement };
+  if (said === null) return { ...state, feed };
+  return { feed, announcement: said, announcementId: state.announcementId + 1 };
 }

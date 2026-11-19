@@ -37,7 +37,10 @@ function isAbortError(error: unknown): boolean {
 export function PrototypePage() {
   // `announcement` is derived from the feed by the reducer, so the "Send status" live region always
   // matches the rows, whatever order the 201, `message:new` and a failure arrive in.
-  const [{ feed, announcement }, dispatch] = useReducer(announcedFeedReducer, initialAnnouncedFeed);
+  const [{ feed, announcement, announcementId }, dispatch] = useReducer(
+    announcedFeedReducer,
+    initialAnnouncedFeed,
+  );
   const [instance, setInstance] = useState<Instance>({ kind: 'loading' });
   const [draft, setDraft] = useState('');
   const [historyFailed, setHistoryFailed] = useState(false);
@@ -175,7 +178,8 @@ export function PrototypePage() {
         </div>
       ) : null}
       <p role="status" aria-label="Send status" className="sr-only">
-        {announcement}
+        {/* A new node per announcement, so a repeated sentence is read out again. */}
+        {announcement ? <span key={announcementId}>{announcement}</span> : null}
       </p>
       <ol aria-label="Messages" className="flex flex-col gap-1 text-body-s">
         {feedRows(feed).map((row) => {
