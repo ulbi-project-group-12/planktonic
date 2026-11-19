@@ -66,6 +66,13 @@ describe('integration stand', () => {
     );
   });
 
+  it('stand.disconnect rejects a pending waitForEvent at once', async () => {
+    const a = await stand.connect(stand.apps[0]!, 'A');
+    const waiting = waitForEvent(a, 'never:sent', { timeoutMs: 5_000 });
+    stand.disconnect(a);
+    await expect(waiting).rejects.toThrow('client "A" (instance stand-1) disconnected');
+  });
+
   it('waitForEvent fails at once for a client that is already disconnected', async () => {
     const a = await stand.connect(stand.apps[0]!, 'A');
     a.disconnect();

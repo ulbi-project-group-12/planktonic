@@ -106,27 +106,51 @@ async function closeApps(scope: Scope): Promise<void> {
 const STREAM_NAME = 'socket.io'; // the adapter's default; realtime.setup.ts does not change it
 const READER_TIMEOUT_MS = 5_000;
 
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
 /**
  * `app.listen()` returns before the adapter's stream reader polls. That reader starts at `$` and
  * keeps `$` until it has read one entry, so until then every gap between two XREADs drops what
- * other instances emit. Wait until the app's reader is blocked in XREAD, then add an entry the
- * adapter ignores (no `nsp`): the reader takes its id as its offset and misses nothing after.
+ * other instances emit. So: find the app's reader (its connection blocked in XREAD), watch its
+ * commands with MONITOR, and add entries the adapter ignores (no `nsp`) until the reader issues
+ * an XREAD from a real entry id. From then on it misses nothing.
  */
 async function waitForStreamReader(redis: TestRedis, instanceId: string): Promise<void> {
   const name = `api:${instanceId}`;
   const deadline = Date.now() + READER_TIMEOUT_MS;
-  for (;;) {
-    const clients = await redis.clientList();
-    const reading = clients.some(
-      (entry) => entry.name === name && entry.cmd === 'xread' && entry.flags.includes('b'),
-    );
-    if (reading) break;
-    if (Date.now() > deadline) {
-      throw new Error(`The Redis Streams reader of ${instanceId} did not start polling in time`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 20));
+  const timedOut = (): Error =>
+    new Error(`The Redis Streams reader of ${instanceId} did not start reading in time`);
+
+  let addr: string | undefined;
+  while (addr === undefined) {
+    addr = (await redis.clientList()).find(
+      (entry) => entry.name === name && entry.cmd === 'xread',
+    )?.addr;
+    if (addr !== undefined) break;
+    if (Date.now() > deadline) throw timedOut();
+    await sleep(20);
   }
-  await redis.xAdd(STREAM_NAME, '*', { stand: 'reader-ready' });
+
+  const monitor = redis.duplicate();
+  monitor.on('error', () => {});
+  await monitor.connect();
+  try {
+    const seen = { reading: false };
+    // A MONITOR line: `<time> [<db> <addr>] "XREAD" "COUNT" "100" "BLOCK" "2000" "STREAMS" "socket.io" "<offset>"`.
+    await monitor.monitor((line: string) => {
+      if (line.includes(` ${addr}] "XREAD"`) && !line.endsWith(' "$"')) seen.reading = true;
+    });
+    while (!seen.reading) {
+      if (Date.now() > deadline) throw timedOut();
+      await redis.xAdd(STREAM_NAME, '*', { stand: 'reader-ready' });
+      await sleep(50);
+    }
+  } finally {
+    monitor.destroy();
+  }
 }
 
 export function useStand(options: StandOptions): Stand {
@@ -215,9 +239,10 @@ export function useStand(options: StandOptions): Stand {
     disconnect(client) {
       forget(fileScope.clients, client);
       forget(testScope.clients, client);
-      cancelWaits(client);
-      client.removeAllListeners();
+      // Disconnect first: its `disconnect` event rejects pending waitForEvent calls, as a test
+      // expects. Recorder waits keep their own timers. Teardown cancels instead (closeClients).
       client.disconnect();
+      client.removeAllListeners();
     },
   };
 

@@ -254,7 +254,7 @@ it('A on instance 1 sends, B on instance 2 receives message:new', async () => {
   `instances` on port 0, with the Redis Streams adapter (`realtime: false` leaves the default
   adapter). Each app gets its instance id through `overrideProvider(INSTANCE_ID)`: in one process
   every app has the same `os.hostname()`, and `ConfigModule` caches one `process.env`.
-- `startApp` returns once the app's Redis Streams reader is polling, so an app started inside a
+- `startApp` returns once the app's Redis Streams reader is confirmed reading (watched with `MONITOR`), so an app started inside a
   test receives what other instances emit right away.
 - `beforeEach` truncates every table except Prisma's migration history, seeds the placeholder
   author and flushes the Redis database. Before the first write the stand also checks what the
