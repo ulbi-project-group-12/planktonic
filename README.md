@@ -352,6 +352,10 @@ checklist:
   the required checks in the ruleset (see below).
 - CodeRabbit reviews every non-draft PR in Russian as the AI first pass. Answer or resolve its
   comments before asking a teammate; it never approves, so the human approval stays required.
+- `integration` runs the api integration suite (`pnpm --filter @app/api test:integration`) on
+  Postgres and Redis service containers, after `pnpm db:migrate`. It is not a required check yet.
+  Locally: `pnpm services:up`, then the commands in
+  [apps/api/README.md](apps/api/README.md#integration-tests-real-services).
 - `pr-hygiene` only warns: a missing `UL-n` / `[no-ticket]` in the title, or more than 600 changed
   lines. It never blocks.
 - Each job restores the local Turbo cache (`.turbo/cache`) through `actions/cache`, so unchanged

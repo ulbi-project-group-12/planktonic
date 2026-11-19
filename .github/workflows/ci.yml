@@ -76,6 +76,48 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm turbo run build
 
+  # api integration suite (UL-132) on real Postgres and Redis service containers. Not a required
+  # check yet: the lead decides whether to add it to the ruleset. `pnpm test` (the test job) stays
+  # service-free. The images and digests are the ones in compose.yaml; keep them in step.
+  # Credentials are throwaway literals for a container that lives only as long as this job.
+  integration:
+    name: integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.6-pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a
+        env:
+          POSTGRES_DB: app_test
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U app -d app_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20 --health-start-period 10s
+      redis:
+        image: redis:8.10.2@sha256:97ec88159e6d7cfb5ddef9015386087d58a912de80112f06ebdfa78fa5989901
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping | grep -q PONG"
+          --health-interval 5s --health-timeout 5s --health-retries 20 --health-start-period 5s
+    env:
+      # The stand wipes both stores before every test: a *_test database and Redis DB 1 only.
+      DATABASE_URL: postgresql://app:app_ci_password@127.0.0.1:5432/app_test
+      REDIS_URL: redis://127.0.0.1:6379/1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      # The specs import the generated Prisma client and @app/contracts from its dist.
+      - run: pnpm --filter @app/contracts build
+      - run: pnpm --filter @app/api generate
+      - run: pnpm db:migrate
+      - run: pnpm --filter @app/api test:integration
+
   # Required check: FSD layers and slice boundaries in apps/web (D-19).
   steiger:
     name: steiger
