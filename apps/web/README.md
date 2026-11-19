@@ -134,9 +134,10 @@ How it works:
 2. On every socket connect, the first and each reconnect, the page fetches the channel's history
    and merges it with live `message:new` events and `POST` responses by `id`, sorted by
    `BigInt(seq)`. The sender's own message shows once whichever copy arrives first.
-3. Each draft gets one UUIDv7 `clientMsgId` on the first Send and keeps it across failed sends
-   and resends, so a resend never makes a second message. A failed send shows an error and keeps
-   the draft.
+3. Each Send gets a UUIDv7 `clientMsgId`. After a failed send, resending the same text reuses
+   that key, so a resend never makes a second message. Editing the draft first gives it a new
+   key, because the server answers a used key with the stored body. A failed send shows an error
+   and keeps the draft. Every request times out after 10 s.
 4. Every wire payload is checked with the `@app/contracts` schemas; an invalid one is dropped
    with a `console.warn`, and events for other channels are ignored.
 

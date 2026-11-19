@@ -279,6 +279,49 @@ describe('PrototypePage', () => {
     expect(posted[1]?.clientMsgId).toBe(posted[0]?.clientMsgId);
   });
 
+  it('makes a new key when the draft is edited after a failed send', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    postResponder = () => Promise.resolve(json({ message: 'boom' }, 500));
+    await renderConnected();
+
+    const user = userEvent.setup();
+    const input = screen.getByLabelText('Message');
+    await user.type(input, 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await screen.findByRole('alert');
+
+    // The first POST may have committed: reusing its key would return "hello" and drop the edit.
+    await user.type(input, ' again');
+    postResponder = (payload) =>
+      Promise.resolve(json({ ...msg(1, payload.body), clientMsgId: payload.clientMsgId }, 201));
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => {
+      expect(posted).toHaveLength(2);
+    });
+    expect(posted[1]?.body).toBe('hello again');
+    expect(posted[1]?.clientMsgId).not.toBe(posted[0]?.clientMsgId);
+    expect(ClientMsgId.safeParse(posted[1]?.clientMsgId).success).toBe(true);
+    expect(await screen.findByText('#1 hello again')).toBeInTheDocument();
+  });
+
+  it('keeps text typed while a send is in flight', async () => {
+    const response = deferred<Response>();
+    postResponder = () => response.promise;
+    await renderConnected();
+    const user = userEvent.setup();
+    const input = screen.getByLabelText('Message');
+
+    await user.type(input, 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await user.type(input, '!');
+    await act(async () => {
+      response.resolve(json(msg(1, 'hello'), 201));
+      await response.promise;
+    });
+    expect(await screen.findByText('#1 hello')).toBeInTheDocument();
+    expect(input).toHaveValue('hello!');
+  });
+
   it('disables Send for a blank draft and while a send is in flight', async () => {
     const response = deferred<Response>();
     postResponder = () => response.promise;

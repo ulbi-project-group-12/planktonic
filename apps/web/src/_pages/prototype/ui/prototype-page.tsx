@@ -30,9 +30,10 @@ export function PrototypePage() {
   const [instance, setInstance] = useState<Instance>({ kind: 'loading' });
   const [status, setStatus] = useState<SocketStatus>('connecting');
   const [draft, setDraft] = useState('');
-  // The clientMsgId that belongs to the current draft: made once on the first Send and reused on
-  // every resend (and after edits), so a resend after a lost response never makes a second message.
-  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  // The clientMsgId of the last send that did not succeed, bound to the body it was made for. A
+  // resend of that same body reuses it, so a lost response never makes a second message. An edited
+  // draft gets a new key: the server would answer an old key with the stored (old) body.
+  const [pending, setPending] = useState<{ key: string; body: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
@@ -116,16 +117,18 @@ export function PrototypePage() {
   const onSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (sendDisabled) return;
-    const clientMsgId = pendingKey ?? uuidv7();
-    setPendingKey(clientMsgId);
+    // The body goes as typed: the server stores it verbatim.
+    const body = draft;
+    const clientMsgId = pending?.body === body ? pending.key : uuidv7();
+    setPending({ key: clientMsgId, body });
     setSending(true);
     setSendError(null);
     try {
-      // The body goes as typed: the server stores it verbatim.
-      const message = await sendMessage(PROTOTYPE_CHANNEL_ID, { clientMsgId, body: draft });
+      const message = await sendMessage(PROTOTYPE_CHANNEL_ID, { clientMsgId, body });
       dispatch({ type: 'merge', messages: [message] });
-      setDraft('');
-      setPendingKey(null);
+      // Text typed while the request was in flight stays.
+      setDraft((current) => (current === body ? '' : current));
+      setPending((current) => (current?.key === clientMsgId ? null : current));
     } catch (error) {
       console.warn('prototype: send failed', error);
       setSendError('Not sent. Press Send to try again.');
