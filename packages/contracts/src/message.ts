@@ -51,9 +51,61 @@ export const MessageResponse = z.object({
 
 export type MessageResponse = z.infer<typeof MessageResponse>;
 
-/** `GET` response: the channel's messages. */
+/** Most messages one `GET` returns, and its default page size (STACK §4.4). */
+export const MESSAGES_PAGE_LIMIT = 100;
+
+/** Largest value of a Postgres `bigint`, the type of `messages.seq`. */
+const SEQ_MAX = 2n ** 63n - 1n;
+
+/**
+ * Query of `GET` messages. Both fields arrive as strings (a query string has no numbers), so the
+ * schema checks the digits itself instead of coercing: `Number('1e2')` or `Number(' 7 ')` would pass a
+ * coercion and mean something the client never sent.
+ *
+ * - `afterSeq`: only messages with a greater `seq`, oldest first (the reconnect catch-up, UL-130).
+ *   A decimal string like `MessageSeq`, but `"0"` is allowed ("after nothing") and it must fit a
+ *   Postgres `bigint`, so an absurd value is a 400, not a database error. Absent: the newest page.
+ * - `limit`: page size, `1..MESSAGES_PAGE_LIMIT`, default `MESSAGES_PAGE_LIMIT`.
+ *
+ * Unknown keys are dropped, not rejected: caches and proxies add their own.
+ */
+export const GetMessagesQuery = z.object({
+  afterSeq: z
+    .string()
+    .regex(/^(0|[1-9][0-9]*)$/, 'afterSeq must be a non-negative integer')
+    .max(19)
+    // zod runs every check even after the regex fails, so the refine tests the digits again before
+    // `BigInt` (which throws on anything else).
+    .refine(
+      (value) => !/^[0-9]+$/.test(value) || BigInt(value) <= SEQ_MAX,
+      'afterSeq is out of range',
+    )
+    .optional(),
+  limit: z
+    .string()
+    .regex(/^[1-9][0-9]*$/, 'limit must be a positive integer')
+    .max(3)
+    .transform(Number)
+    .pipe(z.number().max(MESSAGES_PAGE_LIMIT))
+    .default(MESSAGES_PAGE_LIMIT),
+});
+
+/** The query as the client writes it (strings), before parsing. */
+export type GetMessagesQueryInput = z.input<typeof GetMessagesQuery>;
+/** The parsed query: `limit` is a number with its default applied. */
+export type GetMessagesQuery = z.output<typeof GetMessagesQuery>;
+
+/**
+ * `GET` response: one page of the channel's messages, always oldest first.
+ *
+ * `hasMore` says the page is not the whole range it was asked for:
+ * - with `afterSeq`: more messages newer than the page exist (the client fell too far behind, so
+ *   it drops its feed and loads the newest page instead of paging forward, UL-130);
+ * - without `afterSeq` (the newest page): older messages exist.
+ */
 export const GetMessagesResponse = z.object({
   messages: z.array(MessageResponse),
+  hasMore: z.boolean(),
 });
 
 export type GetMessagesResponse = z.infer<typeof GetMessagesResponse>;

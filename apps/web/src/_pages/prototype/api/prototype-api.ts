@@ -1,4 +1,10 @@
-import { type CreateMessageBody, GetMessagesResponse, MessageResponse } from '@app/contracts';
+import {
+  type CatchUpPage,
+  type CreateMessageBody,
+  type GetMessagesQueryInput,
+  GetMessagesResponse,
+  MessageResponse,
+} from '@app/contracts';
 import type { SendFailure } from '../model/feed';
 
 // Relative URLs only: the page, /api and /socket.io share one origin through Traefik, so fetch's
@@ -36,12 +42,21 @@ export async function fetchInstanceId(signal?: AbortSignal): Promise<string> {
   throw new Error('GET /api/health returned no instanceId');
 }
 
-/** The channel's messages. An invalid payload throws, like a failed request, so the page can retry. */
+/**
+ * One page of the channel's messages: `GET` with `?afterSeq=&limit=` when given (UL-130). An
+ * invalid payload throws, like a failed request, so the caller can retry; so does a message of
+ * another channel, which this page must never show.
+ */
 export async function fetchMessages(
   channelId: string,
+  query: GetMessagesQueryInput = {},
   signal?: AbortSignal,
-): Promise<readonly MessageResponse[]> {
-  const res = await fetch(messagesUrl(channelId), {
+): Promise<CatchUpPage> {
+  const search = new URLSearchParams();
+  if (query.afterSeq !== undefined) search.set('afterSeq', query.afterSeq);
+  if (query.limit !== undefined) search.set('limit', query.limit);
+  const suffix = search.size === 0 ? '' : `?${search.toString()}`;
+  const res = await fetch(`${messagesUrl(channelId)}${suffix}`, {
     signal: requestSignal(signal),
     cache: 'no-store',
   });
@@ -52,7 +67,10 @@ export async function fetchMessages(
     console.warn('prototype: invalid GET messages payload', result.error);
     throw new Error('GET messages returned an invalid payload');
   }
-  return result.data.messages;
+  if (result.data.messages.some((message) => message.channelId !== channelId)) {
+    throw new Error('GET messages returned a message of another channel');
+  }
+  return result.data;
 }
 
 /** Why a `POST` message failed. Only `rejected` is final; every other kind may be retried. */

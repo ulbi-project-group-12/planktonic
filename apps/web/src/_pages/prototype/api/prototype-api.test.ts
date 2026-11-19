@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PROTOTYPE_CHANNEL_ID } from '../model/feed';
 import {
   classifySendError,
+  fetchMessages,
   type SendErrorKind,
   SendMessageError,
   sendMessage,
@@ -201,5 +202,44 @@ describe('classifySendError', () => {
     { name: 'a thrown string', error: 'boom' },
   ])('maps $name to a retryable generic reason', ({ error }) => {
     expect(classifySendError(error)).toEqual({ retryable: true, reason: 'something went wrong' });
+  });
+});
+
+describe('fetchMessages', () => {
+  it('sends afterSeq and limit and returns the page with hasMore', async () => {
+    const fetchMock = stubFetch(() =>
+      Promise.resolve(raw(JSON.stringify({ messages: [MESSAGE], hasMore: true }), 200)),
+    );
+    await expect(
+      fetchMessages(PROTOTYPE_CHANNEL_ID, { afterSeq: '41', limit: '100' }),
+    ).resolves.toEqual({ messages: [MESSAGE], hasMore: true });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`${MESSAGES_URL}?afterSeq=41&limit=100`);
+  });
+
+  it('without a query asks for the newest page', async () => {
+    const fetchMock = stubFetch(() =>
+      Promise.resolve(raw(JSON.stringify({ messages: [], hasMore: false }), 200)),
+    );
+    await fetchMessages(PROTOTYPE_CHANNEL_ID);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(MESSAGES_URL);
+  });
+
+  it('throws on a payload without hasMore (the pre-UL-130 shape)', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    stubFetch(() => Promise.resolve(raw(JSON.stringify({ messages: [MESSAGE] }), 200)));
+    await expect(fetchMessages(PROTOTYPE_CHANNEL_ID)).rejects.toThrow('invalid payload');
+  });
+
+  it('throws on a message of another channel', async () => {
+    const other = { ...MESSAGE, channelId: '00000000-0000-7000-8000-0000000000ff' };
+    stubFetch(() =>
+      Promise.resolve(raw(JSON.stringify({ messages: [other], hasMore: false }), 200)),
+    );
+    await expect(fetchMessages(PROTOTYPE_CHANNEL_ID)).rejects.toThrow('another channel');
+  });
+
+  it('throws on a non-2xx answer', async () => {
+    stubFetch(() => Promise.resolve(raw('{}', 503)));
+    await expect(fetchMessages(PROTOTYPE_CHANNEL_ID)).rejects.toThrow('503');
   });
 });

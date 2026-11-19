@@ -122,9 +122,10 @@ Run them as `pnpm --filter @app/web <script>`, or through Turbo from the root (`
 `/prototype` is the client half of the Phase 2 realtime prototype. It shows:
 
 - `Instance: <instanceId>` from `GET /api/health`: the api replica this window is bound to;
-- `Connection: connecting | connected | offline` (UL-129; `syncing` is reserved for UL-130's
-  catch-up): the tab's `useConnectionStore` state, written only by the socket lifecycle listeners
-  that `getSocket()` binds once (the event → state table is in `src/shared/api/connection.ts`);
+- `Connection: connecting | connected | syncing | offline` (UL-129, UL-130): the tab's
+  `useConnectionStore` state, written only by the socket lifecycle listeners that `getSocket()`
+  binds once (the event → state table is in `src/shared/api/connection.ts`). `syncing` shows from
+  a connect until the feed's catch-up settles;
 - the seeded channel's feed (`00000000-0000-7000-8000-000000000001`) as `#seq body` rows;
 - a message input and a Send button.
 
@@ -133,9 +134,23 @@ How it works:
 1. One Socket.IO client per tab comes from `getSocket()` (`@/shared/api`). The page connects it
    only after the health response, so the handshake carries the `io_srv` sticky cookie Traefik set
    on that response and lands on the same replica.
-2. On every socket connect, the first and each reconnect, the page fetches the channel's history
-   and merges it with live `message:new` events and `POST` responses by `id`, sorted by
-   `BigInt(seq)`. The sender's own message shows once whichever copy arrives first.
+2. On every socket connect, the first and each reconnect, the feed catches up (UL-130, STACK
+   §4.4). Connection State Recovery is off, so what the socket missed comes over REST:
+   - the first time it loads the newest page (one request per connect, not a history load plus
+     a catch-up);
+   - after that it asks `GET …/messages?afterSeq=<last known seq>&limit=100`, and merges the page;
+   - if the answer says `hasMore`, the client missed more than a page: the feed resets to the
+     newest page (keeping anything newer that arrived meanwhile) instead of paging on;
+   - a live `message:new` that skips a seq (41, then 43) is not merged; it runs the same catch-up
+     from 41, so 42 and 43 arrive together.
+
+   The catch-up logic (`catchUp`, `mergeMessages`, `resetFeed`) is in `@app/contracts`, so the
+   api's integration tests run the same code. Its runner (`model/feed-sync.ts`) runs one pass at a
+   time. It registers with `registerCatchUp` from `@/shared/api`, and the transport, not the page,
+   switches `syncing` on and off. Everything merges by `id` and sorts by `BigInt(seq)`: a message
+   that arrives twice (live, in a page, as the `POST` 201) shows once. The `seq` math reads
+   confirmed messages only, never unsent rows.
+
 3. Each Send gets a UUIDv7 `clientMsgId`, clears the draft and adds a local row at the end of the
    feed with the status `Sending…` (UL-131). The `POST` 201 or `message:new`, whichever comes
    first, replaces that row by `clientMsgId`, so it shows once in any arrival order. Every request
@@ -149,7 +164,7 @@ How it works:
      retries them automatically.
 4. Every wire payload is checked with the `@app/contracts` schemas. An invalid `message:new` is
    dropped with a `console.warn`, and events for other channels are ignored. A failed or invalid
-   history load shows an error with a Retry button.
+   history load (or a page with a message of another channel) shows an error with a Retry button.
 
 The page uses relative `/api` and `/socket.io` URLs, so it works only through Traefik on one
 origin. Under plain `pnpm dev` (web on `:3000`, api on `:3001`) its requests reach Next.js and
@@ -183,6 +198,9 @@ fail.
    timeout if the socket was idle); back online it goes `connecting` → `connected`. Stopping the
    replica a window is bound to (`docker stop <project>-api-2`) turns it `offline`, then it
    reconnects to the live replica and the `Instance` value changes.
+7. Catch-up: put window B offline (DevTools → Network → Offline), send five messages from A,
+   bring B back online. B shows `syncing` briefly, then all five in order, once each. DevTools
+   shows one `GET …/messages?afterSeq=…` for the reconnect.
 
 After a change to the web app, rebuild only its container:
 

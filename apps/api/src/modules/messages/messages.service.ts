@@ -1,11 +1,13 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { type GetMessagesResponse, MESSAGE_NEW_EVENT, type MessageResponse } from '@app/contracts';
+import {
+  type GetMessagesQuery,
+  type GetMessagesResponse,
+  MESSAGE_NEW_EVENT,
+  type MessageResponse,
+} from '@app/contracts';
 import { RealtimePublisher } from '../../core/realtime/realtime-publisher.js';
 import { channelRoom } from '../../core/realtime/rooms.js';
 import { type MessageRow, MessagesRepository } from './messages.repository.js';
-
-/** How many of the newest messages GET returns (no pagination yet). */
-export const MESSAGES_PAGE_SIZE = 100;
 
 function toResponse(row: MessageRow): MessageResponse {
   return {
@@ -70,11 +72,25 @@ export class MessagesService {
     return { message, created: result.created };
   }
 
-  async list(channelId: string): Promise<GetMessagesResponse> {
+  /**
+   * One page of the channel's messages, oldest first (UL-130). With `afterSeq`, the first `limit`
+   * after it; without, the newest `limit`. One row past the page is read to set `hasMore` (more
+   * newer ones after `afterSeq`, or older ones before the newest page) without a count query.
+   */
+  async list(channelId: string, query: GetMessagesQuery): Promise<GetMessagesResponse> {
     if (!(await this.repository.channelExists(channelId))) {
       throw new NotFoundException('Channel not found');
     }
-    const rows = await this.repository.findLatest(channelId, MESSAGES_PAGE_SIZE);
-    return { messages: rows.map(toResponse) };
+    const { afterSeq, limit } = query;
+    const take = limit + 1;
+    if (afterSeq === undefined) {
+      const rows = await this.repository.findLatest(channelId, take);
+      // Oldest first, so the extra row (the oldest) is the first one.
+      const page = rows.length > limit ? rows.slice(1) : rows;
+      return { messages: page.map(toResponse), hasMore: rows.length > limit };
+    }
+    const rows = await this.repository.findAfter(channelId, BigInt(afterSeq), take);
+    const page = rows.length > limit ? rows.slice(0, limit) : rows;
+    return { messages: page.map(toResponse), hasMore: rows.length > limit };
   }
 }

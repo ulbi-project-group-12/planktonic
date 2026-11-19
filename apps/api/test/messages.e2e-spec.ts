@@ -1,5 +1,5 @@
-// The global StandardSchemaValidationPipe (app.setup.ts) validates the POST body against the
-// zod schema from @app/contracts. The service is stubbed: no database is involved.
+// The global StandardSchemaValidationPipe (app.setup.ts) validates the POST body and the GET query
+// against the zod schemas from @app/contracts. The service is stubbed: no database is involved.
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,7 @@ import { MessagesService } from '../src/modules/messages/messages.service.js';
 const CHANNEL = '00000000-0000-7000-8000-000000000001';
 const KEY = '019a8f00-0000-7000-8000-000000000004';
 const create = vi.fn().mockResolvedValue({ message: { id: 'created' }, created: true });
+const list = vi.fn().mockResolvedValue({ messages: [], hasMore: false });
 
 let app: INestApplication;
 let baseUrl: string;
@@ -17,7 +18,7 @@ let baseUrl: string;
 beforeAll(async () => {
   const moduleRef = await Test.createTestingModule({
     controllers: [MessagesController],
-    providers: [{ provide: MessagesService, useValue: { create } }],
+    providers: [{ provide: MessagesService, useValue: { create, list } }],
   }).compile();
   app = configureApp(moduleRef.createNestApplication({ logger: false }));
   await app.listen(0, '127.0.0.1');
@@ -75,5 +76,42 @@ describe('POST /api/channels/:channelId/messages validation', () => {
   it('returns 400 for a non-uuid channel id', async () => {
     const response = await post('/api/channels/nope/messages', { clientMsgId: KEY, body: 'hello' });
     expect(response.status).toBe(400);
+  });
+});
+
+describe('GET /api/channels/:channelId/messages query validation', () => {
+  function get(query: string) {
+    return fetch(`${baseUrl}/api/channels/${CHANNEL}/messages${query}`);
+  }
+
+  it('passes no afterSeq and the default limit when the query is empty', async () => {
+    list.mockClear();
+    const response = await get('');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ messages: [], hasMore: false });
+    expect(list).toHaveBeenCalledWith(CHANNEL, { limit: 100 });
+  });
+
+  it('parses afterSeq as a string and limit as a number', async () => {
+    list.mockClear();
+    const response = await get('?afterSeq=41&limit=20');
+    expect(response.status).toBe(200);
+    expect(list).toHaveBeenCalledWith(CHANNEL, { afterSeq: '41', limit: 20 });
+  });
+
+  it.each([
+    '?afterSeq=abc',
+    '?afterSeq=1e2',
+    '?afterSeq=-1',
+    '?afterSeq=99999999999999999999',
+    '?afterSeq=1&afterSeq=2',
+    '?limit=0',
+    '?limit=101',
+    '?limit=ten',
+  ])('returns 400 for %s', async (query) => {
+    list.mockClear();
+    const response = await get(query);
+    expect(response.status).toBe(400);
+    expect(list).not.toHaveBeenCalled();
   });
 });

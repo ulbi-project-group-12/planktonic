@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useReducer, useRef, useState, type SubmitEvent } from 'react';
+import { useEffect, useRef, useState, type SubmitEvent } from 'react';
+import { useStore } from 'zustand';
 import { MESSAGE_BODY_MAX_LENGTH, MESSAGE_NEW_EVENT, MessageNewEvent } from '@app/contracts';
-import { getSocket } from '@/shared/api';
+import { getSocket, registerCatchUp, syncWith } from '@/shared/api';
 import { uuidv7 } from '@/shared/lib';
 import { Button, Input } from '@/shared/ui';
 import {
@@ -11,12 +12,8 @@ import {
   fetchMessages,
   sendMessage,
 } from '../api/prototype-api';
-import {
-  announcedFeedReducer,
-  feedRows,
-  initialAnnouncedFeed,
-  PROTOTYPE_CHANNEL_ID,
-} from '../model/feed';
+import { feedRows, PROTOTYPE_CHANNEL_ID } from '../model/feed';
+import { createFeedStore, createFeedSync, type FeedSync } from '../model/feed-sync';
 import { ConnectionIndicator } from './connection-indicator';
 
 type Instance = { kind: 'loading' } | { kind: 'ready'; id: string } | { kind: 'unavailable' };
@@ -26,45 +23,47 @@ function instanceText(instance: Instance): string {
   return `Instance: ${instance.kind}`;
 }
 
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === 'AbortError';
-}
-
 /**
  * Realtime prototype (UL-128): the seeded channel's feed on one api replica. Two windows bound to
- * different replicas see each other's messages without a reload, in `seq` order.
+ * different replicas see each other's messages without a reload, in `seq` order. After a reconnect
+ * the feed catches up on what it missed (UL-130).
  */
 export function PrototypePage() {
-  // `announcement` is derived from the feed by the reducer, so the "Send status" live region always
-  // matches the rows, whatever order the 201, `message:new` and a failure arrive in.
-  const [{ feed, announcement, announcementId }, dispatch] = useReducer(
-    announcedFeedReducer,
-    initialAnnouncedFeed,
-  );
+  // The feed lives in a store outside React so the catch-up reads it as it is now (see
+  // `createFeedStore`). `announcement` is derived from the feed by the reducer, so the "Send
+  // status" live region always matches the rows, whatever order the 201, `message:new` and a
+  // failure arrive in.
+  const [feedStore] = useState(createFeedStore);
+  const { feed, announcement, announcementId } = useStore(feedStore.store);
+  const { dispatch } = feedStore;
   const [instance, setInstance] = useState<Instance>({ kind: 'loading' });
   const [draft, setDraft] = useState('');
   const [historyFailed, setHistoryFailed] = useState(false);
-  // The effect's history loader, so the Retry button reuses its abort signal.
-  const loadHistoryRef = useRef<(() => Promise<void>) | null>(null);
+  // The effect's catch-up, so the Retry button runs the same single-flight runner.
+  const syncRef = useRef<FeedSync | null>(null);
 
   useEffect(() => {
     const socket = getSocket();
     const controller = new AbortController();
     const { signal } = controller;
 
-    const loadHistory = async () => {
-      try {
-        const history = await fetchMessages(PROTOTYPE_CHANNEL_ID, signal);
-        if (signal.aborted) return;
-        dispatch({ type: 'merge', messages: history });
-        setHistoryFailed(false);
-      } catch (error) {
-        if (signal.aborted || isAbortError(error)) return;
-        console.warn('prototype: could not load messages', error);
+    // The catch-up is the only history load (STACK §4.4): on an empty feed it loads the newest
+    // page, afterwards it asks for what came after the last known seq. Connection State Recovery
+    // is off, so this REST read is how a reconnect gets what the socket missed.
+    const sync = createFeedSync({
+      feed: feedStore,
+      fetchPage: (query) => fetchMessages(PROTOTYPE_CHANNEL_ID, query, signal),
+      signal,
+      onResult: (outcome) => {
+        if (outcome.ok) {
+          setHistoryFailed(false);
+          return;
+        }
+        console.warn('prototype: could not load messages', outcome.error);
         setHistoryFailed(true);
-      }
-    };
-    loadHistoryRef.current = loadHistory;
+      },
+    });
+    syncRef.current = sync;
 
     // Only the latest read may set the instance: an older, slower answer is dropped. A failed
     // re-read keeps a known id rather than replacing it with `unavailable`.
@@ -83,16 +82,16 @@ export function PrototypePage() {
       );
     };
 
-    // Every connect, the first and each reconnect, reloads the latest page of history (the api's
-    // last 100 messages) and the merge by id drops the overlap. A gap longer than one page is not
-    // caught up here: paging after the last known seq (`?afterSeq=`) is UL-130.
+    // Every connect, the first and each reconnect, runs the catch-up. The transport (@/shared/api)
+    // runs it and owns the connection state: `syncing` until it settles, then `connected`. This
+    // component never writes that state.
+    const unregister = registerCatchUp(() => sync.run());
+
     // Any connect may land on another replica than the health read before it (Traefik re-picks
     // io_srv when the old one is gone, also when the first handshake had to retry), so each
     // connect re-reads the instance id.
-    // The connection state itself is not set here: the lifecycle listeners in @/shared/api own it.
     const onConnect = () => {
       void loadInstance();
-      void loadHistory();
     };
 
     // Wire data is untrusted: anything that fails the contracts schema is dropped, never rendered.
@@ -103,7 +102,8 @@ export function PrototypePage() {
         return;
       }
       if (result.data.message.channelId !== PROTOTYPE_CHANNEL_ID) return;
-      dispatch({ type: 'merge', messages: [result.data.message] });
+      // A skipped seq (41 → 43) means an event was lost on a live connection: same catch-up.
+      if (sync.receive(result.data.message) === 'gap') void syncWith(() => sync.run());
     };
 
     // Listeners first, so nothing the socket emits after connect() is missed.
@@ -114,19 +114,21 @@ export function PrototypePage() {
     // lands on the replica whose instanceId the page shows.
     void loadInstance().then(() => {
       if (signal.aborted) return;
-      // A remount within the same tab finds the singleton already connected.
-      if (socket.connected) onConnect();
+      // A remount within the same tab finds the singleton already connected: no connect event
+      // comes, so the catch-up starts here.
+      if (socket.connected) void syncWith(() => sync.run());
       else socket.connect();
     });
 
     return () => {
       controller.abort();
-      loadHistoryRef.current = null;
+      syncRef.current = null;
+      unregister();
       socket.off('connect', onConnect);
       socket.off(MESSAGE_NEW_EVENT, onMessageNew);
       // No disconnect(): the singleton lives as long as the tab.
     };
-  }, []);
+  }, [feedStore]);
 
   /**
    * The only send path, used by both Send and Retry. It never throws. Nothing calls it on its own:
@@ -170,7 +172,8 @@ export function PrototypePage() {
             variant="secondary"
             size="s"
             onClick={() => {
-              void loadHistoryRef.current?.();
+              const sync = syncRef.current;
+              if (sync) void syncWith(() => sync.run());
             }}
           >
             Retry

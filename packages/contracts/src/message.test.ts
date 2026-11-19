@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ClientMsgId, CreateMessageBody, MessageResponse, MessageSeq } from './message.js';
+import {
+  ClientMsgId,
+  CreateMessageBody,
+  GetMessagesQuery,
+  MessageResponse,
+  MessageSeq,
+} from './message.js';
 
 describe('MessageSeq', () => {
   it.each(['1', '42', '9007199254740993'])('accepts %s', (value) => {
@@ -52,5 +58,37 @@ describe('CreateMessageBody', () => {
         body: 'hi',
       }).success,
     ).toBe(true);
+  });
+});
+
+describe('GetMessagesQuery', () => {
+  it('defaults limit to 100 and leaves afterSeq out', () => {
+    expect(GetMessagesQuery.parse({})).toEqual({ limit: 100 });
+  });
+
+  it.each(['0', '41', '9223372036854775807'])('accepts afterSeq %s, kept as a string', (value) => {
+    expect(GetMessagesQuery.parse({ afterSeq: value }).afterSeq).toBe(value);
+  });
+
+  it.each(['abc', '1e2', ' 7', '-1', '01', '', '9223372036854775808', '1'.repeat(40)])(
+    'rejects afterSeq %j',
+    (value) => {
+      expect(GetMessagesQuery.safeParse({ afterSeq: value }).success).toBe(false);
+    },
+  );
+
+  it.each([
+    ['1', 1],
+    ['100', 100],
+  ])('accepts limit %s as %d', (value, expected) => {
+    expect(GetMessagesQuery.parse({ limit: value }).limit).toBe(expected);
+  });
+
+  it.each(['0', '101', '1e2', '-5', '5.5', 'all', ''])('rejects limit %j', (value) => {
+    expect(GetMessagesQuery.safeParse({ limit: value }).success).toBe(false);
+  });
+
+  it('drops unknown keys', () => {
+    expect(GetMessagesQuery.parse({ limit: '5', _: '123' })).toEqual({ limit: 5 });
   });
 });

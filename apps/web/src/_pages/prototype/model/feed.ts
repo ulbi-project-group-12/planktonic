@@ -1,33 +1,11 @@
-import type { MessageResponse } from '@app/contracts';
+import { type MessageResponse, mergeMessages, resetFeed } from '@app/contracts';
 
 /** The channel `pnpm db:seed` creates; the prototype page shows only this one. */
 export const PROTOTYPE_CHANNEL_ID = '00000000-0000-7000-8000-000000000001';
 
-/** Ascending by `seq`. It is a decimal string past 2^53, so neither Number nor string compare. */
-function bySeq(a: MessageResponse, b: MessageResponse): number {
-  const left = BigInt(a.seq);
-  const right = BigInt(b.seq);
-  if (left < right) return -1;
-  if (left > right) return 1;
-  return 0;
-}
-
-/**
- * Union of two message lists by `id`, sorted by `seq` ascending. A later copy wins (incoming over
- * current, and later inside incoming), so the `POST` response and the sender's own `message:new`
- * collapse into one row whichever comes first (UL-127). Neither input is mutated; an empty
- * `incoming` returns `current` itself so React can skip the render.
- */
-export function mergeMessages(
-  current: readonly MessageResponse[],
-  incoming: readonly MessageResponse[],
-): readonly MessageResponse[] {
-  if (incoming.length === 0) return current;
-  const byId = new Map<string, MessageResponse>();
-  for (const message of current) byId.set(message.id, message);
-  for (const message of incoming) byId.set(message.id, message);
-  return [...byId.values()].sort(bySeq);
-}
+// The merge by `id` (UL-128) lives in @app/contracts with the rest of the catch-up logic (UL-130),
+// so the api's tests run the same code. Re-exported for this slice's callers.
+export { mergeMessages };
 
 /** Why a send did not go through, as shown on its row. */
 export interface SendFailure {
@@ -54,7 +32,7 @@ export interface FeedState {
   /**
    * Local rows in send order, rendered after every sent row. They live in memory only (durable
    * storage is UL-193, phase 5) and nothing retries them automatically. They never take part in
-   * a `seq` computation: the catch-up after the last known seq (UL-130) must read `sent` only.
+   * a `seq` computation: the catch-up after the last known seq (UL-130) reads `sent` only.
    */
   readonly unsent: readonly UnsentRow[];
 }
@@ -63,6 +41,11 @@ export const initialFeedState: FeedState = { sent: [], unsent: [] };
 
 export type FeedAction =
   | { type: 'merge'; messages: readonly MessageResponse[] }
+  /**
+   * The catch-up fell too far behind (`hasMore`) or this is the first load: `sent` becomes the
+   * newest page plus any live message newer than it (`resetFeed`). Unsent rows stay.
+   */
+  | { type: 'reset'; messages: readonly MessageResponse[] }
   | { type: 'pending'; clientMsgId: string; body: string }
   | { type: 'failed'; clientMsgId: string; failure: SendFailure };
 
@@ -86,6 +69,23 @@ function replaceAt(
 }
 
 /**
+ * `state` with `sent` replaced, and the unsent rows that `delivered` confirms removed (matched by
+ * `clientMsgId`). The same `state` comes back when neither changed.
+ */
+function withSent(
+  state: FeedState,
+  sent: readonly MessageResponse[],
+  delivered: readonly MessageResponse[],
+): FeedState {
+  const keys = new Set(delivered.map((message) => keyOf(message.clientMsgId)));
+  const unsent = state.unsent.some((row) => keys.has(keyOf(row.clientMsgId)))
+    ? state.unsent.filter((row) => !keys.has(keyOf(row.clientMsgId)))
+    : state.unsent;
+  if (sent === state.sent && unsent === state.unsent) return state;
+  return { sent, unsent };
+}
+
+/**
  * Every history load, live event, `POST` result and send status goes through here. Rows are keyed
  * by `clientMsgId`, so the local pending row, the `POST` 201 and `message:new` end in one row in any
  * arrival order, and a failure that lands after delivery changes nothing. Inputs are never mutated
@@ -93,15 +93,10 @@ function replaceAt(
  */
 export function feedReducer(state: FeedState, action: FeedAction): FeedState {
   switch (action.type) {
-    case 'merge': {
-      const sent = mergeMessages(state.sent, action.messages);
-      const delivered = new Set(action.messages.map((message) => keyOf(message.clientMsgId)));
-      const unsent = state.unsent.some((row) => delivered.has(keyOf(row.clientMsgId)))
-        ? state.unsent.filter((row) => !delivered.has(keyOf(row.clientMsgId)))
-        : state.unsent;
-      if (sent === state.sent && unsent === state.unsent) return state;
-      return { sent, unsent };
-    }
+    case 'merge':
+      return withSent(state, mergeMessages(state.sent, action.messages), action.messages);
+    case 'reset':
+      return withSent(state, resetFeed(state.sent, action.messages), action.messages);
     case 'pending': {
       const { clientMsgId, body } = action;
       const key = keyOf(clientMsgId);

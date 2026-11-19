@@ -1,10 +1,12 @@
 import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   bindConnectionListeners,
   getConnectionState,
   nextConnectionState,
+  registerCatchUp,
   resetConnectionStore,
+  syncWith,
   useConnectionStore,
   type ConnectionEvent,
   type ConnectionState,
@@ -49,7 +51,8 @@ function fakeSocket() {
 const STATES: ConnectionState[] = ['connecting', 'connected', 'syncing', 'offline'];
 
 const TABLE: [ConnectionEvent, ConnectionState][] = [
-  [{ type: 'connect' }, 'connected'],
+  [{ type: 'connect', sync: false }, 'connected'],
+  [{ type: 'connect', sync: true }, 'syncing'],
   [{ type: 'disconnect', reason: 'transport close' }, 'offline'],
   [{ type: 'disconnect', reason: 'ping timeout' }, 'offline'],
   [{ type: 'disconnect', reason: 'io server disconnect' }, 'offline'],
@@ -66,9 +69,17 @@ describe('nextConnectionState', () => {
     for (const from of STATES) expect(nextConnectionState(from, event)).toBe(expected);
   });
 
-  it('never enters syncing on its own (UL-130 switches it on)', () => {
-    for (const [event] of TABLE) {
-      for (const from of STATES) expect(nextConnectionState(from, event)).not.toBe('syncing');
+  it('sync_start enters syncing only from connected', () => {
+    expect(nextConnectionState('connected', { type: 'sync_start' })).toBe('syncing');
+    for (const from of ['connecting', 'syncing', 'offline'] as const) {
+      expect(nextConnectionState(from, { type: 'sync_start' })).toBe(from);
+    }
+  });
+
+  it('sync_done leaves syncing only, so a late one after a disconnect stays offline', () => {
+    expect(nextConnectionState('syncing', { type: 'sync_done' })).toBe('connected');
+    for (const from of ['connecting', 'connected', 'offline'] as const) {
+      expect(nextConnectionState(from, { type: 'sync_done' })).toBe(from);
     }
   });
 });
@@ -180,5 +191,146 @@ describe('connection store + lifecycle listeners', () => {
   it('exposes no way to write the store from a reader', () => {
     const { result } = renderHook(() => useConnectionStore((s) => s));
     expect(Object.keys(result.current)).toEqual(['state']);
+  });
+});
+
+/** A promise and its resolve/reject, to hold a catch-up open. */
+function deferred() {
+  let resolve!: () => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<void>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+describe('catch-up and syncing (UL-130)', () => {
+  let unbind: (() => void) | undefined;
+
+  beforeEach(() => {
+    unbind?.();
+    unbind = undefined;
+    resetConnectionStore();
+  });
+
+  it('connect with a registered catch-up shows syncing until it settles, then connected', async () => {
+    const { socket, asSocket } = fakeSocket();
+    unbind = bindConnectionListeners(asSocket);
+    const held = deferred();
+    const task = vi.fn(() => held.promise);
+    registerCatchUp(task);
+
+    socket.fire('connect');
+    expect(getConnectionState()).toBe('syncing');
+    expect(task).toHaveBeenCalledTimes(1);
+
+    held.resolve();
+    await vi.waitFor(() => {
+      expect(getConnectionState()).toBe('connected');
+    });
+  });
+
+  it('every reconnect runs the catch-up again and shows syncing again', async () => {
+    const { socket, asSocket } = fakeSocket();
+    unbind = bindConnectionListeners(asSocket);
+    const task = vi.fn(() => Promise.resolve());
+    registerCatchUp(task);
+
+    socket.fire('connect');
+    await vi.waitFor(() => {
+      expect(getConnectionState()).toBe('connected');
+    });
+    socket.fire('disconnect', 'transport close');
+    socket.fire('connect');
+    expect(getConnectionState()).toBe('syncing');
+    await vi.waitFor(() => {
+      expect(getConnectionState()).toBe('connected');
+    });
+    expect(task).toHaveBeenCalledTimes(2);
+  });
+
+  it('a failed catch-up still ends syncing (the feed shows its own error)', async () => {
+    const { socket, asSocket } = fakeSocket();
+    unbind = bindConnectionListeners(asSocket);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    registerCatchUp(() => Promise.reject(new Error('offline')));
+
+    socket.fire('connect');
+    await vi.waitFor(() => {
+      expect(getConnectionState()).toBe('connected');
+    });
+    warn.mockRestore();
+  });
+
+  it('a disconnect during the catch-up shows offline, and its late end does not say connected', async () => {
+    const { socket, asSocket } = fakeSocket();
+    unbind = bindConnectionListeners(asSocket);
+    const held = deferred();
+    registerCatchUp(() => held.promise);
+
+    socket.fire('connect');
+    socket.fire('disconnect', 'transport close');
+    expect(getConnectionState()).toBe('offline');
+    held.resolve();
+    await held.promise;
+    await Promise.resolve();
+    expect(getConnectionState()).toBe('offline');
+  });
+
+  it('an older catch-up ending late does not cut the current one short', async () => {
+    const { socket, asSocket } = fakeSocket();
+    unbind = bindConnectionListeners(asSocket);
+    const first = deferred();
+    const second = deferred();
+    const task = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    registerCatchUp(task);
+
+    socket.fire('connect');
+    socket.fire('disconnect', 'transport close');
+    socket.fire('connect');
+    first.resolve();
+    await first.promise;
+    await Promise.resolve();
+    expect(getConnectionState()).toBe('syncing');
+
+    second.resolve();
+    await vi.waitFor(() => {
+      expect(getConnectionState()).toBe('connected');
+    });
+  });
+
+  it('connect with nothing registered goes straight to connected', () => {
+    const { socket, asSocket } = fakeSocket();
+    unbind = bindConnectionListeners(asSocket);
+    const off = registerCatchUp(() => Promise.resolve());
+    off();
+
+    socket.fire('connect');
+    expect(getConnectionState()).toBe('connected');
+  });
+
+  it('syncWith on a live connection shows syncing while the task runs', async () => {
+    const { socket, asSocket } = fakeSocket();
+    unbind = bindConnectionListeners(asSocket);
+    socket.fire('connect');
+    const held = deferred();
+
+    const done = syncWith(() => held.promise);
+    expect(getConnectionState()).toBe('syncing');
+    held.resolve();
+    await done;
+    expect(getConnectionState()).toBe('connected');
+  });
+
+  it('syncWith while offline keeps offline', async () => {
+    const { socket, asSocket } = fakeSocket();
+    unbind = bindConnectionListeners(asSocket);
+    socket.fire('disconnect', 'transport close');
+
+    const done = syncWith(() => Promise.resolve());
+    expect(getConnectionState()).toBe('offline');
+    await done;
+    expect(getConnectionState()).toBe('offline');
   });
 });
