@@ -18,7 +18,7 @@ export type ConnectionState = 'connecting' | 'connected' | 'syncing' | 'offline'
  * | socket                  | `disconnect`        | offline    |
  * | socket                  | `connect_error`     | offline    |
  * | manager (`socket.io`)   | `reconnect_attempt` | connecting |
- * | manager                 | `reconnect`         | connected  |
+ * | manager                 | `reconnect`         | connecting |
  * | manager                 | `reconnect_error`   | offline    |
  * | manager                 | `reconnect_failed`  | offline    |
  *
@@ -29,6 +29,11 @@ export type ConnectionState = 'connecting' | 'connected' | 'syncing' | 'offline'
  * retries with backoff, and each try shows as `reconnect_attempt` → `connecting`. A dead network
  * is often noticed only on the ping timeout (pingInterval + pingTimeout, ~45 s by default), so
  * `offline` is not instant.
+ *
+ * The manager's `reconnect` is not `connected`: it fires when the transport opens, before the
+ * server has accepted the namespace CONNECT (middleware may still reject it). Only the socket's
+ * `connect` means connected. `reconnect_failed` fires only with a finite `reconnectionAttempts`
+ * (the default is Infinity); it is mapped so a later config change cannot leave a stale state.
  */
 export type ConnectionEvent =
   | { type: 'connect' }
@@ -47,9 +52,9 @@ export function nextConnectionState(
 ): ConnectionState {
   switch (event.type) {
     case 'connect':
-    case 'reconnect':
       return 'connected';
     case 'reconnect_attempt':
+    case 'reconnect':
       return 'connecting';
     case 'disconnect':
     case 'connect_error':

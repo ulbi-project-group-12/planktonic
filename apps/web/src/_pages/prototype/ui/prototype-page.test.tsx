@@ -46,11 +46,12 @@ const { fake, calls, connectSnapshot } = vi.hoisted(() => {
   return { fake, calls, connectSnapshot };
 });
 
-// The connection store is covered in shared/api; here it is a constant, so the page only has to show it.
+// The connection store is covered in shared/api. Here it is a fixed value the page cannot reach any
+// other way (the fake socket never connects in that test), so the indicator must read the store.
 vi.mock('@/shared/api', () => ({
   getSocket: () => fake,
   useConnectionStore: <T,>(selector: (store: { state: string }) => T): T =>
-    selector({ state: 'connected' }),
+    selector({ state: 'syncing' }),
 }));
 
 const MESSAGES_URL = `/api/channels/${PROTOTYPE_CHANNEL_ID}/messages`;
@@ -73,6 +74,8 @@ function msg(seq: number, body: string): MessageResponse {
 let history: MessageResponse[] = [];
 /** What GET /api/health answers. */
 let instanceId = 'api-test-1';
+/** When set, GET /api/health answers 503. */
+let healthDown = false;
 /** Answers for the next history GETs, before the normal one: a 500 or a 200 with an invalid body. */
 let historyFaults: ('fail' | 'invalid')[] = [];
 /** Answers each POST; the test sets it. */
@@ -91,6 +94,7 @@ const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
   const method = init?.method ?? 'GET';
   calls.push(`${method} ${url}`);
   if (method === 'GET' && url === '/api/health') {
+    if (healthDown) return Promise.resolve(json({ status: 'error' }, 503));
     return Promise.resolve(json({ status: 'ok', instanceId }));
   }
   if (method === 'GET' && url === MESSAGES_URL) {
@@ -136,6 +140,7 @@ beforeEach(() => {
   calls.length = 0;
   history = [];
   instanceId = 'api-test-1';
+  healthDown = false;
   historyFaults = [];
   posted.length = 0;
   postResponder = () => Promise.resolve(json({ message: 'unexpected POST' }, 500));
@@ -183,7 +188,7 @@ describe('PrototypePage', () => {
     const lastHealth = calls.lastIndexOf('GET /api/health');
     expect(lastHealth).toBeGreaterThanOrEqual(0);
     expect(lastHealth).toBeLessThan(calls.indexOf('connect'));
-    expect(screen.getByRole('status')).toHaveTextContent('Connection: connected');
+    expect(screen.getByRole('status')).toHaveTextContent('Connection: syncing');
   });
 
   it('loads the history on connect and renders it in seq order', async () => {
@@ -421,5 +426,28 @@ describe('PrototypePage', () => {
     expect(await screen.findByText('Instance: api-test-2')).toBeInTheDocument();
     expect(calls.filter((call) => call === `GET ${MESSAGES_URL}`)).toHaveLength(2);
     expect(calls.filter((call) => call === 'GET /api/health')).toHaveLength(healthBefore + 1);
+  });
+
+  it('keeps the known instance id when a re-read after reconnect fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await renderConnected();
+    await screen.findByText('Instance: api-test-1');
+    act(() => {
+      fake.connected = false;
+      fake.fire('disconnect', 'transport close');
+    });
+    healthDown = true;
+    const healthBefore = calls.filter((call) => call === 'GET /api/health').length;
+    serverConnects();
+    await waitFor(() => {
+      expect(calls.filter((call) => call === 'GET /api/health')).toHaveLength(healthBefore + 1);
+    });
+    await waitFor(() => {
+      expect(warn).toHaveBeenCalledWith(
+        'prototype: could not load the instance id',
+        expect.any(Error),
+      );
+    });
+    expect(screen.getByText('Instance: api-test-1')).toBeInTheDocument();
   });
 });

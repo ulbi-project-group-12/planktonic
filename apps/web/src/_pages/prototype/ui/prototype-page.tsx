@@ -57,28 +57,32 @@ export function PrototypePage() {
     };
     loadHistoryRef.current = loadHistory;
 
-    const loadInstance = () =>
-      fetchInstanceId(signal).then(
+    // Only the latest read may set the instance: an older, slower answer is dropped. A failed
+    // re-read keeps a known id rather than replacing it with `unavailable`.
+    let instanceRead = 0;
+    const loadInstance = () => {
+      const read = ++instanceRead;
+      return fetchInstanceId(signal).then(
         (id) => {
-          if (!signal.aborted) setInstance({ kind: 'ready', id });
+          if (!signal.aborted && read === instanceRead) setInstance({ kind: 'ready', id });
         },
         (error: unknown) => {
-          if (signal.aborted) return;
+          if (signal.aborted || read !== instanceRead) return;
           console.warn('prototype: could not load the instance id', error);
-          setInstance({ kind: 'unavailable' });
+          setInstance((current) => (current.kind === 'ready' ? current : { kind: 'unavailable' }));
         },
       );
+    };
 
     // Every connect, the first and each reconnect, reloads the latest page of history (the api's
     // last 100 messages) and the merge by id drops the overlap. A gap longer than one page is not
     // caught up here: paging after the last known seq (`?afterSeq=`) is UL-130.
-    // A reconnect may land on another replica (Traefik re-picks io_srv when the old one is gone),
-    // so it also re-reads the instance id; the first connect already has it.
+    // Any connect may land on another replica than the health read before it (Traefik re-picks
+    // io_srv when the old one is gone, also when the first handshake had to retry), so each
+    // connect re-reads the instance id.
     // The connection state itself is not set here: the lifecycle listeners in @/shared/api own it.
-    let connectedBefore = false;
     const onConnect = () => {
-      if (connectedBefore) void loadInstance();
-      connectedBefore = true;
+      void loadInstance();
       void loadHistory();
     };
 

@@ -56,7 +56,7 @@ const TABLE: [ConnectionEvent, ConnectionState][] = [
   [{ type: 'disconnect', reason: 'io client disconnect' }, 'offline'],
   [{ type: 'connect_error' }, 'offline'],
   [{ type: 'reconnect_attempt', attempt: 1 }, 'connecting'],
-  [{ type: 'reconnect' }, 'connected'],
+  [{ type: 'reconnect' }, 'connecting'],
   [{ type: 'reconnect_error' }, 'offline'],
   [{ type: 'reconnect_failed' }, 'offline'],
 ];
@@ -102,7 +102,10 @@ describe('connection store + lifecycle listeners', () => {
     seen.push(getConnectionState());
     manager.fire('reconnect_attempt', 2);
     seen.push(getConnectionState());
+    // socket.io-client order: the manager's reconnect (transport open) comes before the socket's
+    // connect (namespace accepted), possibly much later if the server middleware is slow.
     manager.fire('reconnect', 2);
+    seen.push(getConnectionState());
     socket.fire('connect');
     seen.push(getConnectionState());
 
@@ -112,8 +115,20 @@ describe('connection store + lifecycle listeners', () => {
       'connecting',
       'offline',
       'connecting',
+      'connecting',
       'connected',
     ]);
+  });
+
+  it('a reconnect rejected by the server middleware never shows connected', () => {
+    const { socket, manager, asSocket } = fakeSocket();
+    unbind = bindConnectionListeners(asSocket);
+    socket.fire('disconnect', 'transport close');
+    manager.fire('reconnect_attempt', 1);
+    manager.fire('reconnect', 1);
+    expect(getConnectionState()).toBe('connecting');
+    socket.fire('connect_error', new Error('unauthorized'));
+    expect(getConnectionState()).toBe('offline');
   });
 
   it('stays offline after a server-side disconnect (no automatic retry)', () => {
