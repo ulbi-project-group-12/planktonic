@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer, useState, type SubmitEvent } from 'react';
+import { MESSAGE_BODY_MAX_LENGTH, MESSAGE_NEW_EVENT, MessageNewEvent } from '@app/contracts';
 import { getSocket } from '@/shared/api';
-import { fetchInstanceId, fetchMessages } from '../api/prototype-api';
+import { uuidv7 } from '@/shared/lib';
+import { Button, Input } from '@/shared/ui';
+import { fetchInstanceId, fetchMessages, sendMessage } from '../api/prototype-api';
 import { feedReducer, PROTOTYPE_CHANNEL_ID } from '../model/feed';
 
 type SocketStatus = 'connecting' | 'connected' | 'disconnected';
@@ -26,6 +29,12 @@ export function PrototypePage() {
   const [messages, dispatch] = useReducer(feedReducer, []);
   const [instance, setInstance] = useState<Instance>({ kind: 'loading' });
   const [status, setStatus] = useState<SocketStatus>('connecting');
+  const [draft, setDraft] = useState('');
+  // The clientMsgId that belongs to the current draft: made once on the first Send and reused on
+  // every resend (and after edits), so a resend after a lost response never makes a second message.
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   useEffect(() => {
     const socket = getSocket();
@@ -55,10 +64,22 @@ export function PrototypePage() {
       setStatus(socket.active ? 'connecting' : 'disconnected');
     };
 
+    // Wire data is untrusted: anything that fails the contracts schema is dropped, never rendered.
+    const onMessageNew = (payload: unknown) => {
+      const result = MessageNewEvent.safeParse(payload);
+      if (!result.success) {
+        console.warn('prototype: ignoring invalid message:new payload', result.error);
+        return;
+      }
+      if (result.data.message.channelId !== PROTOTYPE_CHANNEL_ID) return;
+      dispatch({ type: 'merge', messages: [result.data.message] });
+    };
+
     // Listeners first, so nothing the socket emits after connect() is missed.
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('connect_error', onConnectError);
+    socket.on(MESSAGE_NEW_EVENT, onMessageNew);
 
     // Health first, then the handshake: Traefik sets io_srv on the health response, so the socket
     // lands on the replica whose instanceId the page shows.
@@ -85,9 +106,33 @@ export function PrototypePage() {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('connect_error', onConnectError);
+      socket.off(MESSAGE_NEW_EVENT, onMessageNew);
       // No disconnect(): the singleton lives as long as the tab.
     };
   }, []);
+
+  const sendDisabled = sending || draft.trim() === '' || draft.length > MESSAGE_BODY_MAX_LENGTH;
+
+  const onSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (sendDisabled) return;
+    const clientMsgId = pendingKey ?? uuidv7();
+    setPendingKey(clientMsgId);
+    setSending(true);
+    setSendError(null);
+    try {
+      // The body goes as typed: the server stores it verbatim.
+      const message = await sendMessage(PROTOTYPE_CHANNEL_ID, { clientMsgId, body: draft });
+      dispatch({ type: 'merge', messages: [message] });
+      setDraft('');
+      setPendingKey(null);
+    } catch (error) {
+      console.warn('prototype: send failed', error);
+      setSendError('Not sent. Press Send to try again.');
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <main className="mx-auto flex min-h-svh max-w-2xl flex-col gap-4 p-8">
@@ -101,6 +146,31 @@ export function PrototypePage() {
           <li key={message.id}>{`#${message.seq} ${message.body}`}</li>
         ))}
       </ol>
+      <form
+        aria-label="Send a message"
+        className="flex items-end gap-2"
+        onSubmit={(event) => {
+          void onSubmit(event);
+        }}
+      >
+        <Input
+          label="Message"
+          value={draft}
+          maxLength={MESSAGE_BODY_MAX_LENGTH}
+          autoComplete="off"
+          onChange={(event) => {
+            setDraft(event.target.value);
+          }}
+        />
+        <Button type="submit" disabled={sendDisabled}>
+          Send
+        </Button>
+      </form>
+      {sendError ? (
+        <p role="alert" className="text-body-s text-danger">
+          {sendError}
+        </p>
+      ) : null}
     </main>
   );
 }

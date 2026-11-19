@@ -1,4 +1,4 @@
-import { GetMessagesResponse, type MessageResponse } from '@app/contracts';
+import { type CreateMessageBody, GetMessagesResponse, MessageResponse } from '@app/contracts';
 
 // Relative URLs only: the page, /api and /socket.io share one origin through Traefik, so fetch's
 // default same-origin credentials carry the io_srv sticky cookie and no CORS is involved.
@@ -40,4 +40,28 @@ export async function fetchMessages(
     return [];
   }
   return result.data.messages;
+}
+
+/**
+ * `POST` a message and return the stored copy. Anything but a valid `201` throws: a resend with
+ * the same `clientMsgId` is idempotent on the server, so treating a malformed `201` as a failure
+ * loses nothing.
+ */
+export async function sendMessage(
+  channelId: string,
+  payload: CreateMessageBody,
+): Promise<MessageResponse> {
+  const res = await fetch(messagesUrl(channelId), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (res.status !== 201) throw new Error(`POST message failed with ${String(res.status)}`);
+  const body: unknown = await res.json();
+  const result = MessageResponse.safeParse(body);
+  if (!result.success) {
+    console.warn('prototype: invalid POST message response', result.error);
+    throw new Error('POST message returned an invalid message');
+  }
+  return result.data;
 }
