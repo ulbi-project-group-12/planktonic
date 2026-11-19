@@ -98,17 +98,36 @@ export function createFeedSync(options: FeedSyncOptions): FeedSync {
   let fromLatest = false;
   // The last pass failed: holes wait for Retry or a reconnect instead of a GET per live message.
   let failed = false;
+  // `receive` made a hole (or asked for the newest page) while a pass was in flight: that pass's
+  // request could not have seen it, so it earns a follow-up even if the pass filled nothing.
+  let newHole = false;
+  // A pass's request is in flight. Set before the request starts, so `receive` sees it even when
+  // the fetcher calls back synchronously (before `run()` has stored its promise).
+  let inPass = false;
 
   const pass = async () => {
-    const base = loaded && !fromLatest ? feed.sent() : [];
-    const result = await catchUp(base, fetchPage, limit);
+    // Taken and cleared before the request, so a request for the newest page that `receive` makes
+    // while this pass is in flight survives it (and is put back if the pass fails).
+    const latestRequested = fromLatest;
+    fromLatest = false;
+    newHole = false;
+    const base = loaded && !latestRequested ? feed.sent() : [];
+    let result: Awaited<ReturnType<typeof catchUp>>;
+    inPass = true;
+    try {
+      result = await catchUp(base, fetchPage, limit);
+    } catch (error) {
+      if (latestRequested) fromLatest = true;
+      throw error;
+    } finally {
+      inPass = false;
+    }
     if (signal.aborted) return;
     feed.dispatch({
       type: result.kind === 'append' ? 'merge' : 'reset',
       messages: result.messages,
     });
     loaded = true;
-    fromLatest = false;
   };
 
   const loop = async () => {
@@ -128,12 +147,13 @@ export function createFeedSync(options: FeedSyncOptions): FeedSync {
       }
       if (signal.aborted) break;
       if (rerunRequested()) continue;
-      // A message merged above the page while it was in flight can leave a hole: pass again, as
-      // long as each pass moves the gapless run forward (a new loss during a follow-up is filled
-      // too). A pass that fills nothing stops it, and so does the cap, so a hole the server cannot
-      // fill never turns into a request loop.
+      // A message merged above the page while it was in flight can leave a hole: pass again while
+      // each pass moves the gapless run forward, or a new hole appeared during it (its request
+      // could not have asked for that). A pass that fills nothing of an old hole stops, and so does
+      // the cap, so a hole the server cannot fill never turns into a request loop.
       const progressed = before === null || syncedSeq(feed.sent()) !== before;
-      if ((fromLatest || hasHole(feed.sent())) && progressed && followUps < MAX_FOLLOW_UPS) {
+      const pending = fromLatest || hasHole(feed.sent());
+      if (pending && (progressed || newHole) && followUps < MAX_FOLLOW_UPS) {
         followUps += 1;
         continue;
       }
@@ -158,10 +178,14 @@ export function createFeedSync(options: FeedSyncOptions): FeedSync {
     receive(message) {
       const emptyBefore = feed.sent().length === 0;
       feed.dispatch({ type: 'merge', messages: [message] });
-      if (!loaded) return 'ok';
+      // A first message that is not seq 1 on an empty feed: the newest page must be read again,
+      // also before the first load ends (its page may be older than this message).
       if (emptyBefore && BigInt(message.seq) > 1n) fromLatest = true;
       if (!fromLatest && !hasHole(feed.sent())) return 'ok';
-      return running || failed ? 'ok' : 'catch-up';
+      const busy = inPass || running !== null;
+      if (busy) newHole = true;
+      if (!loaded) return 'ok';
+      return busy || failed ? 'ok' : 'catch-up';
     },
   };
 }

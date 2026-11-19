@@ -145,8 +145,9 @@ How it works:
    - a message that lands above a hole runs the same catch-up from below the hole. That covers a
      live `message:new` that skips a seq (41, then 43) and the user's own `POST` 201 (45 while
      42–44 never came). 43 shows at once, and 42 fills in when the page arrives. While a pass
-     runs, holes wait for its end (one follow-up pass at most); after a failed pass they wait for
-     Retry or the next reconnect.
+     runs, holes wait for its end. Then up to five follow-up passes run, each only while the last
+     one moved the gapless run forward or a new hole appeared during it. After a failed pass,
+     holes wait for Retry or the next reconnect.
 
    The catch-up logic (`catchUp`, `mergeMessages`, `resetFeed`) is in `@app/contracts`, so the
    api's integration tests run the same code. Its runner (`model/feed-sync.ts`) runs one pass at a

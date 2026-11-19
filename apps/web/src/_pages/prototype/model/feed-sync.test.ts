@@ -206,6 +206,48 @@ describe('createFeedSync', () => {
     expect(seqs()).toEqual(range(1, 8).map((m) => Number(m.seq)));
   });
 
+  it('a new hole during a pass that fills nothing still gets a follow-up (CodeRabbit)', async () => {
+    let server = range(1, 2);
+    const { sync, fetchPage, seqs } = setup(() => server);
+    await sync.run();
+    // The GET after 2 sees nothing new; while it is in flight 3 and 4 are sent and only 4 arrives.
+    fetchPage.mockImplementationOnce(() => {
+      server = range(1, 4);
+      sync.receive(msg(4));
+      return Promise.resolve({ messages: [], hasMore: false });
+    });
+
+    await sync.run();
+    expect(seqs()).toEqual([1, 2, 3, 4]);
+  });
+
+  it('a live 2 during the first load of an empty channel brings 1 too (CodeRabbit)', async () => {
+    let server: MessageResponse[] = [];
+    const { sync, fetchPage, seqs } = setup(() => server);
+    fetchPage.mockImplementationOnce(() => {
+      server = range(1, 2);
+      sync.receive(msg(2));
+      return Promise.resolve({ messages: [], hasMore: false });
+    });
+
+    await sync.run();
+    expect(seqs()).toEqual([1, 2]);
+  });
+
+  it('a newest-page request survives a failed pass', async () => {
+    let server: MessageResponse[] = [];
+    const { sync, fetchPage, seqs } = setup(() => server);
+    await sync.run();
+    server = range(1, 2);
+    expect(sync.receive(msg(2))).toBe('catch-up');
+    fetchPage.mockRejectedValueOnce(new Error('503'));
+    await sync.run();
+
+    await sync.run();
+    expect(seqs()).toEqual([1, 2]);
+    expect(fetchPage.mock.calls.at(-1)?.[0]).toEqual({ limit: '100' });
+  });
+
   it('a hole the server cannot fill stops after one pass that fills nothing', async () => {
     // The server lacks 3 for good (it never happens with gapless seqs; this is the loop guard).
     const server = [...range(1, 2), ...range(4, 5)];
