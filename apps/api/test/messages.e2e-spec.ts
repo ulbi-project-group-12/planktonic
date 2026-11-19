@@ -8,7 +8,8 @@ import { MessagesController } from '../src/modules/messages/messages.controller.
 import { MessagesService } from '../src/modules/messages/messages.service.js';
 
 const CHANNEL = '00000000-0000-7000-8000-000000000001';
-const create = vi.fn().mockResolvedValue({ id: 'created' });
+const KEY = '019a8f00-0000-7000-8000-000000000004';
+const create = vi.fn().mockResolvedValue({ message: { id: 'created' }, created: true });
 
 let app: INestApplication;
 let baseUrl: string;
@@ -37,18 +38,33 @@ function post(path: string, body: unknown) {
 
 describe('POST /api/channels/:channelId/messages validation', () => {
   it('returns 201 for a valid body', async () => {
-    const response = await post(`/api/channels/${CHANNEL}/messages`, { body: 'hello' });
+    const response = await post(`/api/channels/${CHANNEL}/messages`, {
+      clientMsgId: KEY,
+      body: 'hello',
+    });
     expect(response.status).toBe(201);
-    expect(create).toHaveBeenCalledWith(CHANNEL, expect.any(String), 'hello');
+    expect(await response.json()).toEqual({ id: 'created' });
+    expect(create).toHaveBeenCalledWith(CHANNEL, expect.any(String), KEY, 'hello');
   });
 
-  it.each([{}, { body: '' }, { body: 1 }])('returns 400 for body %j', async (body) => {
+  it.each([
+    {},
+    { clientMsgId: KEY, body: '' },
+    { clientMsgId: KEY, body: 1 },
+    { body: 'no key' },
+    { clientMsgId: 'not-a-uuid', body: 'hi' },
+    // A UUIDv4: the key must be a UUIDv7 (STACK §4.3).
+    { clientMsgId: '550e8400-e29b-41d4-a716-446655440000', body: 'hi' },
+  ])('returns 400 for body %j', async (body) => {
     const response = await post(`/api/channels/${CHANNEL}/messages`, body);
     expect(response.status).toBe(400);
   });
 
   it('reports the failing field in `issues`', async () => {
-    const response = await post(`/api/channels/${CHANNEL}/messages`, { body: '' });
+    const response = await post(`/api/channels/${CHANNEL}/messages`, {
+      clientMsgId: KEY,
+      body: '',
+    });
     expect(await response.json()).toMatchObject({
       statusCode: 400,
       message: 'Validation failed',
@@ -57,7 +73,7 @@ describe('POST /api/channels/:channelId/messages validation', () => {
   });
 
   it('returns 400 for a non-uuid channel id', async () => {
-    const response = await post('/api/channels/nope/messages', { body: 'hello' });
+    const response = await post('/api/channels/nope/messages', { clientMsgId: KEY, body: 'hello' });
     expect(response.status).toBe(400);
   });
 });

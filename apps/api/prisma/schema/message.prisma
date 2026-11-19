@@ -1,17 +1,21 @@
 // Таблица сообщений
 model Message {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  channelId String   @map("channel_id") @db.Uuid
-  channel   Channel  @relation(fields: [channelId], references: [id])
+  id          String   @id @default(uuid(7)) @db.Uuid
+  channelId   String   @map("channel_id") @db.Uuid
+  channel     Channel  @relation(fields: [channelId], references: [id])
   /// Per-channel sequence number, gapless from 1 (taken from `channels.last_seq` in the insert transaction).
-  seq       BigInt
-  authorId  String   @map("author_id") @db.Uuid
-  author    User     @relation(fields: [authorId], references: [id])
-  body      String
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  seq         BigInt
+  authorId    String   @map("author_id") @db.Uuid
+  author      User     @relation(fields: [authorId], references: [id])
+  /// Idempotency key: the client makes one UUIDv7 per message and resends it on retry (UL-126).
+  clientMsgId String   @map("client_msg_id") @db.Uuid
+  body        String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   // Also the index for reading a channel in `seq` order.
   @@unique([channelId, seq])
+  // A retry with the same key hits this index and gets the stored message back (UL-126, ADR-0003).
+  @@unique([authorId, clientMsgId])
   @@index([authorId])
   @@map("messages")
 }

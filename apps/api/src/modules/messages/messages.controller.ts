@@ -8,13 +8,20 @@ import { MessagesService } from './messages.service.js';
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
+  /** `201` with the stored message both for a new message and for a retry (UL-126). */
   @Post()
   @HttpCode(201)
-  create(
+  async create(
     @Param('channelId', new ParseUUIDPipe()) channelId: string,
     @Body({ schema: CreateMessageBody }) body: CreateMessageBody,
   ): Promise<MessageResponse> {
-    return this.messagesService.create(channelId, DEFAULT_AUTHOR_ID, body.body);
+    const { message } = await this.messagesService.create(
+      channelId,
+      DEFAULT_AUTHOR_ID,
+      body.clientMsgId,
+      body.body,
+    );
+    return message;
   }
 
   @Get()

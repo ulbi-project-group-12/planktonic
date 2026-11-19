@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 import { type MessageRow, MessagesRepository } from './messages.repository.js';
@@ -6,12 +6,14 @@ import { MessagesService } from './messages.service.js';
 
 const CHANNEL = '00000000-0000-7000-8000-000000000001';
 const AUTHOR = '00000000-0000-7000-8000-000000000002';
+const KEY = '019a8f00-0000-7000-8000-000000000004';
 
 const row: MessageRow = {
   id: '00000000-0000-7000-8000-000000000003',
   seq: 7n,
   channelId: CHANNEL,
   authorId: AUTHOR,
+  clientMsgId: KEY,
   body: 'hello',
   createdAt: new Date('2026-11-16T10:00:00.000Z'),
 };
@@ -24,23 +26,57 @@ async function setup(repository: Partial<MessagesRepository>) {
 }
 
 describe('MessagesService', () => {
-  it('maps a created row to the contract response', async () => {
-    const service = await setup({ create: vi.fn().mockResolvedValue(row) });
+  it('maps a created row to the contract response with created: true', async () => {
+    const create = vi.fn().mockResolvedValue({ row, created: true });
+    const service = await setup({ create });
 
-    await expect(service.create(CHANNEL, AUTHOR, 'hello')).resolves.toEqual({
-      id: row.id,
-      seq: '7',
-      channelId: CHANNEL,
-      authorId: AUTHOR,
-      body: 'hello',
-      createdAt: '2026-11-16T10:00:00.000Z',
+    await expect(service.create(CHANNEL, AUTHOR, KEY, 'hello')).resolves.toEqual({
+      message: {
+        id: row.id,
+        seq: '7',
+        channelId: CHANNEL,
+        authorId: AUTHOR,
+        clientMsgId: KEY,
+        body: 'hello',
+        createdAt: '2026-11-16T10:00:00.000Z',
+      },
+      created: true,
     });
+    expect(create).toHaveBeenCalledWith(CHANNEL, AUTHOR, KEY, 'hello');
+  });
+
+  it('passes a found row through with created: false', async () => {
+    const service = await setup({ create: vi.fn().mockResolvedValue({ row, created: false }) });
+
+    const result = await service.create(CHANNEL, AUTHOR, KEY, 'edited on retry');
+    expect(result.created).toBe(false);
+    expect(result.message).toMatchObject({ id: row.id, seq: '7', body: 'hello' });
+  });
+
+  it('treats an uppercase channel id in the path as the same channel', async () => {
+    const service = await setup({ create: vi.fn().mockResolvedValue({ row, created: false }) });
+
+    const result = await service.create(CHANNEL.toUpperCase(), AUTHOR, KEY, 'hello');
+    expect(result).toMatchObject({ created: false, message: { id: row.id } });
+  });
+
+  it('throws 409 when the key was already used in another channel', async () => {
+    const elsewhere = { ...row, channelId: '00000000-0000-7000-8000-000000000009' };
+    const service = await setup({
+      create: vi.fn().mockResolvedValue({ row: elsewhere, created: false }),
+    });
+
+    await expect(service.create(CHANNEL, AUTHOR, KEY, 'hello')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
   });
 
   it('throws 404 when posting to a missing channel', async () => {
     const service = await setup({ create: vi.fn().mockResolvedValue(null) });
 
-    await expect(service.create(CHANNEL, AUTHOR, 'hi')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.create(CHANNEL, AUTHOR, KEY, 'hi')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('lists messages of an existing channel', async () => {
