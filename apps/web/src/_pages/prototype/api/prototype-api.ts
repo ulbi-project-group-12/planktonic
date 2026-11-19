@@ -74,9 +74,14 @@ export class SendMessageError extends Error {
 }
 
 /**
- * `POST` a message and return the stored copy. Anything but a valid `201` throws: a resend with
- * the same `clientMsgId` is idempotent on the server, so treating a malformed `201` as a failure
- * loses nothing.
+ * `POST` a message and return the stored copy. Every failure is a `SendMessageError`:
+ * - `network`: fetch rejected with a TypeError (offline, DNS, connection refused);
+ * - `timeout`: no answer within `REQUEST_TIMEOUT_MS` (`AbortSignal.timeout`'s TimeoutError);
+ * - `server`: 5xx, 408 or 429, the server could not take it right now;
+ * - `rejected`: any other 4xx, the server refused this message (the only final kind);
+ * - `invalid-response`: a 201 whose body is not JSON or not a valid message, or a non-201 2xx/3xx.
+ * Everything but `rejected` may be retried with the same `clientMsgId`: the server is idempotent
+ * on (author, clientMsgId), so a resend after a lost or malformed 201 loses nothing and adds nothing.
  */
 export async function sendMessage(
   channelId: string,
@@ -91,15 +96,36 @@ export async function sendMessage(
       body: JSON.stringify(payload),
     });
   } catch (error) {
+    // A structural check: `instanceof DOMException` can fail across realms (jsdom vs Node).
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'name' in error &&
+      error.name === 'TimeoutError'
+    ) {
+      throw new SendMessageError('timeout', { cause: error });
+    }
     if (error instanceof TypeError) throw new SendMessageError('network', { cause: error });
     throw error;
   }
-  if (res.status !== 201) throw new Error(`POST message failed with ${String(res.status)}`);
-  const body: unknown = await res.json();
+  const { status } = res;
+  if (status !== 201) {
+    if (status >= 500 || status === 408 || status === 429) {
+      throw new SendMessageError('server', { status });
+    }
+    if (status >= 400) throw new SendMessageError('rejected', { status });
+    throw new SendMessageError('invalid-response', { status });
+  }
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch (error) {
+    throw new SendMessageError('invalid-response', { status, cause: error });
+  }
   const result = MessageResponse.safeParse(body);
   if (!result.success) {
     console.warn('prototype: invalid POST message response', result.error);
-    throw new Error('POST message returned an invalid message');
+    throw new SendMessageError('invalid-response', { status, cause: result.error });
   }
   return result.data;
 }
@@ -110,13 +136,41 @@ export async function sendMessage(
  * retried, since the server is idempotent on (author, clientMsgId).
  */
 export function classifySendError(error: unknown): SendFailure {
-  if (error instanceof SendMessageError) {
-    switch (error.kind) {
-      case 'network':
-        return { retryable: error.retryable, reason: 'no connection to the server' };
-      default:
-        break;
-    }
+  if (!(error instanceof SendMessageError)) {
+    return { retryable: true, reason: 'something went wrong' };
   }
-  return { retryable: true, reason: 'something went wrong' };
+  return { retryable: error.retryable, reason: sendErrorReason(error) };
+}
+
+/** `text`, plus the HTTP status in parentheses when it is known. */
+function withStatus(text: string, status: number | undefined): string {
+  return status === undefined ? text : `${text} (${String(status)})`;
+}
+
+function rejectedText(status: number | undefined): string {
+  switch (status) {
+    case 404:
+      return 'the channel was not found';
+    case 409:
+      return 'this message key was already used in another channel';
+    case 413:
+      return 'the message is too large';
+    default:
+      return 'the server rejected the message';
+  }
+}
+
+function sendErrorReason({ kind, status }: SendMessageError): string {
+  switch (kind) {
+    case 'network':
+      return 'no connection to the server';
+    case 'timeout':
+      return 'the server did not answer in time';
+    case 'server':
+      return withStatus('the server is unavailable right now', status);
+    case 'rejected':
+      return withStatus(rejectedText(status), status);
+    case 'invalid-response':
+      return 'the server sent an unexpected response';
+  }
 }

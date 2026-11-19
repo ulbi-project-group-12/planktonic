@@ -346,6 +346,39 @@ describe('PrototypePage', () => {
     expect(within(failedRow).getByRole('button', { name: 'Retry' })).toBeInTheDocument();
   });
 
+  it('shows why a refused send failed and offers no Retry', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    postResponder = () => Promise.resolve(json({ message: 'Bad Request' }, 400));
+    await renderConnected();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message'), 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(
+      await messageList().findByText('Not sent: the server rejected the message (400)'),
+    ).toBeInTheDocument();
+    expect(messageList().getByText('Retrying will not help.')).toBeInTheDocument();
+    expect(messageList().queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+    expect(messageList().queryByText('Bad Request')).not.toBeInTheDocument();
+    expect(posted).toHaveLength(1);
+  });
+
+  it('keeps Retry when the server is unavailable', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    postResponder = () => Promise.resolve(json({ message: 'boom' }, 503));
+    await renderConnected();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message'), 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(
+      await messageList().findByText('Not sent: the server is unavailable right now (503)'),
+    ).toBeInTheDocument();
+    expect(messageList().getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(messageList().queryByText('Retrying will not help.')).not.toBeInTheDocument();
+    expect(posted).toHaveLength(1);
+  });
+
   it('keeps text typed while a send is in flight', async () => {
     const response = deferred<Response>();
     postResponder = () => response.promise;
