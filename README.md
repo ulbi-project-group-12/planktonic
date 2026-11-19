@@ -73,14 +73,15 @@ folder (usually `planktonic`), so your old database and bucket live in volumes l
 `COMPOSE_PROJECT_NAME=planktonic` to your `.env`. Old containers can be removed with
 `docker compose -p planktonic --profile "*" down` (add `-v` to delete the old data).
 
-| Service     | Image (pinned by digest)         | Host port                 | Purpose                                                       |
-| ----------- | -------------------------------- | ------------------------- | ------------------------------------------------------------- |
-| `postgres`  | `pgvector/pgvector:0.8.6-pg18`   | `55432` (`POSTGRES_PORT`) | Postgres 18 with the `vector` extension (init SQL)            |
-| `redis`     | `redis:8.10.2`                   | `56379` (`REDIS_PORT`)    | Redis 8, append-only; Socket.IO Streams adapter               |
-| `seaweedfs` | `chrislusf/seaweedfs:4.51`       | `58333` (`S3_PORT`)       | S3-compatible object storage (`server -s3`)                   |
-| `s3-init`   | `chrislusf/seaweedfs:4.51`       | none                      | One-shot job: creates the dev bucket, safe to re-run          |
-| `api`       | Built from `apps/api/Dockerfile` | none                      | Profile `realtime`: two NestJS replicas, internal port `3001` |
-| `traefik`   | `traefik:v3.7.16`                | `58080` (`TRAEFIK_PORT`)  | Profile `realtime`: load balancing and sticky sessions        |
+| Service     | Image (pinned by digest)         | Host port                 | Purpose                                                                           |
+| ----------- | -------------------------------- | ------------------------- | --------------------------------------------------------------------------------- |
+| `postgres`  | `pgvector/pgvector:0.8.6-pg18`   | `55432` (`POSTGRES_PORT`) | Postgres 18 with the `vector` extension (init SQL)                                |
+| `redis`     | `redis:8.10.2`                   | `56379` (`REDIS_PORT`)    | Redis 8, append-only; Socket.IO Streams adapter                                   |
+| `seaweedfs` | `chrislusf/seaweedfs:4.51`       | `58333` (`S3_PORT`)       | S3-compatible object storage (`server -s3`)                                       |
+| `s3-init`   | `chrislusf/seaweedfs:4.51`       | none                      | One-shot job: creates the dev bucket, safe to re-run                              |
+| `api`       | Built from `apps/api/Dockerfile` | none                      | Profile `realtime`: two NestJS replicas, internal port `3001`                     |
+| `web`       | Built from `apps/web/Dockerfile` | none                      | Profile `realtime`: the Next.js app behind Traefik, internal port `3000` (UL-128) |
+| `traefik`   | `traefik:v3.7.16`                | `58080` (`TRAEFIK_PORT`)  | Profile `realtime`: load balancing and sticky sessions                            |
 
 Why SeaweedFS and not Garage (D-09): SeaweedFS is Apache-2.0 and runs the whole S3 store in a
 single container, and it is the first option in the stack research. MinIO CE no longer ships
@@ -93,8 +94,9 @@ whole stack, the `realtime` replicas included (`--profile "*"`), and keeps the d
 bucket), so run `pnpm db:migrate` again afterwards.
 
 Traefik discovers the API containers through the Docker socket and routes `/api` and
-`/socket.io` to their internal port `3001`. The `io_srv` sticky cookie keeps a client on the
-same replica. The API serves Socket.IO through the Redis Streams adapter (UL-124); the profile
+`/socket.io` to their internal port `3001`. Every other path goes to the web container's port
+`3000` with router priority 1, so `/api` and `/socket.io` always go to the API. The `io_srv`
+sticky cookie keeps a client on the same replica. The API serves Socket.IO through the Redis Streams adapter (UL-124); the profile
 sets `REALTIME_DEBUG=true`, so a diagnostic ping crosses replicas. Access logs are enabled, and the entrypoint idle
 timeout is 60 seconds. See [API realtime checks](apps/api/README.md#manual-check-on-two-replicas).
 
@@ -109,10 +111,11 @@ profile `realtime`, so the everyday `pnpm services:up` + `pnpm dev` never builds
 when you work on realtime (UL-123, UL-124, UL-130, UL-133). Stop the host `pnpm dev` api first or
 leave it: the replicas are reached through Traefik on `TRAEFIK_PORT`, not on `3001`.
 
-- **Routing:** `/api` and `/socket.io` → API port `3001`.
+- **Routing:** `/api` and `/socket.io` → API port `3001`; everything else → web port `3000`.
 - **Load balancing:** Round Robin with sticky cookie `io_srv`.
 - **Health:** `GET /api/health` returns `instanceId` to identify the replica.
-- **Access:** `http://127.0.0.1:58080` (`TRAEFIK_PORT` in `.env`).
+- **Access:** `http://127.0.0.1:58080` (`TRAEFIK_PORT` in `.env`); the prototype page is
+  `http://127.0.0.1:58080/prototype` (see [Prototype page](apps/web/README.md#prototype-page-ul-128)).
 
 ### Run and verify
 
@@ -271,7 +274,7 @@ cache (`FULL TURBO`).
 | `packages/config`         | ESLint presets (see its README), TS and Prettier config, `product.ts`                              |
 | `scripts`                 | Repo tooling: pin check, name guard, PR hygiene, `apply-repo-rules.sh`                             |
 | `.github`                 | CI and release workflows, rulesets as code, CODEOWNERS, PR template                                |
-| `compose.yaml`, `docker/` | Dev services (Postgres, Redis, SeaweedFS, API, Traefik) and Postgres init SQL                      |
+| `compose.yaml`, `docker/` | Dev services (Postgres, Redis, SeaweedFS, API, web, Traefik) and Postgres init SQL                 |
 | `.coderabbit.yaml`        | CodeRabbit config: the AI first-pass review (Russian, never approves)                              |
 
 ## Dependency rules
