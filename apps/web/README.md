@@ -136,10 +136,17 @@ How it works:
 2. On every socket connect, the first and each reconnect, the page fetches the channel's history
    and merges it with live `message:new` events and `POST` responses by `id`, sorted by
    `BigInt(seq)`. The sender's own message shows once whichever copy arrives first.
-3. Each Send gets a UUIDv7 `clientMsgId`. After a failed send, resending the same text reuses
-   that key, so a resend never makes a second message. Editing the draft first gives it a new
-   key, because the server answers a used key with the stored body. A failed send shows an error
-   and keeps the draft. Every request times out after 10 s.
+3. Each Send gets a UUIDv7 `clientMsgId`, clears the draft and adds a local row at the end of the
+   feed with the status `Sending…` (UL-131). The `POST` 201 or `message:new`, whichever comes
+   first, replaces that row by `clientMsgId`, so it shows once in any arrival order. Every request
+   times out after 10 s.
+   - No network, a timeout, 5xx, 408 or 429: the row stays as `Not sent: <reason>` with a Retry
+     button. Retry sends the same `clientMsgId` and body, so the server's idempotency (UL-126)
+     keeps one message even when the first request did arrive.
+   - Any other 4xx (400, 404, 409, 413…): the row says why and `Retrying will not help.`, with no
+     Retry button.
+   - Unsent rows live in memory only and are lost on reload (durable storage is UL-193); nothing
+     retries them automatically.
 4. Every wire payload is checked with the `@app/contracts` schemas. An invalid `message:new` is
    dropped with a `console.warn`, and events for other channels are ignored. A failed or invalid
    history load shows an error with a Retry button.

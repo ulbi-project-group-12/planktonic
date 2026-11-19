@@ -1,8 +1,9 @@
 import { ClientMsgId, type CreateMessageBody, type MessageResponse } from '@app/contracts';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { uuidv7 } from '@/shared/lib';
 import { PROTOTYPE_CHANNEL_ID } from '../model/feed';
 import { PrototypePage } from './prototype-page';
 
@@ -80,6 +81,12 @@ let healthDown = false;
 let historyFaults: ('fail' | 'invalid')[] = [];
 /** Answers each POST; the test sets it. */
 let postResponder: (payload: CreateMessageBody) => Promise<Response>;
+/** A 201 carrying the server's copy of the posted message at `seq`. */
+function created(payload: CreateMessageBody, seq: number): Promise<Response> {
+  return Promise.resolve(
+    json({ ...msg(seq, payload.body), clientMsgId: payload.clientMsgId }, 201),
+  );
+}
 const posted: CreateMessageBody[] = [];
 
 function json(body: unknown, status = 200): Response {
@@ -121,9 +128,12 @@ function renderPage() {
   );
 }
 
+function messageList() {
+  return within(screen.getByRole('list', { name: 'Messages' }));
+}
+
 function rows(): string[] {
-  const list = screen.getByRole('list', { name: 'Messages' });
-  return within(list)
+  return messageList()
     .queryAllByRole('listitem')
     .map((item) => item.textContent);
 }
@@ -188,7 +198,7 @@ describe('PrototypePage', () => {
     const lastHealth = calls.lastIndexOf('GET /api/health');
     expect(lastHealth).toBeGreaterThanOrEqual(0);
     expect(lastHealth).toBeLessThan(calls.indexOf('connect'));
-    expect(screen.getByRole('status')).toHaveTextContent('Connection: syncing');
+    expect(screen.getByText('Connection: syncing')).toBeInTheDocument();
   });
 
   it('loads the history on connect and renders it in seq order', async () => {
@@ -254,6 +264,7 @@ describe('PrototypePage', () => {
     const user = userEvent.setup();
     await user.type(screen.getByLabelText('Message'), 'hello');
     await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(screen.getByLabelText('Message')).toHaveValue('');
     await waitFor(() => {
       expect(posted).toHaveLength(1);
     });
@@ -261,65 +272,267 @@ describe('PrototypePage', () => {
     expect(payload?.body).toBe('hello');
     expect(ClientMsgId.safeParse(payload?.clientMsgId).success).toBe(true);
     expect(Object.keys(payload ?? {}).sort()).toEqual(['body', 'clientMsgId']);
+    expect(messageList().getByText('Sending…')).toBeInTheDocument();
 
     const own = { ...msg(3, 'hello'), clientMsgId: payload?.clientMsgId ?? '' };
     act(() => {
       fake.fire('message:new', { message: own });
     });
+    expect(rows()).toEqual(['#1 first', '#2 second', '#3 hello']);
     await act(async () => {
       response.resolve(json(own, 201));
       await response.promise;
     });
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Message')).toHaveValue('');
-    });
     expect(rows()).toEqual(['#1 first', '#2 second', '#3 hello']);
   });
 
-  it('keeps the draft and its key after a failed send and reuses the key on resend', async () => {
+  it('renders a repeated announcement as a new node, so it is read out again', async () => {
+    const answers = [deferred<Response>(), deferred<Response>()];
+    let attempt = 0;
+    postResponder = () => {
+      const answer = answers[attempt];
+      attempt += 1;
+      if (!answer) throw new Error('unexpected POST');
+      return answer.promise;
+    };
+    await renderConnected();
+    const region = screen.getByRole('status', { name: 'Send status' });
+
+    const user = userEvent.setup();
+    for (const text of ['a', 'b']) {
+      await user.type(screen.getByLabelText('Message'), text);
+      await user.click(screen.getByRole('button', { name: 'Send' }));
+    }
+    await waitFor(() => {
+      expect(posted).toHaveLength(2);
+    });
+
+    const confirm = async (index: number, seq: number) => {
+      const payload = posted[index];
+      const answer = answers[index];
+      if (!payload || !answer) throw new Error('missing POST');
+      await act(async () => {
+        answer.resolve(json({ ...msg(seq, payload.body), clientMsgId: payload.clientMsgId }, 201));
+        await answer.promise;
+      });
+      await waitFor(() => {
+        expect(region).toHaveTextContent('Message sent.');
+      });
+      return region.firstElementChild;
+    };
+    const first = await confirm(0, 1);
+    const second = await confirm(1, 2);
+    expect(rows()).toEqual(['#1 a', '#2 b']);
+    expect(second).toHaveTextContent('Message sent.');
+    expect(second).not.toBe(first);
+  });
+
+  it('announces Sending, Not sent with whether Retry helps, and Sent in a polite live region', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    postResponder = () => Promise.resolve(json({ message: 'boom' }, 500));
+    const first = deferred<Response>();
+    let attempt = 0;
+    postResponder = (payload) => {
+      attempt += 1;
+      if (attempt === 1) {
+        return first.promise.then(() => Promise.reject(new TypeError('Failed to fetch')));
+      }
+      if (attempt === 2) return created(payload, 1);
+      return Promise.resolve(json({ message: 'Bad Request' }, 400));
+    };
+    await renderConnected();
+    const region = screen.getByRole('status', { name: 'Send status' });
+    expect(region).toBeEmptyDOMElement();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message'), 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(region).toHaveTextContent('Sending message…');
+    await act(async () => {
+      first.resolve(json({}, 200));
+      await first.promise;
+    });
+    await waitFor(() => {
+      expect(region).toHaveTextContent(
+        'Message not sent: no connection to the server. Press Retry to try again.',
+      );
+    });
+
+    await user.click(messageList().getByRole('button', { name: 'Retry' }));
+    await waitFor(() => {
+      expect(region).toHaveTextContent('Message sent.');
+    });
+
+    await user.type(screen.getByLabelText('Message'), 'refused');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => {
+      expect(region).toHaveTextContent(
+        'Message not sent: the server rejected the message (400). Retrying will not help.',
+      );
+    });
+    expect(region).not.toHaveFocus();
+  });
+
+  it('a send without network stays failed with Retry, and Retry delivers it once with the same key', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    let attempt = 0;
+    postResponder = (payload) => {
+      attempt += 1;
+      if (attempt === 1) return Promise.reject(new TypeError('Failed to fetch'));
+      return created(payload, 1);
+    };
     await renderConnected();
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText('Message'), 'hello');
     await user.click(screen.getByRole('button', { name: 'Send' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Not sent. Press Send to try again.',
-    );
-    expect(screen.getByLabelText('Message')).toHaveValue('hello');
+    expect(screen.getByLabelText('Message')).toHaveValue('');
 
-    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(
+      await messageList().findByText('Not sent: no connection to the server'),
+    ).toBeInTheDocument();
+    expect(messageList().getByText('hello')).toBeInTheDocument();
+    await user.click(messageList().getByRole('button', { name: 'Retry' }));
+
     await waitFor(() => {
-      expect(posted).toHaveLength(2);
+      expect(rows()).toEqual(['#1 hello']);
     });
+    expect(posted).toHaveLength(2);
     expect(posted[1]?.clientMsgId).toBe(posted[0]?.clientMsgId);
+    expect(posted[0]?.body).toBe('hello');
+    expect(posted[1]?.body).toBe('hello');
+    expect(messageList().queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+    expect(messageList().queryByText(/^Not sent/)).not.toBeInTheDocument();
   });
 
-  it('makes a new key when the draft is edited after a failed send', async () => {
+  it('a new Send after a failure gets a new key and keeps the failed row', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    postResponder = () => Promise.resolve(json({ message: 'boom' }, 500));
+    postResponder = () => Promise.reject(new TypeError('Failed to fetch'));
     await renderConnected();
 
     const user = userEvent.setup();
     const input = screen.getByLabelText('Message');
     await user.type(input, 'hello');
     await user.click(screen.getByRole('button', { name: 'Send' }));
-    await screen.findByRole('alert');
+    await messageList().findByText('Not sent: no connection to the server');
 
-    // The first POST may have committed: reusing its key would return "hello" and drop the edit.
-    await user.type(input, ' again');
-    postResponder = (payload) =>
-      Promise.resolve(json({ ...msg(1, payload.body), clientMsgId: payload.clientMsgId }, 201));
+    postResponder = (payload) => created(payload, 1);
+    await user.type(input, 'again');
     await user.click(screen.getByRole('button', { name: 'Send' }));
-    await waitFor(() => {
-      expect(posted).toHaveLength(2);
-    });
-    expect(posted[1]?.body).toBe('hello again');
+    expect(await messageList().findByText('#1 again')).toBeInTheDocument();
+    expect(posted).toHaveLength(2);
+    expect(posted[1]?.body).toBe('again');
     expect(posted[1]?.clientMsgId).not.toBe(posted[0]?.clientMsgId);
     expect(ClientMsgId.safeParse(posted[1]?.clientMsgId).success).toBe(true);
-    expect(await screen.findByText('#1 hello again')).toBeInTheDocument();
+
+    const [sentRow, failedRow] = messageList().getAllByRole('listitem');
+    if (!sentRow || !failedRow) throw new Error('expected two rows');
+    expect(rows()).toHaveLength(2);
+    expect(sentRow).toHaveTextContent('#1 again');
+    expect(failedRow).toHaveTextContent('hello');
+    expect(failedRow).toHaveTextContent('Not sent: no connection to the server');
+    expect(within(failedRow).getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  });
+
+  it('shows why a refused send failed and offers no Retry', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    postResponder = () => Promise.resolve(json({ message: 'Bad Request' }, 400));
+    await renderConnected();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message'), 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(
+      await messageList().findByText('Not sent: the server rejected the message (400)'),
+    ).toBeInTheDocument();
+    expect(messageList().getByText('Retrying will not help.')).toBeInTheDocument();
+    expect(messageList().queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+    expect(messageList().queryByText('Bad Request')).not.toBeInTheDocument();
+    expect(posted).toHaveLength(1);
+  });
+
+  it('keeps Retry when the server is unavailable', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    postResponder = () => Promise.resolve(json({ message: 'boom' }, 503));
+    await renderConnected();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message'), 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(
+      await messageList().findByText('Not sent: the server is unavailable right now (503)'),
+    ).toBeInTheDocument();
+    expect(messageList().getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(messageList().queryByText('Retrying will not help.')).not.toBeInTheDocument();
+    expect(posted).toHaveLength(1);
+  });
+
+  it('fails the row with Retry when the 201 is for another clientMsgId', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    postResponder = (payload) =>
+      Promise.resolve(json({ ...msg(7, payload.body), clientMsgId: uuidv7() }, 201));
+    await renderConnected();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message'), 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(
+      await messageList().findByText('Not sent: the server sent an unexpected response'),
+    ).toBeInTheDocument();
+    expect(messageList().getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(messageList().queryByText('Sending…')).not.toBeInTheDocument();
+    expect(rows()).toHaveLength(1);
+  });
+
+  it('collapses a failed row when message:new arrives with its key', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    postResponder = () => Promise.reject(new TypeError('Failed to fetch'));
+    await renderConnected();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message'), 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await messageList().findByText('Not sent: no connection to the server');
+
+    // The server committed the message; only its answer was lost.
+    const key = posted[0]?.clientMsgId ?? '';
+    act(() => {
+      fake.fire('message:new', { message: { ...msg(1, 'hello'), clientMsgId: key } });
+    });
+    expect(rows()).toEqual(['#1 hello']);
+    expect(messageList().queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+    expect(messageList().queryByText(/^Not sent/)).not.toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Send status' })).toHaveTextContent('Message sent.');
+  });
+
+  it('ignores a failure that lands after message:new delivered the message', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const response = deferred<Response>();
+    postResponder = () => response.promise;
+    await renderConnected();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message'), 'hello');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => {
+      expect(posted).toHaveLength(1);
+    });
+    const key = posted[0]?.clientMsgId ?? '';
+    act(() => {
+      fake.fire('message:new', { message: { ...msg(1, 'hello'), clientMsgId: key } });
+    });
+    expect(rows()).toEqual(['#1 hello']);
+
+    await act(async () => {
+      response.resolve(json({ message: 'boom' }, 503));
+      await response.promise;
+    });
+    await waitFor(() => {
+      expect(warn).toHaveBeenCalledWith('prototype: send failed', expect.anything());
+    });
+    expect(rows()).toEqual(['#1 hello']);
+    expect(messageList().queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+    // The live region follows the feed, not the stale failure.
+    expect(screen.getByRole('status', { name: 'Send status' })).toHaveTextContent('Message sent.');
   });
 
   it('keeps text typed while a send is in flight', async () => {
@@ -331,18 +544,29 @@ describe('PrototypePage', () => {
 
     await user.type(input, 'hello');
     await user.click(screen.getByRole('button', { name: 'Send' }));
+    expect(input).toHaveValue('');
+    expect(messageList().getByText('Sending…')).toBeInTheDocument();
     await user.type(input, '!');
+    await waitFor(() => {
+      expect(posted).toHaveLength(1);
+    });
+    const key = posted[0]?.clientMsgId ?? '';
     await act(async () => {
-      response.resolve(json(msg(1, 'hello'), 201));
+      response.resolve(json({ ...msg(1, 'hello'), clientMsgId: key }, 201));
       await response.promise;
     });
-    expect(await screen.findByText('#1 hello')).toBeInTheDocument();
-    expect(input).toHaveValue('hello!');
+    expect(await messageList().findByText('#1 hello')).toBeInTheDocument();
+    expect(messageList().queryByText('Sending…')).not.toBeInTheDocument();
+    expect(input).toHaveValue('!');
   });
 
-  it('disables Send for a blank draft and while a send is in flight', async () => {
-    const response = deferred<Response>();
-    postResponder = () => response.promise;
+  it('disables Send only for a blank or over-long draft', async () => {
+    const responses = [deferred<Response>(), deferred<Response>()];
+    postResponder = () => {
+      const next = responses[posted.length - 1];
+      if (!next) throw new Error('unexpected POST');
+      return next.promise;
+    };
     await renderConnected();
     const user = userEvent.setup();
     const send = screen.getByRole('button', { name: 'Send' });
@@ -357,14 +581,31 @@ describe('PrototypePage', () => {
 
     await user.click(send);
     expect(send).toBeDisabled();
+    await user.type(input, 'world');
+    expect(send).toBeEnabled();
+    await user.click(send);
+    await waitFor(() => {
+      expect(posted).toHaveLength(2);
+    });
+    expect(posted[1]?.clientMsgId).not.toBe(posted[0]?.clientMsgId);
+    expect(messageList().getAllByText('Sending…')).toHaveLength(2);
+
     await act(async () => {
-      response.resolve(json(msg(1, 'hello'), 201));
-      await response.promise;
+      for (const [index, response] of responses.entries()) {
+        const payload = posted[index];
+        if (!payload) throw new Error('missing POST');
+        response.resolve(
+          json({ ...msg(index + 1, payload.body), clientMsgId: payload.clientMsgId }, 201),
+        );
+        await response.promise;
+      }
     });
     await waitFor(() => {
-      expect(input).toHaveValue('');
+      expect(rows()).toEqual(['#1 hello', '#2 world']);
     });
-    expect(posted).toHaveLength(1);
+
+    fireEvent.change(input, { target: { value: 'x'.repeat(4001) } });
+    expect(send).toBeDisabled();
   });
 
   it('shows a history load failure and retries it, keeping live messages', async () => {
