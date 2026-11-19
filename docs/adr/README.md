@@ -12,12 +12,12 @@ An ADR is a short record of one architectural decision: the context, what we cho
 
 ## Index
 
-| ADR                        | Title                             | Status   | Ticket |
-| -------------------------- | --------------------------------- | -------- | ------ |
-| 0001                       | Realtime protocol                 | Planned  | UL-134 |
-| 0002                       | Permission model                  | Planned  | UL-136 |
-| [0003](0003-data-model.md) | Data model                        | Accepted | UL-212 |
-| 0004                       | Observability (Alloy / GlitchTip) | Planned  | UL-167 |
+| ADR                               | Title                             | Status   | Ticket |
+| --------------------------------- | --------------------------------- | -------- | ------ |
+| [0001](0001-realtime-protocol.md) | Realtime protocol                 | Accepted | UL-134 |
+| 0002                              | Permission model                  | Planned  | UL-136 |
+| [0003](0003-data-model.md)        | Data model                        | Accepted | UL-212 |
+| 0004                              | Observability (Alloy / GlitchTip) | Planned  | UL-167 |
 
 > UL-167 and UL-170 used to call the observability ADR "ADR-0003". That number belongs to the data model (UL-212, created first), so observability is ADR-0004.
 
