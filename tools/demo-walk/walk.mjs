@@ -28,7 +28,6 @@ import { spawnSync } from 'node:child_process';
 import {
   appendFileSync,
   copyFileSync,
-  existsSync,
   lstatSync,
   mkdtempSync,
   realpathSync,
@@ -60,18 +59,25 @@ const STILL_DIR = join(OUT, 'stills');
 /**
  * The raw frames of a walk. Each walk gets a fresh private directory (mkdtemp: unique, created
  * by this process, mode 0700), and its path is kept in <out>/.frames(-stills) so `--assemble`
- * reads the same frames. DEMO_WALK_FRAMES names a directory instead.
+ * reads the same frames. DEMO_WALK_FRAMES names a directory instead; such a directory is the
+ * user's and is never deleted. The pointer records which kind it was (`created`).
  */
-const FRAMES_POINTER = join(OUT, STILLS ? '.frames-stills' : '.frames');
+const FRAMES_POINTER = join(OUT, STILLS ? '.frames-stills.json' : '.frames.json');
 const FRAMES_PREFIX = join(tmpdir(), 'demo-walk-frames-');
-const previousFrames = existsSync(FRAMES_POINTER)
-  ? readFileSync(FRAMES_POINTER, 'utf8').trim()
-  : undefined;
+const previousFrames = (() => {
+  try {
+    const p = JSON.parse(readFileSync(FRAMES_POINTER, 'utf8'));
+    return typeof p.dir === 'string' ? { dir: p.dir, created: p.created === true } : undefined;
+  } catch {
+    return undefined;
+  }
+})();
+const FRAMES_CREATED = !process.env.DEMO_WALK_FRAMES && !argv.assemble;
 const FRAMES = (() => {
   if (process.env.DEMO_WALK_FRAMES) return resolve(process.env.DEMO_WALK_FRAMES);
   if (argv.assemble) {
     if (!previousFrames) throw new Error(`no earlier walk in ${OUT}: nothing to assemble`);
-    return previousFrames;
+    return previousFrames.dir;
   }
   return mkdtempSync(FRAMES_PREFIX);
 })();
@@ -852,10 +858,13 @@ async function main() {
   }
   mkdirSync(FRAMES, { recursive: true });
   // The previous walk's frames go once a new walk owns the pointer; only our own temp dirs.
-  if (previousFrames && previousFrames !== FRAMES && isOwnFramesDir(previousFrames)) {
-    rmSync(previousFrames, { recursive: true, force: true });
+  // Only a directory an earlier walk created itself (never DEMO_WALK_FRAMES), and only after
+  // the canonical-path and owner checks.
+  const prev = previousFrames;
+  if (prev?.created && prev.dir !== FRAMES && isOwnFramesDir(prev.dir)) {
+    rmSync(prev.dir, { recursive: true, force: true });
   }
-  writeFileSync(FRAMES_POINTER, `${FRAMES}\n`);
+  writeFileSync(FRAMES_POINTER, `${JSON.stringify({ dir: FRAMES, created: FRAMES_CREATED })}\n`);
   log(`walk ${new Date().toISOString()} on ${PAGE_URL}${STILLS ? ' (stills)' : ''}`);
 
   const chrome = await launchChrome({

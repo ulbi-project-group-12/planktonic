@@ -38,8 +38,8 @@ stills never go into git. A run writes `recording.mp4`, `captions.srt`, `poster.
 `walk.log`; the stills run writes `stills/`, `stills.json` and `walk-stills.log`. After a change to
 the assembly only, `pnpm demo:walk --out <out> --assemble` rebuilds the video from the last walk's
 frames. The raw frames go to a fresh private temp directory per walk (`DEMO_WALK_FRAMES` to choose
-one); `<out>/.frames` remembers it for `--assemble`, and the next walk into the same `<out>`
-removes it.
+one); `<out>/.frames.json` remembers it for `--assemble`, and the next walk into the same `<out>`
+removes it. A `DEMO_WALK_FRAMES` directory is never removed.
 
 `stand.sh` defaults to the compose project `demo-walk` with Postgres `55190`, Redis `56190`, S3
 `58190` and Traefik `58290`; `DEMO_PROJECT`, `DEMO_PG_PORT`, `DEMO_REDIS_PORT`, `DEMO_S3_PORT` and
