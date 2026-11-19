@@ -273,6 +273,7 @@ cache (`FULL TURBO`).
 | `packages/contracts`      | Shared zod schemas, compiled package `@app/contracts`                                              |
 | `packages/config`         | ESLint presets (see its README), TS and Prettier config, `product.ts`                              |
 | `scripts`                 | Repo tooling: pin check, name guard, PR hygiene, `apply-repo-rules.sh`                             |
+| `tools/demo-walk`         | Recorded click-through of the app on the compose stand ([README](tools/demo-walk/README.md))       |
 | `.github`                 | CI and release workflows, rulesets as code, CODEOWNERS, PR template                                |
 | `compose.yaml`, `docker/` | Dev services (Postgres, Redis, SeaweedFS, API, web, Traefik) and Postgres init SQL                 |
 | `.coderabbit.yaml`        | CodeRabbit config: the AI first-pass review (Russian, never approves)                              |
