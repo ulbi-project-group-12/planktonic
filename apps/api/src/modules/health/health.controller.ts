@@ -1,5 +1,7 @@
+import { HealthResponse } from '@app/contracts';
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck } from '@nestjs/terminus';
+import { ApiZodResponse } from '../../core/openapi/zod-decorators.js';
 import { HealthService } from './health.service.js';
 
 /**
@@ -11,7 +13,8 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
-  @HealthCheck()
+  @HealthCheck({ noCache: true, swaggerDocumentation: false })
+  @ApiZodResponse(200, 'API is alive', HealthResponse)
   live() {
     return this.healthService.live();
   }

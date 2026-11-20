@@ -29,3 +29,9 @@ export {
   MessageNewEvent,
   type ServerToClientEvents,
 } from './realtime.js';
+export {
+  OpenApiExampleBody,
+  OpenApiExampleResponse,
+  ValidationErrorResponse,
+} from './openapi-example.js';
+export { HealthResponse } from './health.js';

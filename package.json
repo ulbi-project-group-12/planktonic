@@ -23,6 +23,7 @@
     "services:up": "docker compose up -d && docker compose wait s3-init",
     "services:down": "docker compose --profile \"*\" down",
     "services:reset": "docker compose --profile \"*\" down -v",
+    "openapi:export": "pnpm --filter @app/api generate && pnpm --filter @app/api... build && node apps/api/dist/openapi-export.js",
     "db:migrate": "pnpm --filter @app/api db:migrate",
     "db:migrate:dev": "pnpm --filter @app/api db:migrate:dev",
     "db:seed": "pnpm --filter @app/api db:seed",
