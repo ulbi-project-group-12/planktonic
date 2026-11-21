@@ -105,8 +105,9 @@ The redirects are implemented in UL-140 and UL-153. Phase 3 only fixes the table
 - **Workspace address is the slug** (`/workspaces/my-team`), not the id. A slug is readable and
   shareable; uniqueness is enforced by the database (ADR-0003).
 - **Channel address is the id** (uuid). A channel can be renamed, so its name never goes into the URL.
-- **Renaming a workspace slug**: the old URL returns 404 in phase 3. There are no redirects from old
-  slugs yet. Revisit with UL-143 if invite links must survive a rename.
+- **Renaming a workspace slug**: there are no redirects from the old slug. In phase 3 the old URL
+  still shows the stub, because `WorkspaceLayout` checks only the format. It returns 404 once the
+  existence check lands in UL-144. Revisit with UL-143 if invite links must survive a rename.
 - **Projects** are addressed by key (`WEB`) inside the workspace. The key is set at creation and never
   changes, because it is the prefix of task numbers (`WEB-123`).
 - **Tasks** are addressed by number: `WEB-123` → `…/projects/WEB/tasks/123`.
@@ -120,7 +121,8 @@ The redirects are implemented in UL-140 and UL-153. Phase 3 only fixes the table
 - Channel id: uuid.
 - Schemas live in `packages/contracts` (`WorkspaceSlug`, `ProjectKey`, `ChannelId`), shared by web and api.
 - A malformed slug, key or channel id returns 404 without a lookup. Unknown and forbidden
-  workspaces both return 404, so existence is not revealed. Membership is checked in UL-144.
+  workspaces will both return 404, so existence is not revealed; this check comes in UL-144.
+  Until then, a well-formed unknown slug still shows the stub.
 
 ### Layouts and error pages
 
