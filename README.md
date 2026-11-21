@@ -242,6 +242,7 @@ a nonempty `instanceId`, and readiness must return 503 without leaking connectio
 | `pnpm db:migrate`                          | Apply the committed migrations (`prisma migrate deploy`)               |
 | `pnpm db:migrate:dev`                      | Create and apply a new migration after a schema change (interactive)   |
 | `pnpm openapi:export`                      | Write `apps/api/dist/openapi.json` (see `docs/api-openapi.md`)         |
+| `pnpm gen:api`                             | Export OpenAPI and regenerate the web REST client, hooks and mocks     |
 | `pnpm build`                               | `turbo run build` in every package                                     |
 | `pnpm lint`                                | `turbo run lint` (ESLint, shared config)                               |
 | `pnpm typecheck`                           | `turbo run typecheck` (`tsc --noEmit`)                                 |
