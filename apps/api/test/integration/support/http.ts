@@ -23,7 +23,19 @@ export async function postMessage(
   });
 }
 
-/** `GET /api/channels/:id/messages`. */
-export async function getMessages(app: INestApplication, channelId: string): Promise<Response> {
-  return fetch(`${await app.getUrl()}/api/channels/${channelId}/messages`);
+/**
+ * `GET /api/channels/:id/messages`, with an optional query such as `{ afterSeq: '41' }`. Keys whose
+ * value is `undefined` are left out.
+ */
+export async function getMessages(
+  app: INestApplication,
+  channelId: string,
+  query: Readonly<Record<string, string | undefined>> = {},
+): Promise<Response> {
+  const entries = Object.entries(query).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined,
+  );
+  const search = new URLSearchParams(entries).toString();
+  const suffix = search === '' ? '' : `?${search}`;
+  return fetch(`${await app.getUrl()}/api/channels/${channelId}/messages${suffix}`);
 }

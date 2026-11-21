@@ -1,0 +1,14 @@
+# Override for the demo stand: `docker compose -f compose.yaml -f tools/demo-walk/compose.demo.yaml`.
+#
+# compose.yaml's Traefik reads every container on the Docker host, so two stacks running at once
+# route to each other's api replicas (found in UL-131). Here the Docker provider only sees
+# containers of this compose project. COMPOSE_PROJECT_NAME must be set (the walk's stand.sh does).
+services:
+  traefik:
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.constraints=Label(`com.docker.compose.project`,`${COMPOSE_PROJECT_NAME:?set COMPOSE_PROJECT_NAME}`)
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.transport.respondingtimeouts.idletimeout=60s
+      - --accesslog=true

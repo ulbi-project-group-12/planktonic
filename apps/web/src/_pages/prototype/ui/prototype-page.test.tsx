@@ -9,8 +9,10 @@ import { PrototypePage } from './prototype-page';
 
 type Handler = (...args: unknown[]) => void;
 
-const { fake, calls, connectSnapshot } = vi.hoisted(() => {
+const { fake, calls, connectSnapshot, catchUps } = vi.hoisted(() => {
   const calls: string[] = [];
+  /** What the page registered with `registerCatchUp`; the fake transport runs them on connect. */
+  const catchUps = new Set<() => Promise<void>>();
   /** listenerCount('message:new') at the moment connect() was called. */
   const connectSnapshot: { messageNew: number | null } = { messageNew: null };
   const handlers = new Map<string, Set<Handler>>();
@@ -37,20 +39,30 @@ const { fake, calls, connectSnapshot } = vi.hoisted(() => {
     disconnect: vi.fn(),
     fire(event: string, ...args: unknown[]) {
       for (const fn of [...(handlers.get(event) ?? [])]) fn(...args);
+      // Like bindConnectionListeners: every connect runs the registered catch-ups.
+      if (event === 'connect') for (const task of [...catchUps]) void task();
     },
     reset() {
       handlers.clear();
+      catchUps.clear();
       fake.connected = false;
       fake.active = false;
     },
   };
-  return { fake, calls, connectSnapshot };
+  return { fake, calls, connectSnapshot, catchUps };
 });
 
 // The connection store is covered in shared/api. Here it is a fixed value the page cannot reach any
 // other way (the fake socket never connects in that test), so the indicator must read the store.
 vi.mock('@/shared/api', () => ({
   getSocket: () => fake,
+  registerCatchUp: (task: () => Promise<void>) => {
+    catchUps.add(task);
+    return () => {
+      catchUps.delete(task);
+    };
+  },
+  syncWith: (task: () => Promise<void>) => task(),
   useConnectionStore: <T,>(selector: (store: { state: string }) => T): T =>
     selector({ state: 'syncing' }),
 }));
@@ -72,6 +84,7 @@ function msg(seq: number, body: string): MessageResponse {
   };
 }
 
+/** The channel as the fake server holds it, ascending by seq. */
 let history: MessageResponse[] = [];
 /** What GET /api/health answers. */
 let instanceId = 'api-test-1';
@@ -89,6 +102,17 @@ function created(payload: CreateMessageBody, seq: number): Promise<Response> {
 }
 const posted: CreateMessageBody[] = [];
 
+/** The api's GET messages over `history`: `afterSeq` ascending, or the newest page; `hasMore`. */
+function serverPage(query: URLSearchParams): { messages: MessageResponse[]; hasMore: boolean } {
+  const limit = Number(query.get('limit') ?? '100');
+  const afterSeq = query.get('afterSeq');
+  if (afterSeq === null) {
+    return { messages: history.slice(-limit), hasMore: history.length > limit };
+  }
+  const after = history.filter((m) => BigInt(m.seq) > BigInt(afterSeq));
+  return { messages: after.slice(0, limit), hasMore: after.length > limit };
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -104,11 +128,12 @@ const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     if (healthDown) return Promise.resolve(json({ status: 'error' }, 503));
     return Promise.resolve(json({ status: 'ok', instanceId }));
   }
-  if (method === 'GET' && url === MESSAGES_URL) {
+  const [path = '', search = ''] = url.split('?');
+  if (method === 'GET' && path === MESSAGES_URL) {
     const fault = historyFaults.shift();
     if (fault === 'fail') return Promise.resolve(json({ message: 'boom' }, 500));
     if (fault === 'invalid') return Promise.resolve(json({ messages: [{ id: 'nope' }] }));
-    return Promise.resolve(json({ messages: history }));
+    return Promise.resolve(json(serverPage(new URLSearchParams(search))));
   }
   if (method === 'POST' && url === MESSAGES_URL) {
     const raw = init?.body;
@@ -177,9 +202,14 @@ async function renderConnected() {
   await screen.findByText('Instance: api-test-1');
   serverConnects();
   await waitFor(() => {
-    expect(calls).toContain(`GET ${MESSAGES_URL}`);
+    expect(historyGets().length).toBeGreaterThan(0);
   });
   return view;
+}
+
+/** The GET messages calls so far, with their query (`?limit=100`, `?afterSeq=2&limit=100`). */
+function historyGets(): string[] {
+  return calls.filter((call) => call.startsWith(`GET ${MESSAGES_URL}`));
 }
 
 function deferred<T>() {
@@ -636,7 +666,7 @@ describe('PrototypePage', () => {
       within(await screen.findByRole('alert')).getByRole('button', { name: 'Retry' }),
     );
     await waitFor(() => {
-      expect(calls.filter((call) => call === `GET ${MESSAGES_URL}`)).toHaveLength(2);
+      expect(historyGets()).toHaveLength(2);
     });
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Could not load the messages.');
@@ -665,7 +695,11 @@ describe('PrototypePage', () => {
     expect(await screen.findByText('#2 second')).toBeInTheDocument();
     expect(rows()).toEqual(['#1 first', '#2 second']);
     expect(await screen.findByText('Instance: api-test-2')).toBeInTheDocument();
-    expect(calls.filter((call) => call === `GET ${MESSAGES_URL}`)).toHaveLength(2);
+    // The reconnect asks only for what came after the last known seq (UL-130).
+    expect(historyGets()).toEqual([
+      `GET ${MESSAGES_URL}?limit=100`,
+      `GET ${MESSAGES_URL}?afterSeq=1&limit=100`,
+    ]);
     expect(calls.filter((call) => call === 'GET /api/health')).toHaveLength(healthBefore + 1);
   });
 
@@ -690,5 +724,126 @@ describe('PrototypePage', () => {
       );
     });
     expect(screen.getByText('Instance: api-test-1')).toBeInTheDocument();
+  });
+
+  describe('catch-up (UL-130)', () => {
+    const range = (from: number, to: number) =>
+      Array.from({ length: to - from + 1 }, (_, i) => msg(from + i, `m${String(from + i)}`));
+    const labels = (from: number, to: number) => range(from, to).map((m) => `#${m.seq} ${m.body}`);
+
+    function reconnect() {
+      act(() => {
+        fake.connected = false;
+        fake.fire('disconnect', 'transport close');
+      });
+      serverConnects();
+    }
+
+    it('the first connect sends one GET, for the newest page', async () => {
+      history = range(1, 2);
+      await renderConnected();
+      await screen.findByText('#2 m2');
+      expect(historyGets()).toEqual([`GET ${MESSAGES_URL}?limit=100`]);
+    });
+
+    it('the same message:new delivered twice is one row', async () => {
+      await renderConnected();
+      act(() => {
+        fake.fire('message:new', { message: msg(1, 'once') });
+        fake.fire('message:new', { message: msg(1, 'once') });
+      });
+      expect(rows()).toEqual(['#1 once']);
+    });
+
+    it('a message that arrived live and again in the catch-up page is one row', async () => {
+      history = range(1, 1);
+      await renderConnected();
+      await screen.findByText('#1 m1');
+      history = range(1, 3);
+      act(() => {
+        fake.fire('message:new', { message: msg(2, 'm2') });
+      });
+
+      reconnect();
+      expect(await screen.findByText('#3 m3')).toBeInTheDocument();
+      expect(rows()).toEqual(labels(1, 3));
+      expect(historyGets().at(-1)).toBe(`GET ${MESSAGES_URL}?afterSeq=2&limit=100`);
+    });
+
+    it('shows every message missed while offline, in order, after a reconnect', async () => {
+      history = range(1, 2);
+      await renderConnected();
+      await screen.findByText('#2 m2');
+
+      // Five messages are sent while this client is offline: no message:new reaches it.
+      history = range(1, 7);
+      reconnect();
+      expect(await screen.findByText('#7 m7')).toBeInTheDocument();
+      expect(rows()).toEqual(labels(1, 7));
+    });
+
+    it('a live seq gap (2 → 4) runs the catch-up from below the gap, so 3 shows too', async () => {
+      history = range(1, 2);
+      await renderConnected();
+      await screen.findByText('#2 m2');
+      history = range(1, 4);
+
+      act(() => {
+        fake.fire('message:new', { message: msg(4, 'm4') });
+      });
+      expect(await screen.findByText('#3 m3')).toBeInTheDocument();
+      expect(rows()).toEqual(labels(1, 4));
+      expect(historyGets().at(-1)).toBe(`GET ${MESSAGES_URL}?afterSeq=2&limit=100`);
+    });
+
+    it("the user's own 201 above messages it never got fetches them (no lost messages)", async () => {
+      history = range(1, 2);
+      await renderConnected();
+      await screen.findByText('#2 m2');
+      // 3 and 4 were sent by others and never reached this client's socket.
+      history = [...range(1, 4), msg(5, 'mine')];
+      postResponder = (payload) => created(payload, 5);
+
+      const user = userEvent.setup();
+      await user.type(screen.getByLabelText('Message'), 'mine');
+      await user.click(screen.getByRole('button', { name: 'Send' }));
+
+      expect(await screen.findByText('#3 m3')).toBeInTheDocument();
+      expect(rows()).toEqual([...labels(1, 4), '#5 mine']);
+      expect(historyGets().at(-1)).toBe(`GET ${MESSAGES_URL}?afterSeq=2&limit=100`);
+    });
+
+    it('on hasMore it resets the feed to the newest page instead of paging on', async () => {
+      history = range(1, 2);
+      await renderConnected();
+      await screen.findByText('#2 m2');
+
+      history = range(1, 250);
+      reconnect();
+      expect(await screen.findByText('#250 m250')).toBeInTheDocument();
+      expect(rows()).toEqual(labels(151, 250));
+      expect(historyGets().slice(1)).toEqual([
+        `GET ${MESSAGES_URL}?afterSeq=2&limit=100`,
+        `GET ${MESSAGES_URL}?limit=100`,
+      ]);
+    });
+
+    it('an unsent row never moves afterSeq', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      history = range(1, 1);
+      postResponder = () => Promise.reject(new TypeError('Failed to fetch'));
+      await renderConnected();
+      await screen.findByText('#1 m1');
+      const user = userEvent.setup();
+      await user.type(screen.getByLabelText('Message'), 'not yet');
+      await user.click(screen.getByRole('button', { name: 'Send' }));
+      await messageList().findByRole('button', { name: 'Retry' });
+
+      history = range(1, 2);
+      reconnect();
+      expect(await screen.findByText('#2 m2')).toBeInTheDocument();
+      expect(historyGets().at(-1)).toBe(`GET ${MESSAGES_URL}?afterSeq=1&limit=100`);
+      expect(rows().at(-1)).toContain('not yet');
+    });
   });
 });

@@ -183,6 +183,34 @@ describe('feedReducer', () => {
   });
 });
 
+describe('feedReducer reset (UL-130)', () => {
+  it('replaces sent with the newest page and keeps a newer live message', () => {
+    const state: FeedState = {
+      sent: [msg({ id: 1, seq: '1' }), msg({ id: 2, seq: '2' }), msg({ id: 9, seq: '9' })],
+      unsent: [],
+    };
+    const next = feedReducer(state, {
+      type: 'reset',
+      messages: [msg({ id: 7, seq: '7' }), msg({ id: 8, seq: '8' })],
+    });
+    expect(seqs(next.sent)).toEqual(['7', '8', '9']);
+  });
+
+  it('keeps unsent rows and drops the ones the page confirms', () => {
+    const confirmed = msg({ id: 5, seq: '5' });
+    const state: FeedState = {
+      sent: [msg({ id: 1, seq: '1' })],
+      unsent: [
+        { clientMsgId: confirmed.clientMsgId, body: confirmed.body, status: 'pending' },
+        { clientMsgId: '01900000-0000-7000-9000-00000000ffff', body: 'later', status: 'pending' },
+      ],
+    };
+    const next = feedReducer(state, { type: 'reset', messages: [confirmed] });
+    expect(seqs(next.sent)).toEqual(['5']);
+    expect(next.unsent.map((row) => row.body)).toEqual(['later']);
+  });
+});
+
 describe('feedRows', () => {
   it('lists sent rows by seq, then unsent rows in send order, with distinct keys', () => {
     const first = msg({ id: 1, seq: '1', body: 'first' });

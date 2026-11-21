@@ -156,7 +156,14 @@ describe('idempotent send (UL-126)', () => {
     const channelId = await newChannel();
     const key = randomUUIDv7();
     const OTHER_AUTHOR_ID = randomUUIDv7();
-    await stand.prisma.user.create({ data: { id: OTHER_AUTHOR_ID, name: 'it-other-author' } });
+    await stand.prisma.user.create({
+      data: {
+        id: OTHER_AUTHOR_ID,
+        name: 'it-other-author',
+        email: 'it-other-author@users.invalid',
+        passwordHash: '!',
+      },
+    });
 
     const mine = await repository().create(channelId, DEFAULT_AUTHOR_ID, key, 'mine');
     const theirs = await repository().create(channelId, OTHER_AUTHOR_ID, key, 'theirs');

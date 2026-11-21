@@ -11,8 +11,10 @@
 //
 // `useStand` registers its own hooks. `beforeAll` checks that the stores are test stores, opens
 // Prisma and Redis and starts one app per entry of `instances`; `beforeEach` resets all data;
-// `afterEach` closes whatever the test itself started (apps, clients); `afterAll` closes the rest.
-// Teardown always goes clients → apps → Redis → Prisma and reports every failure together.
+// `afterEach` closes whatever the test itself started (apps, clients, links); `afterAll` the rest.
+// `stand.link(app)` + `connect(app, label, { through: link })` give a client whose network the
+// test can drop and restore (support/network.ts, UL-133).
+// Teardown always goes clients → links → apps → Redis → Prisma and reports every failure together.
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -25,6 +27,7 @@ import { INSTANCE_ID } from '../../../src/core/instance/instance-id.provider.js'
 import { configureRealtime } from '../../../src/core/realtime/realtime.setup.js';
 import { PrismaClient } from '../../../src/generated/prisma/client.js';
 import { cancelWaits, describeAs, EVENT_TIMEOUT_MS } from './events.js';
+import { type NetworkLink, openLink } from './network.js';
 import {
   assertConnectedToTestStores,
   assertTestDatabase,
@@ -47,6 +50,23 @@ export interface StartOptions {
   realtime?: boolean;
 }
 
+export interface ConnectOptions {
+  /**
+   * Connect through this link (from `stand.link(app)`) instead of straight to the app, with
+   * socket.io's own reconnection on: after `link.drop()` the client keeps retrying and comes back
+   * by itself once the link is restored, as a browser does after a network loss.
+   */
+  through?: NetworkLink;
+}
+
+/** Fast, deterministic backoff for clients behind a link: retries every 50..200 ms, no jitter. */
+const RECONNECT_OPTIONS = {
+  reconnection: true,
+  reconnectionDelay: 50,
+  reconnectionDelayMax: 200,
+  randomizationFactor: 0,
+} as const;
+
 export interface Stand {
   /** The apps from `instances`, in the same order. */
   readonly apps: readonly INestApplication[];
@@ -60,10 +80,16 @@ export interface Stand {
   closeApp(app: INestApplication): Promise<void>;
   instanceIdOf(app: INestApplication): string;
   /**
-   * Connects a websocket-only client without reconnection and resolves on `connect`. The label
-   * names the client in every waitForEvent timeout. Inside a test it is closed after that test.
+   * Connects a websocket-only client and resolves on `connect`. Without `through` it does not
+   * reconnect. The label names the client in every waitForEvent timeout. Inside a test it is
+   * closed after that test.
    */
-  connect(app: INestApplication, label: string): Promise<Socket>;
+  connect(app: INestApplication, label: string, options?: ConnectOptions): Promise<Socket>;
+  /**
+   * A TCP link to `app` that the test can cut (`drop`) and restore, for a network-like loss
+   * (support/network.ts). Inside a test it is closed after that test, after its clients.
+   */
+  link(app: INestApplication): Promise<NetworkLink>;
   /** Disconnects a client early and forgets it. */
   disconnect(client: Socket): void;
 }
@@ -71,6 +97,7 @@ export interface Stand {
 interface Scope {
   apps: INestApplication[];
   clients: Socket[];
+  links: NetworkLink[];
 }
 
 function required(name: 'DATABASE_URL' | 'REDIS_URL'): string {
@@ -95,12 +122,28 @@ function closeClients(scope: Scope): void {
   }
 }
 
+async function closeLinks(scope: Scope): Promise<void> {
+  const links = scope.links.splice(0);
+  await settle(
+    'Failed to close test links',
+    links.map((link) => () => link.close()),
+  );
+}
+
 async function closeApps(scope: Scope): Promise<void> {
   const apps = scope.apps.splice(0);
   await settle(
     'Failed to close test apps',
     apps.map((app) => () => app.close()),
   );
+}
+
+/** Links, then apps (even if a link failed to close): a link pipes into an app. Both errors count. */
+async function closeLinksAndApps(scope: Scope): Promise<void> {
+  const errors: unknown[] = [];
+  await closeLinks(scope).catch((error: unknown) => errors.push(error));
+  await closeApps(scope).catch((error: unknown) => errors.push(error));
+  if (errors.length > 0) throw new AggregateError(errors, 'Failed to close test links and apps');
 }
 
 const STREAM_NAME = 'socket.io'; // the adapter's default; realtime.setup.ts does not change it
@@ -155,8 +198,8 @@ async function waitForStreamReader(redis: TestRedis, instanceId: string): Promis
 
 export function useStand(options: StandOptions): Stand {
   const realtimeDefault = options.realtime ?? true;
-  const fileScope: Scope = { apps: [], clients: [] };
-  const testScope: Scope = { apps: [], clients: [] };
+  const fileScope: Scope = { apps: [], clients: [], links: [] };
+  const testScope: Scope = { apps: [], clients: [], links: [] };
   let current = fileScope;
   const apps: INestApplication[] = [];
   const instanceIds = new WeakMap<INestApplication, string>();
@@ -210,11 +253,16 @@ export function useStand(options: StandOptions): Stand {
       return id;
     },
 
-    async connect(app, label) {
-      const client = io(await app.getUrl(), {
+    async connect(app, label, connectOptions = {}) {
+      const { through } = connectOptions;
+      const appUrl = await app.getUrl();
+      if (through && through.target !== appUrl) {
+        throw new Error(`Client "${label}": the link goes to ${through.target}, not ${appUrl}`);
+      }
+      const client = io(through?.url ?? appUrl, {
         autoConnect: false,
         transports: ['websocket'],
-        reconnection: false,
+        ...(through ? RECONNECT_OPTIONS : { reconnection: false }),
         forceNew: true,
         timeout: EVENT_TIMEOUT_MS,
       });
@@ -234,6 +282,12 @@ export function useStand(options: StandOptions): Stand {
         client.connect();
       });
       return client;
+    },
+
+    async link(app) {
+      const link = await openLink(await app.getUrl());
+      current.links.push(link);
+      return link;
     },
 
     disconnect(client) {
@@ -274,7 +328,7 @@ export function useStand(options: StandOptions): Stand {
   afterEach(async () => {
     current = fileScope;
     closeClients(testScope);
-    await closeApps(testScope);
+    await closeLinksAndApps(testScope);
   });
 
   afterAll(async () => {
@@ -282,8 +336,8 @@ export function useStand(options: StandOptions): Stand {
     closeClients(fileScope);
     try {
       await settle('Failed to close the stand', [
-        () => closeApps(testScope),
-        () => closeApps(fileScope),
+        () => closeLinksAndApps(testScope),
+        () => closeLinksAndApps(fileScope),
       ]);
     } finally {
       apps.length = 0;
