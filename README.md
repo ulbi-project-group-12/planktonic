@@ -241,6 +241,7 @@ a nonempty `instanceId`, and readiness must return 503 without leaking connectio
 | `pnpm services:reset`                      | Stop the dev services and delete their volumes                         |
 | `pnpm db:migrate`                          | Apply the committed migrations (`prisma migrate deploy`)               |
 | `pnpm db:migrate:dev`                      | Create and apply a new migration after a schema change (interactive)   |
+| `pnpm openapi:export`                      | Write `apps/api/dist/openapi.json` (see `docs/api-openapi.md`)         |
 | `pnpm build`                               | `turbo run build` in every package                                     |
 | `pnpm lint`                                | `turbo run lint` (ESLint, shared config)                               |
 | `pnpm typecheck`                           | `turbo run typecheck` (`tsc --noEmit`)                                 |

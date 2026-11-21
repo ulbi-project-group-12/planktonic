@@ -1,5 +1,6 @@
 export { TICKET_KEY_PATTERN, TicketKey } from './ticket-key.js';
 export {
+  ChannelMessagesParams,
   ClientMsgId,
   CreateMessageBody,
   GetMessagesQuery,
@@ -29,3 +30,5 @@ export {
   MessageNewEvent,
   type ServerToClientEvents,
 } from './realtime.js';
+export { HttpErrorResponse, ValidationErrorResponse } from './errors.js';
+export { HealthResponse } from './health.js';

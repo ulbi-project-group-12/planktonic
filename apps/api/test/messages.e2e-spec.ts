@@ -73,9 +73,26 @@ describe('POST /api/channels/:channelId/messages validation', () => {
     });
   });
 
-  it('returns 400 for a non-uuid channel id', async () => {
+  it('returns 400 with the channelId issue for a non-uuid channel id', async () => {
     const response = await post('/api/channels/nope/messages', { clientMsgId: KEY, body: 'hello' });
     expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      statusCode: 400,
+      message: 'Validation failed',
+      issues: [{ path: 'channelId', message: expect.stringMatching(/.+/) as string }],
+    });
+  });
+
+  it('keeps the channel id as sent', async () => {
+    create.mockClear();
+    // Has hex letters, so lowercasing it would fail the call check below.
+    const upper = '0190ABCD-EF01-7ABC-8DEF-0123456789AB';
+    const response = await post(`/api/channels/${upper}/messages`, {
+      clientMsgId: KEY,
+      body: 'hi',
+    });
+    expect(response.status).toBe(201);
+    expect(create).toHaveBeenCalledWith(upper, expect.any(String), KEY, 'hi');
   });
 });
 
@@ -97,6 +114,13 @@ describe('GET /api/channels/:channelId/messages query validation', () => {
     const response = await get('?afterSeq=41&limit=20');
     expect(response.status).toBe(200);
     expect(list).toHaveBeenCalledWith(CHANNEL, { afterSeq: '41', limit: 20 });
+  });
+
+  it('returns 400 for a non-uuid channel id', async () => {
+    list.mockClear();
+    const response = await fetch(`${baseUrl}/api/channels/nope/messages`);
+    expect(response.status).toBe(400);
+    expect(list).not.toHaveBeenCalled();
   });
 
   it.each([

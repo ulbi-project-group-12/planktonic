@@ -27,6 +27,7 @@
     "@nestjs/core": "catalog:",
     "@nestjs/platform-express": "catalog:",
     "@nestjs/platform-socket.io": "catalog:",
+    "@nestjs/swagger": "catalog:",
     "@nestjs/terminus": "catalog:",
     "@nestjs/websockets": "catalog:",
     "@prisma/adapter-pg": "catalog:",

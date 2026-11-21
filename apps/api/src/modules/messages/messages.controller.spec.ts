@@ -17,7 +17,7 @@ describe('MessagesController', () => {
 
     const response = await moduleRef
       .get(MessagesController)
-      .create(CHANNEL, { clientMsgId: KEY, body: 'hello' });
+      .create({ channelId: CHANNEL }, { clientMsgId: KEY, body: 'hello' });
 
     expect(response).toEqual({ id: 'x' });
     expect(create).toHaveBeenCalledWith(CHANNEL, DEFAULT_AUTHOR_ID, KEY, 'hello');

@@ -7,6 +7,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { configureApp } from './app.setup.js';
 import type { Env } from './core/config/env.js';
+import { configureSwagger } from './core/openapi/swagger.setup.js';
 import { configureRealtime } from './core/realtime/realtime.setup.js';
 
 async function bootstrap(): Promise<void> {
@@ -23,6 +24,8 @@ async function bootstrap(): Promise<void> {
 
     // Before listen(): the Socket.IO server is created with the Redis Streams adapter in place.
     await configureRealtime(app);
+
+    configureSwagger(app, config.get('NODE_ENV', { infer: true }));
 
     await app.listen(
       config.get('API_PORT', { infer: true }),

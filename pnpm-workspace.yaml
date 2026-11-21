@@ -16,6 +16,7 @@ updateNotifier: false
 # Anything unlisted fails the install with ERR_PNPM_IGNORED_BUILDS.
 allowBuilds:
   '@prisma/engines': true
+  '@scarf/scarf': false
   '@swc/core': true
   esbuild: true
   prisma: true
@@ -33,6 +34,7 @@ catalog:
   '@nestjs/core': 12.3.2
   '@nestjs/platform-express': 12.3.2
   '@nestjs/platform-socket.io': 12.3.2
+  '@nestjs/swagger': 12.1.1
   '@nestjs/terminus': 12.1.0
   '@nestjs/testing': 12.3.2
   '@nestjs/websockets': 12.3.2
