@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import type { Decorator, Preview } from '@storybook/nextjs-vite';
 // Tailwind 4 + the design tokens: the same globals the root layout loads.
 import '../src/_app/styles/globals.css';
-import { startApiMocks } from '../src/shared/api';
 
 const ApiDecorator: Decorator = (Story) => {
   const [client] = useState(
@@ -64,12 +63,6 @@ const preview: Preview = {
   initialGlobals: {
     theme: 'light',
   },
-  loaders: [
-    async () => {
-      await startApiMocks(new URL('mockServiceWorker.js', window.location.href).href);
-      return {};
-    },
-  ],
   decorators: [ThemeDecorator, ApiDecorator],
 };
 

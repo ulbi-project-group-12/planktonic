@@ -25,10 +25,12 @@ The dev app starts MSW when you open `/api-demo` and waits for the worker before
 request. Only health requests with the demo's opt-in header are mocked. Requests from `/prototype`
 still reach the real API, including after navigating from the demo in the same tab.
 Next.js production builds leave browser mocks disabled. Vitest starts the MSW Node server
-automatically, and Storybook loads the browser worker in its preview. Both use the full REST mock set.
+automatically. In Storybook, the `API/Health` story starts the browser worker before rendering.
+Both use the full REST mock set.
 
 When updating MSW, refresh the checked-in browser worker with
-`pnpm --filter @app/web exec msw init public --no-save`.
+`pnpm --filter @app/web exec msw init public --no-save` and refresh `public/msw-LICENSE.txt`
+from the installed package's `LICENSE.md`.
 
 ## Layout
 
