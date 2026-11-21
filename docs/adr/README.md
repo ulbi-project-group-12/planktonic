@@ -15,7 +15,7 @@ An ADR is a short record of one architectural decision: the context, what we cho
 | ADR                               | Title                             | Status   | Ticket |
 | --------------------------------- | --------------------------------- | -------- | ------ |
 | [0001](0001-realtime-protocol.md) | Realtime protocol                 | Accepted | UL-134 |
-| 0002                              | Permission model                  | Planned  | UL-136 |
+| [0002](0002-permission-model.md)  | Permission model                  | Accepted | UL-136 |
 | [0003](0003-data-model.md)        | Data model                        | Accepted | UL-212 |
 | 0004                              | Observability (Alloy / GlitchTip) | Planned  | UL-167 |
 
