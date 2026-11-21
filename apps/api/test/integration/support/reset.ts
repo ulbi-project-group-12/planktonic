@@ -88,6 +88,13 @@ export async function resetData(prisma: PrismaClient, redis: TestRedis): Promise
     const list = tables.map(({ tablename }) => `"${tablename.replaceAll('"', '""')}"`).join(', ');
     await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${list}`);
   }
-  await prisma.user.create({ data: { id: DEFAULT_AUTHOR_ID, name: 'test-user' } });
+  await prisma.user.create({
+    data: {
+      id: DEFAULT_AUTHOR_ID,
+      name: 'test-user',
+      email: 'test-user@users.invalid',
+      passwordHash: '!',
+    },
+  });
   await redis.flushDb();
 }
