@@ -1,6 +1,15 @@
 import { z } from 'zod';
 import { ValidationErrorResponse } from '../errors.js';
 
+/** Longest address a mailbox can have (RFC 5321 path limit); also keeps `lower(email)` indexable. */
+export const EMAIL_MAX_LENGTH = 254;
+
+/** Shortest password registration accepts, in characters. */
+export const PASSWORD_MIN_LENGTH = 12;
+
+/** Upper bound for a password, in characters: long passphrases fit, hashing input stays bounded. */
+export const PASSWORD_MAX_LENGTH = 128;
+
 export const RegisterRequestSchema = z
   .object({
     name: z
@@ -13,12 +22,12 @@ export const RegisterRequestSchema = z
         description: 'Display name. Leading and trailing whitespace is trimmed.',
         example: 'Ada',
       }),
-    email: z.string().trim().pipe(z.email()).meta({
+    email: z.string().trim().max(EMAIL_MAX_LENGTH).pipe(z.email()).meta({
       description: 'Email address. Leading and trailing whitespace is trimmed.',
       format: 'email',
       example: 'ada@example.com',
     }),
-    password: z.string().min(12).meta({
+    password: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH).meta({
       description: 'Password for the new account.',
       format: 'password',
       writeOnly: true,

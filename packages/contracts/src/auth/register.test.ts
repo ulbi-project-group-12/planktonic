@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  EMAIL_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
   RegisterConflictResponseSchema,
   RegisterRequestSchema,
   RegisterResponseSchema,
@@ -40,6 +42,43 @@ describe('RegisterRequestSchema', () => {
 
   it('reports an 11-character password on the password field', () => {
     const password = '12345678901';
+    const result = RegisterRequestSchema.safeParse({
+      ...request,
+      password,
+      confirmPassword: password,
+    });
+
+    expect(result.error?.issues).toEqual([expect.objectContaining({ path: ['password'] })]);
+  });
+});
+
+describe('RegisterRequestSchema length limits', () => {
+  const emailOfLength = (length: number) =>
+    `${'a'.repeat(length - '@example.com'.length)}@example.com`;
+
+  it('accepts an email and a password at their upper bounds', () => {
+    const password = 'p'.repeat(PASSWORD_MAX_LENGTH);
+    const result = RegisterRequestSchema.safeParse({
+      ...request,
+      email: emailOfLength(EMAIL_MAX_LENGTH),
+      password,
+      confirmPassword: password,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('reports an email over the limit on the email field', () => {
+    const result = RegisterRequestSchema.safeParse({
+      ...request,
+      email: emailOfLength(EMAIL_MAX_LENGTH + 1),
+    });
+
+    expect(result.error?.issues).toEqual([expect.objectContaining({ path: ['email'] })]);
+  });
+
+  it('reports a password over the limit on the password field', () => {
+    const password = 'p'.repeat(PASSWORD_MAX_LENGTH + 1);
     const result = RegisterRequestSchema.safeParse({
       ...request,
       password,

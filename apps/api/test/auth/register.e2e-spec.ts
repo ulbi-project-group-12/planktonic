@@ -70,6 +70,8 @@ describe('POST /api/auth/register', () => {
       paths: ['password'],
     },
     { body: { ...request, confirmPassword: 'different-passphrase' }, paths: ['confirmPassword'] },
+    // Longer than the btree row limit of the lower(email) index: a 400 here, not a database error.
+    { body: { ...request, email: `${'a'.repeat(3000)}@example.com` }, paths: ['email'] },
   ])(
     'returns 400 for invalid fields $paths without calling the repository',
     async ({ body, paths }) => {

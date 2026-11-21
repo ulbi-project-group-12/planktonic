@@ -27,10 +27,16 @@ it('documents the registration request and current responses', async () => {
               required: ['name', 'email', 'password', 'confirmPassword'],
               properties: {
                 name: { type: 'string', minLength: 2, maxLength: 15, example: 'Ada' },
-                email: { type: 'string', format: 'email', example: 'ada@example.com' },
+                email: {
+                  type: 'string',
+                  maxLength: 254,
+                  format: 'email',
+                  example: 'ada@example.com',
+                },
                 password: {
                   type: 'string',
                   minLength: 12,
+                  maxLength: 128,
                   format: 'password',
                   writeOnly: true,
                   example: 'example-passphrase',
