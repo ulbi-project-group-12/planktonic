@@ -1,7 +1,7 @@
 // @ts-check
 // ESLint Node API tests: each preset fires on the bad fixtures and stays silent on clean ones.
 import assert from 'node:assert/strict';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { test } from 'node:test';
 import { isDeepStrictEqual } from 'node:util';
 import { ESLint } from 'eslint';
@@ -28,7 +28,8 @@ async function lintFixture(preset, name, files) {
   /** @type {Map<string, import('eslint').Linter.LintMessage[]>} */
   const messages = new Map();
   for (const result of await eslint.lintFiles(files)) {
-    const file = result.filePath.slice(cwd.length + 1);
+    // relative() + '/' keeps keys identical on Windows, where filePath may differ in separators.
+    const file = relative(cwd, result.filePath).split(sep).join('/');
     for (const m of result.messages) {
       assert.ok(!m.fatal, `${file}: fatal: ${m.message}`);
       assert.equal(m.severity, 2, `${file}: ${String(m.ruleId)} is not an error`);
