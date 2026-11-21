@@ -85,7 +85,8 @@ describe('POST /api/channels/:channelId/messages validation', () => {
 
   it('keeps the channel id as sent', async () => {
     create.mockClear();
-    const upper = CHANNEL.toUpperCase();
+    // Has hex letters, so lowercasing it would fail the call check below.
+    const upper = '0190ABCD-EF01-7ABC-8DEF-0123456789AB';
     const response = await post(`/api/channels/${upper}/messages`, {
       clientMsgId: KEY,
       body: 'hi',
