@@ -1,20 +1,19 @@
-import { ApiBody, ApiResponse, type ApiResponseSchemaHost } from '@nestjs/swagger';
-import { z } from 'zod';
+import { ApiResponse } from '@nestjs/swagger';
+import type { z } from 'zod';
 
-function toOpenApiSchema(schema: z.ZodType, io: 'input' | 'output') {
-  const jsonSchema = z.toJSONSchema(schema, { target: 'openapi-3.0', io });
-  delete jsonSchema.$schema;
-  return jsonSchema as ApiResponseSchemaHost['schema'];
-}
-
-export function ApiZodBody(schema: z.ZodType): MethodDecorator {
-  return ApiBody({ required: true, schema: toOpenApiSchema(schema, 'input') });
-}
-
+/**
+ * Documents one response of a route with a schema from `@app/contracts`.
+ *
+ * `@nestjs/swagger` converts the schema itself: zod 4 exposes `~standard.jsonSchema`, Nest asks it
+ * for the `openapi-3.0` target (`output` for responses) and moves `.meta({ id })` schemas into
+ * `components.schemas`. Request bodies, queries and params need no decorator: `@Body({ schema })`,
+ * `@Query({ schema })` and `@Param(..., { schema })` are documented from the schema the global pipe
+ * validates against.
+ */
 export function ApiZodResponse(
   status: number,
   description: string,
   schema: z.ZodType,
-): MethodDecorator {
-  return ApiResponse({ status, description, schema: toOpenApiSchema(schema, 'output') });
+): MethodDecorator & ClassDecorator {
+  return ApiResponse({ status, description, standardSchema: schema });
 }

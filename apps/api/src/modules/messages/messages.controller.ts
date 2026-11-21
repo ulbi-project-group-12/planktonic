@@ -2,9 +2,10 @@ import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } fr
 import {
   CreateMessageBody,
   GetMessagesQuery,
-  type GetMessagesResponse,
-  type MessageResponse,
+  GetMessagesResponse,
+  MessageResponse,
 } from '@app/contracts';
+import { ApiZodResponse } from '../../core/openapi/zod-decorators.js';
 import { DEFAULT_AUTHOR_ID } from './default-author.js';
 import { MessagesService } from './messages.service.js';
 
@@ -16,6 +17,7 @@ export class MessagesController {
   /** `201` with the stored message both for a new message and for a retry (UL-126). */
   @Post()
   @HttpCode(201)
+  @ApiZodResponse(201, 'The stored message, new or retried', MessageResponse)
   async create(
     @Param('channelId', new ParseUUIDPipe()) channelId: string,
     @Body({ schema: CreateMessageBody }) body: CreateMessageBody,
@@ -31,6 +33,7 @@ export class MessagesController {
 
   /** `?afterSeq=&limit=` (both optional, strings on the wire; see `GetMessagesQuery`). */
   @Get()
+  @ApiZodResponse(200, 'One page of the channel, oldest first', GetMessagesResponse)
   list(
     @Param('channelId', new ParseUUIDPipe()) channelId: string,
     @Query({ schema: GetMessagesQuery }) query: GetMessagesQuery,

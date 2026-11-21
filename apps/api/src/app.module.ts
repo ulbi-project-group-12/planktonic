@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
-import { ConditionalModule, ConfigModule } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { mayReadEnvFile, ROOT_ENV_FILE } from './core/config/env-file.js';
 import { validateEnv } from './core/config/env.js';
 import { InstanceModule } from './core/instance/instance.module.js';
 import { PrismaModule } from './core/prisma/prisma.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MessagesModule } from './modules/messages/messages.module.js';
-import { OpenApiExampleModule } from './modules/openapi-example/openapi-example.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
 
 @Module({
@@ -28,10 +27,6 @@ import { RealtimeModule } from './modules/realtime/realtime.module.js';
     HealthModule,
     MessagesModule,
     RealtimeModule,
-    ConditionalModule.registerWhen(
-      OpenApiExampleModule,
-      (env) => !env.NODE_ENV || env.NODE_ENV === 'development',
-    ),
   ],
 })
 export class AppModule {}

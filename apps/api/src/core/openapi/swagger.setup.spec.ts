@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import { expect, it } from 'vitest';
 import { configureApp } from '../../app.setup.js';
 import { HealthModule } from '../../modules/health/health.module.js';
-import { OpenApiExampleModule } from '../../modules/openapi-example/openapi-example.module.js';
 import { InstanceModule } from '../instance/instance.module.js';
 import { PrismaHealthIndicator } from '../prisma/prisma.health.js';
 import { configureSwagger } from './swagger.setup.js';
@@ -12,7 +11,7 @@ it.each(['development', 'production'] as const)(
   'serves API documentation only in development (%s)',
   async (environment) => {
     const module = await Test.createTestingModule({
-      imports: [InstanceModule, HealthModule, OpenApiExampleModule],
+      imports: [InstanceModule, HealthModule],
     })
       .useMocker((token) => {
         if (token === PrismaHealthIndicator) {
@@ -60,24 +59,6 @@ it.each(['development', 'production'] as const)(
                           instanceId: { type: 'string' },
                         },
                       },
-                    },
-                  },
-                },
-              },
-            },
-          },
-          '/api/openapi-example': {
-            post: {
-              requestBody: {
-                required: true,
-                content: { 'application/json': { schema: { required: ['name'] } } },
-              },
-              responses: {
-                201: { content: { 'application/json': { schema: { required: ['greeting'] } } } },
-                400: {
-                  content: {
-                    'application/json': {
-                      schema: { required: ['statusCode', 'message', 'issues'] },
                     },
                   },
                 },
