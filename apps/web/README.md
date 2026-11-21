@@ -11,7 +11,7 @@ Run it from the repo root with `pnpm dev` (README "Quick start"); it serves http
 ```
 app/                 Next.js routing only: each file re-exports from src/ (layout.tsx, page.tsx)
 src/_app/            app layer: root layout, metadata, global styles (styles/globals.css)
-src/_pages/          pages layer: one slice per page, e.g. _pages/home, _pages/prototype
+src/_pages/          pages layer: one slice per page, e.g. _pages/landing, _pages/prototype, grouped slices _pages/auth/login
 src/widgets/         widgets layer (empty for now)
 src/features/        features layer (empty for now)
 src/entities/        entities layer (empty for now)
@@ -25,8 +25,112 @@ src/shared/lib/      shared helpers, e.g. cn(), uuidv7()
   Next's routing folders and the FSD layers cannot clash. The layers are named `_app` and `_pages`
   for the same reason.
 - Every slice and every `shared` segment exposes a public `index.ts`; import other slices only
-  through it (`@/shared/ui`, `@/_pages/home`). A layer root has no `index.ts`.
+  through it (`@/shared/ui`, `@/_pages/landing`). A layer root has no `index.ts`.
 - `@/*` maps to `src/*` (`tsconfig.json` paths).
+
+## Routes
+
+Example slug in the tables: `my-team`. Example project key: `WEB`.
+
+Route groups (`app/`) decide layouts and access zones. They never appear in the URL:
+
+| Group                              | URL prefix      | Layout (`src/_app/layout`) | Who                                          |
+| ---------------------------------- | --------------- | -------------------------- | -------------------------------------------- |
+| `(public)`                         | none            | `PublicLayout`             | everyone: landing, invites, email checks     |
+| `(auth)`                           | none            | `AuthLayout`               | guests: sign in, sign up, password reset     |
+| `(app)`                            | none            | `AppLayout`                | signed-in users only (UL-140 adds the check) |
+| `(app)/workspaces/[workspaceSlug]` | `/workspaces/…` | `WorkspaceLayout`          | workspace members (UL-144 adds membership)   |
+| `…/projects/[projectKey]`          | `/projects/…`   | `ProjectLayout`            | project members                              |
+
+Why `(app)` changes no URL but still has its own layout: the group gives the signed-in zone one
+place for the sign-in check (UL-140) and the app shell (UL-144). The check goes into `AppLayout`.
+`proxy.ts` makes an optimistic redirect to `/login?next=…` based on the session cookie; the real
+check happens in the data layer and in the API.
+
+### Root and access behaviour
+
+| Visitor                             | `/`                       | `/workspaces`                    | Other `(app)` page   |
+| ----------------------------------- | ------------------------- | -------------------------------- | -------------------- |
+| Guest                               | landing (UL-153)          | redirect to `/login?next=…`      | redirect to `/login` |
+| Signed in, with a workspace         | redirect to `/workspaces` | list of workspaces               | page                 |
+| Signed in, without a workspace      | redirect to `/workspaces` | redirect to `/workspaces/create` | page                 |
+| Signed in, on `/login`, `/register` | —                         | redirect to `/workspaces`        | —                    |
+
+The redirects are implemented in UL-140 and UL-153. Phase 3 only fixes the table.
+
+### Phase 3 (stubs, UL-215)
+
+| Path                                                                     | Group      | `_pages` slice          | Owner ticket  | Access                                          |
+| ------------------------------------------------------------------------ | ---------- | ----------------------- | ------------- | ----------------------------------------------- |
+| `/`                                                                      | `(public)` | `landing`               | UL-153        | Guest (signed in → `/workspaces`)               |
+| `/register`                                                              | `(auth)`   | `auth/register`         | UL-213        | Guest                                           |
+| `/login`                                                                 | `(auth)`   | `auth/login`            | UL-140        | Guest                                           |
+| `/forgot-password`                                                       | `(auth)`   | `auth/forgot-password`  | UL-215 stub   | Guest                                           |
+| `/reset-password?token=…`                                                | `(auth)`   | `auth/reset-password`   | UL-215 stub   | Guest with token                                |
+| `/verify-email?token=…`                                                  | `(public)` | `verify-email`          | UL-158        | Anyone with token                               |
+| `/invite/[token]`                                                        | `(public)` | `invite`                | 3.8           | Anyone (guest → sign in → back)                 |
+| `/workspaces`                                                            | `(app)`    | `workspace/list`        | UL-144        | Signed in                                       |
+| `/workspaces/create`                                                     | `(app)`    | `workspace/create`      | UL-143        | Signed in                                       |
+| `/workspaces/[workspaceSlug]`                                            | `(app)`    | `workspace/dashboard`   | UL-143 / 144  | Workspace member                                |
+| `/workspaces/[workspaceSlug]/members`                                    | `(app)`    | `workspace/members`     | 3.8           | Member (managing: admin+)                       |
+| `/workspaces/[workspaceSlug]/settings`                                   | `(app)`    | `workspace/settings`    | UL-143        | Admin+                                          |
+| `/workspaces/[workspaceSlug]/projects/create`                            | `(app)`    | `project/create`        | UL-146        | Per permission matrix (ADR-0002)                |
+| `/workspaces/[workspaceSlug]/projects/[projectKey]`                      | `(app)`    | `project/overview`      | UL-146        | Project member                                  |
+| `/workspaces/[workspaceSlug]/projects/[projectKey]/members`              | `(app)`    | `project/members`       | UL-146        | Project member                                  |
+| `/workspaces/[workspaceSlug]/projects/[projectKey]/channels/create`      | `(app)`    | `channel/create`        | UL-178        | Per permission matrix                           |
+| `/workspaces/[workspaceSlug]/projects/[projectKey]/channels/[channelId]` | `(app)`    | `channel/view`          | UL-178        | Public: project member; private: channel member |
+| `/settings/profile`                                                      | `(app)`    | `account/profile`       | 3.10          | Signed in                                       |
+| `/settings/devices`                                                      | `(app)`    | `account/devices`       | UL-157        | Signed in                                       |
+| `/settings/notifications`                                                | `(app)`    | `account/notifications` | 11 (stub now) | Signed in                                       |
+| `/settings/appearance`                                                   | `(app)`    | `account/appearance`    | 6+ (stub now) | Signed in                                       |
+| `/prototype`                                                             | outside    | `prototype`             | UL-128        | Separate                                        |
+
+### Phases 5–13 (outline, not yet routed)
+
+| Path                                                                       | Phase |
+| -------------------------------------------------------------------------- | ----- |
+| `/workspaces/[workspaceSlug]/messages[/conversationId]`                    | 5     |
+| `/workspaces/[workspaceSlug]/saved`                                        | 6     |
+| `/workspaces/[workspaceSlug]/my-work`                                      | 9     |
+| `/workspaces/[workspaceSlug]/notifications`, `…/activity`                  | 11    |
+| `/workspaces/[workspaceSlug]/search`                                       | 12    |
+| `/workspaces/[workspaceSlug]/projects/[projectKey]/board`                  | 9     |
+| `/workspaces/[workspaceSlug]/projects/[projectKey]/tasks[/taskNumber]`     | 8     |
+| `/workspaces/[workspaceSlug]/projects/[projectKey]/standups[/date]`        | 12    |
+| `/workspaces/[workspaceSlug]/projects/[projectKey]/decisions[/decisionId]` | 12    |
+| `/workspaces/[workspaceSlug]/projects/[projectKey]/settings[/github]`      | 9–10  |
+
+### Decisions
+
+- **Workspace address is the slug** (`/workspaces/my-team`), not the id. A slug is readable and
+  shareable; uniqueness is enforced by the database (ADR-0003).
+- **Channel address is the id** (uuid). A channel can be renamed, so its name never goes into the URL.
+- **Renaming a workspace slug**: there are no redirects from the old slug. In phase 3 the old URL
+  still shows the stub, because `WorkspaceLayout` checks only the format. It returns 404 once the
+  existence check lands in UL-144. Revisit with UL-143 if invite links must survive a rename.
+- **Projects** are addressed by key (`WEB`) inside the workspace. The key is set at creation and never
+  changes, because it is the prefix of task numbers (`WEB-123`).
+- **Tasks** are addressed by number: `WEB-123` → `…/projects/WEB/tasks/123`.
+- **Messages and threads** are query parameters of a channel: `?message=<id>`, `?thread=<id>`.
+
+### URL rules and validation
+
+- Workspace slug: `^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$` (lowercase, digits, inner hyphens,
+  up to 40 characters). Reserved: `create`.
+- Project key: `^[A-Z][A-Z0-9]{1,9}$` (`WEB`). Lowercase is not a valid key.
+- Channel id: uuid.
+- Schemas live in `packages/contracts` (`WorkspaceSlug`, `ProjectKey`, `ChannelId`), shared by web and api.
+- A malformed slug, key or channel id returns 404 without a lookup. Unknown and forbidden
+  workspaces will both return 404, so existence is not revealed; this check comes in UL-144.
+  Until then, a well-formed unknown slug still shows the stub.
+
+### Layouts and error pages
+
+- `WorkspaceLayout` rejects a malformed slug; `ProjectLayout` rejects a malformed key;
+  `ChannelPage` rejects a channel id that is not a uuid.
+- `app/not-found.tsx` shows the 404 page for any unknown address.
+- `app/error.tsx` shows the error digest, never the raw message. `app/global-error.tsx` covers
+  errors in the root layout and renders its own `<html>`.
 
 ## FSD lint (Steiger)
 

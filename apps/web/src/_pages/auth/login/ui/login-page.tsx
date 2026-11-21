@@ -1,0 +1,15 @@
+import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
+import { Typography } from '@/shared/ui/typography';
+
+export function LoginPage() {
+  return (
+    <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center gap-4 p-8">
+      <Typography as="h1" size="h3">
+        Скоро здесь будет вход в {PRODUCT_DISPLAY_NAME}
+      </Typography>
+      <Typography as="p" color="text-secondary">
+        Страница находится в разработке.
+      </Typography>
+    </main>
+  );
+}
