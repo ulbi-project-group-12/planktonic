@@ -14,6 +14,15 @@ export const ClientMsgId = z.uuidv7().toLowerCase();
 export type ClientMsgId = z.infer<typeof ClientMsgId>;
 
 /**
+ * Path params of the channel's messages routes (`/channels/:channelId/messages`). Validated by the
+ * same pipe as bodies, so a malformed id is a `ValidationErrorResponse` with `path: 'channelId'`.
+ * The letter case is kept as sent: Postgres compares `uuid` case-insensitively.
+ */
+export const ChannelMessagesParams = z.object({ channelId: z.uuid() });
+
+export type ChannelMessagesParams = z.infer<typeof ChannelMessagesParams>;
+
+/**
  * Body of `POST` a message. The channel comes from the path, the author from the session.
  *
  * Idempotent on `(author, clientMsgId)`: a retry with a key the author already used returns the

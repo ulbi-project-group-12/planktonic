@@ -12,3 +12,15 @@ export const ValidationErrorResponse = z.object({
 });
 
 export type ValidationErrorResponse = z.infer<typeof ValidationErrorResponse>;
+
+/**
+ * Any other error the api raises with a Nest `HttpException` (`404` channel not found, `409` key
+ * reused in another channel, ...): Nest's default body.
+ */
+export const HttpErrorResponse = z.object({
+  statusCode: z.number().int(),
+  message: z.string(),
+  error: z.string(),
+});
+
+export type HttpErrorResponse = z.infer<typeof HttpErrorResponse>;

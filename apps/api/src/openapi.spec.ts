@@ -83,7 +83,7 @@ describe('pnpm openapi:export', () => {
     });
     expect(messages?.get).toMatchObject({
       parameters: [
-        { name: 'channelId', in: 'path', required: true },
+        { name: 'channelId', in: 'path', required: true, schema: { format: 'uuid' } },
         { name: 'afterSeq', in: 'query', required: false, schema: { type: 'string' } },
         { name: 'limit', in: 'query', required: false, schema: { type: 'string' } },
       ],
@@ -99,6 +99,21 @@ describe('pnpm openapi:export', () => {
           },
         },
       },
+    });
+    const errorSchema = (operation: unknown, status: number) =>
+      (operation as { responses: Record<number, { content: Record<string, { schema: unknown }> }> })
+        .responses[status]?.content['application/json']?.schema;
+    expect(errorSchema(messages?.post, 400)).toMatchObject({
+      required: ['statusCode', 'message', 'issues'],
+    });
+    expect(errorSchema(messages?.post, 404)).toMatchObject({
+      required: ['statusCode', 'message', 'error'],
+    });
+    expect(errorSchema(messages?.post, 409)).toMatchObject({
+      required: ['statusCode', 'message', 'error'],
+    });
+    expect(errorSchema(messages?.get, 400)).toMatchObject({
+      required: ['statusCode', 'message', 'issues'],
     });
     expect(document.paths['/api/health']?.get).toMatchObject({
       responses: {

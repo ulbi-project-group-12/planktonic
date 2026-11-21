@@ -6,7 +6,8 @@
 
 - **Тело, query, path-параметры** валидирует глобальный `StandardSchemaValidationPipe` (`apps/api/src/app.setup.ts`), если схема передана в декоратор: `@Body({ schema })`, `@Query({ schema })`, `@Param(name, { schema })`. `@nestjs/swagger` 12 описывает их по той же схеме сам, отдельный декоратор не нужен.
 - **Ответы** описываются через `@ApiZodResponse(status, description, Schema)` из `core/openapi/zod-decorators.ts`. Это обёртка над `@ApiResponse({ standardSchema })`: Nest сам вызывает `~standard.jsonSchema` у zod с target `openapi-3.0` (для ответов `output`).
-- **Ошибка валидации** — `ValidationErrorResponse` из контрактов: `400` с `statusCode`, `message` и `issues: [{ path, message }]`. Если все параметры роута проверяются zod-схемой, документируйте её: `@ApiZodResponse(400, 'Validation failed', ValidationErrorResponse)`. Встроенные пайпы Nest вроде `ParseUUIDPipe` отвечают на ошибку другим телом, без `issues`.
+- **Ошибка валидации** — `ValidationErrorResponse` из контрактов: `400` с `statusCode`, `message` и `issues: [{ path, message }]`. Документируйте её у каждого роута со схемами: `@ApiZodResponse(400, '…', ValidationErrorResponse)`. Path-параметры тоже проверяйте схемой (`@Param({ schema: z.object({ channelId: z.uuid() }) })`), а не встроенными пайпами вроде `ParseUUIDPipe`: те отвечают другим телом, без `issues`.
+- **Прочие ошибки** (`NotFoundException`, `ConflictException` и т. п.) — `HttpErrorResponse`: стандартное тело Nest `{ statusCode, message, error }`.
 - **Имя схемы**: `.meta({ id: 'Name' })` выносит схему в `components.schemas` под этим именем, остальные схемы встраиваются в операцию. `id` должен быть уникальным во всём `z.globalRegistry`.
 - **Служебные роуты** скрываются через `@ApiExcludeController()` или `@ApiExcludeEndpoint()` (пример — `debug/realtime`).
 - `operationId` — `<Контроллер без Controller>_<метод>`, например `Messages_list`. Из него Orval называет хуки (UL-138).
