@@ -6,6 +6,30 @@ standalone server, which the multi-stage `Dockerfile` ships as a non-root image.
 
 Run it from the repo root with `pnpm dev` (README "Quick start"); it serves http://localhost:3000.
 
+## REST client and API mocks
+
+Run `pnpm gen:api` from the repo root after changing an API contract. Orval reads the exported
+OpenAPI document and writes the REST client, TanStack Query hooks, TypeScript models and MSW handlers
+to `src/shared/api/generated/`. Include those files in the same PR. `pnpm check:api` compares them
+with fresh output in a temporary directory. CI and `pnpm check:all` run the same check.
+Import hooks and models through `@/shared/api`.
+
+To use the generated health hook without starting the backend, run:
+
+```sh
+NEXT_PUBLIC_API_MOCKING=true pnpm dev --filter=@app/web
+```
+
+Open http://127.0.0.1:3000/api-demo. The response shows status `ok` and instance `msw-demo`.
+The dev app starts MSW when you open `/api-demo` and waits for the worker before making its health
+request. Only health requests with the demo's opt-in header are mocked. Requests from `/prototype`
+still reach the real API, including after navigating from the demo in the same tab.
+Next.js production builds leave browser mocks disabled. Vitest starts the MSW Node server
+automatically, and Storybook loads the browser worker in its preview. Both use the full REST mock set.
+
+When updating MSW, refresh the checked-in browser worker with
+`pnpm --filter @app/web exec msw init public --no-save`.
+
 ## Layout
 
 ```

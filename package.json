@@ -24,11 +24,13 @@
     "services:down": "docker compose --profile \"*\" down",
     "services:reset": "docker compose --profile \"*\" down -v",
     "openapi:export": "pnpm --filter @app/api generate && pnpm --filter @app/api... build && node apps/api/dist/openapi-export.js",
+    "gen:api": "pnpm openapi:export && pnpm --filter @app/web exec orval --config orval.config.ts",
+    "check:api": "node scripts/check-generated-api.mjs",
     "db:migrate": "pnpm --filter @app/api db:migrate",
     "db:migrate:dev": "pnpm --filter @app/api db:migrate:dev",
     "db:seed": "pnpm --filter @app/api db:seed",
     "demo:walk": "node tools/demo-walk/walk.mjs",
-    "check:all": "pnpm format:check && pnpm check:pins && pnpm lint:root && turbo run lint typecheck test build && pnpm check:name && pnpm test:root && pnpm --filter @app/web lint:fsd && pnpm --filter @app/web build-storybook"
+    "check:all": "pnpm format:check && pnpm check:pins && pnpm lint:root && pnpm check:api && turbo run lint typecheck test build && pnpm check:name && pnpm test:root && pnpm --filter @app/web lint:fsd && pnpm --filter @app/web build-storybook"
   },
   "prettier": "@app/config/prettier",
   "lint-staged": {
