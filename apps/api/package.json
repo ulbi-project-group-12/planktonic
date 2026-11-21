@@ -33,6 +33,7 @@
     "@prisma/adapter-pg": "catalog:",
     "@prisma/client": "catalog:",
     "@socket.io/redis-streams-adapter": "catalog:",
+    "argon2": "catalog:",
     "pg": "catalog:",
     "redis": "catalog:",
     "reflect-metadata": "catalog:",

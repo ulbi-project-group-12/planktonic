@@ -1,7 +1,12 @@
 // Таблица Пользователей
 model User {
-  id   String @id @default(uuid(7)) @db.Uuid
-  name String
+  id            String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name          String
+  /// Case-insensitive uniqueness is enforced by users_email_lower_key in SQL.
+  email         String
+  passwordHash  String    @map("password_hash")
+  tz            String    @default("Europe/Moscow")
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(3)
 
   messages Message[]
 

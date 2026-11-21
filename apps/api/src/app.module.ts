@@ -4,6 +4,7 @@ import { mayReadEnvFile, ROOT_ENV_FILE } from './core/config/env-file.js';
 import { validateEnv } from './core/config/env.js';
 import { InstanceModule } from './core/instance/instance.module.js';
 import { PrismaModule } from './core/prisma/prisma.module.js';
+import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MessagesModule } from './modules/messages/messages.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
@@ -24,6 +25,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module.js';
     }),
     InstanceModule,
     PrismaModule,
+    AuthModule,
     HealthModule,
     MessagesModule,
     RealtimeModule,

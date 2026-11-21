@@ -42,6 +42,7 @@ describe('pnpm openapi:export', () => {
       'get /api/channels/{channelId}/messages Messages_list',
       'get /api/health Health_live',
       'get /api/health/ready Health_ready',
+      'post /api/auth/register Auth_register',
       'post /api/channels/{channelId}/messages Messages_create',
     ]);
   });

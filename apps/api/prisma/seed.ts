@@ -15,7 +15,12 @@ async function main(): Promise<void> {
     const user = await prisma.user.upsert({
       where: { id: TEST_USER_ID },
       update: {},
-      create: { id: TEST_USER_ID, name: 'test-user' },
+      create: {
+        id: TEST_USER_ID,
+        name: 'test-user',
+        email: 'test-user@users.invalid',
+        passwordHash: '!',
+      },
     });
     console.log(`Seeded user ${user.name} (${user.id})`);
     const channel = await prisma.channel.upsert({
