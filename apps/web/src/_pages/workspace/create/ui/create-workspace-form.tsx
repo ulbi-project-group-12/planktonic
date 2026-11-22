@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, type UseFormSetError } from 'react-hook-form';
+import { useForm, type UseFormGetValues, type UseFormSetError } from 'react-hook-form';
 import { PRODUCT_SLUG } from '@app/config/product';
 import { getApiIssues, hasApiStatus, isApiError } from '@/shared/api';
 import { routes } from '@/shared/config';
@@ -77,7 +77,7 @@ export function CreateWorkspaceForm() {
           return;
         }
         if (isApiError(error)) {
-          if (mapIssuesToFields(error, setError)) return;
+          if (mapIssuesToFields(error, values, getValues, setError)) return;
           // The api answered, so the connection is fine: do not send the user to check it.
           setSubmitError('Сервер ответил ошибкой. Попробуйте ещё раз чуть позже.');
           return;
@@ -136,19 +136,23 @@ export function CreateWorkspaceForm() {
 
 /**
  * Maps `{ issues: [{ path, message }] }` from a 400 onto the matching fields.
- * Returns false when the error carries no recognisable field issues — the caller
- * shows the general banner then.
+ * An issue is about the value that was sent: when the user has changed the field during the
+ * request, it is recognised but not shown. Returns false when the error carries no
+ * recognisable field issues — the caller shows the general banner then.
  */
 function mapIssuesToFields(
   error: unknown,
+  sent: WorkspaceFormValues,
+  getValues: UseFormGetValues<WorkspaceFormValues>,
   setError: UseFormSetError<WorkspaceFormValues>,
 ): boolean {
-  let mapped = false;
+  let recognised = false;
   for (const issue of getApiIssues(error)) {
-    if (issue.path === 'name' || issue.path === 'slug') {
-      setError(issue.path, { message: issue.message });
-      mapped = true;
-    }
+    if (issue.path !== 'name' && issue.path !== 'slug') continue;
+    recognised = true;
+    // `sent.name` is trimmed by the schema, the field is not.
+    const current = issue.path === 'name' ? getValues('name').trim() : getValues('slug');
+    if (current === sent[issue.path]) setError(issue.path, { message: issue.message });
   }
-  return mapped;
+  return recognised;
 }

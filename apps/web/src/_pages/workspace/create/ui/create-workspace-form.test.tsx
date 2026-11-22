@@ -191,6 +191,38 @@ describe('CreateWorkspaceForm', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('does not put a 400 field issue next to a name changed during the request', async () => {
+    let release: () => void = () => {};
+    server.use(
+      http.post('/api/workspaces', async () => {
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return HttpResponse.json(
+          {
+            statusCode: 400,
+            message: 'Validation failed',
+            issues: [{ path: 'name', message: 'Название не подходит' }],
+          },
+          { status: 400 },
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<CreateWorkspaceForm />);
+
+    await user.type(screen.getByLabelText(/Название/), 'My Team');
+    const submit = screen.getByRole('button', { name: 'Продолжить' });
+    await user.click(submit);
+    await waitFor(() => expect(submit).toBeDisabled());
+    await user.type(screen.getByLabelText(/Название/), ' 2');
+    release();
+
+    await waitFor(() => expect(submit).toBeEnabled());
+    expect(screen.queryByText('Название не подходит')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('does not blame the network when the server answers with an error', async () => {
     server.use(
       http.post('/api/workspaces', () =>
