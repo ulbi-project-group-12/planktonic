@@ -192,6 +192,10 @@ services:
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
+      # Only containers of this compose project: otherwise this Traefik also reads the labelled
+      # containers of compose.prod.yml (or of a second checkout) and their `web`/`api` routers
+      # clash with ours.
+      - --providers.docker.constraints=Label(`com.docker.compose.project`,`${COMPOSE_PROJECT_NAME}`)
       - --entrypoints.web.address=:80
       - --entrypoints.web.transport.respondingtimeouts.idletimeout=60s
       - --accesslog=true

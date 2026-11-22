@@ -145,6 +145,26 @@ done
 Compare `instanceId` in the responses: it should stay the same with the cookie and vary across
 replicas without it. Replace `58080` if you changed `TRAEFIK_PORT`. The loops work in Bash and Zsh.
 
+## Production compose (UL-162)
+
+`compose.prod.yml` runs the stack the server will run: web, two api replicas, Postgres, Redis and
+S3 behind Traefik `v3.7.17`, from ready-built images. Only Traefik's HTTP port is published
+(`127.0.0.1:58180` locally); Postgres, Redis, S3 and every metrics endpoint stay on internal
+networks. Migrations are a separate one-shot `migrate` service that uses the api image.
+
+```bash
+cp .env.prod.example .env.prod   # then fill in the four empty secrets
+docker compose --env-file .env.prod -f compose.prod.yml -f compose.prod.build.yml build
+docker compose --env-file .env.prod -f compose.prod.yml up -d
+scripts/check-sticky.sh http://localhost:58180
+docker compose --env-file .env.prod -f compose.prod.yml down -v
+```
+
+`scripts/check-sticky.sh` proves the sticky cookie: requests without `io_srv` reach both
+replicas, requests with one cookie value always reach the same `instanceId`, and a Socket.IO
+long-polling session is refused by the other replica. The full runbook (ports, networks,
+environment, deploying a tag) is [docs/prod-compose.md](docs/prod-compose.md).
+
 ## Environment variables
 
 `cp .env.example .env` gives you working local values; compose, the api and the Prisma CLI read

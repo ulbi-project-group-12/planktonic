@@ -1,0 +1,355 @@
+# Production stack (UL-162): web, two api replicas, Postgres, Redis and S3 behind Traefik, from
+# ready-built images. Runbook: docs/prod-compose.md.
+#
+#   docker compose --env-file .env.prod -f compose.prod.yml up -d     # local run
+#   scripts/check-sticky.sh http://localhost:58180                   # waits, then sticky proof
+#   docker compose --env-file .env.prod -f compose.prod.yml down -v  # stop, drop volumes
+#
+# On the server the env file sits next to this file as `.env` (compose reads it by default), so
+# the commands lose `--env-file`. Only .env.prod.example is committed.
+#
+# - Images: ${IMAGE_PREFIX}-web and ${IMAGE_PREFIX}-api at tag ${APP_VERSION}. release.yml pushes
+#   ghcr.io/<owner>/<slug>-{web,api}:<release tag>, so a deploy sets IMAGE_PREFIX once and
+#   APP_VERSION per release. This file has no `build:`; compose.prod.build.yml adds it for a
+#   local run.
+# - Published ports: Traefik's HTTP entrypoint only. Postgres, Redis and S3 sit on the `data`
+#   network, which has no route to the outside; Traefik's ping and metrics entrypoint (8082) and
+#   the api's future /metrics port are reachable only from inside the networks.
+# - Secrets have no defaults: a missing variable stops `up` with its name.
+# - Third-party images are the newest tag of their line that is at least 14 days old, pinned by
+#   the multi-arch index digest (same rule as compose.yaml).
+
+# A fixed, product-neutral project name, different from the dev stack's `app`, so both can run
+# on one machine. A second copy on the same host needs its own COMPOSE_PROJECT_NAME (or -p) and
+# its own HTTP_PORT.
+name: app-prod
+
+x-defaults: &defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  # Bounded container logs: the VPS disk is small, and Alloy (UL-170) reads them from here.
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '5'
+
+x-node-healthcheck: &node-healthcheck
+  interval: 10s
+  # Probe every 2 s while starting: Traefik skips a container until its first healthy probe, so
+  # this shortens the time a new replica waits for traffic.
+  start_interval: 2s
+  timeout: 5s
+  retries: 3
+  start_period: 30s
+
+services:
+  traefik:
+    <<: *defaults
+    image: traefik:v3.7.17@sha256:f4bb143d1135a579b630ed491e17ec50f6f7c9c6a30585ff3d385471d2a86f5a # built 2026-11-05
+    command:
+      - --global.checknewversion=false
+      - --global.sendanonymoususage=false
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      # Only containers of this compose project: without it Traefik reads every container on the
+      # host, and two stacks route to each other's api replicas (found in UL-131).
+      - --providers.docker.constraints=Label(`com.docker.compose.project`,`${COMPOSE_PROJECT_NAME}`)
+      # The api sits on two networks; Traefik must use its address on the shared one.
+      - --providers.docker.network=${COMPOSE_PROJECT_NAME}_edge
+      - --entrypoints.web.address=:80
+      # Idle keep-alive connections close after 180 s, well above Socket.IO's pingInterval +
+      # pingTimeout (45 s), so a long-polling client between two polls keeps its connection. An
+      # upgraded WebSocket is not subject to it. On shutdown, in-flight requests get 30 s.
+      - --entrypoints.web.transport.respondingtimeouts.idletimeout=180s
+      - --entrypoints.web.transport.lifecycle.gracetimeout=30s
+      # Internal entrypoint, never published: /ping for the healthcheck and /metrics for
+      # Prometheus (UL-171).
+      - --entrypoints.internal.address=:8082
+      - --ping=true
+      - --ping.entrypoint=internal
+      - --metrics.prometheus=true
+      - --metrics.prometheus.entrypoint=internal
+      - --accesslog=true
+      - --accesslog.format=json
+    ports:
+      # The only published port. Loopback by default; the server sets HTTP_BIND=0.0.0.0 and
+      # HTTP_PORT=80. TLS (entrypoint 443, Let's Encrypt) arrives with UL-163.
+      - '${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-58180}:80'
+    volumes:
+      # `:ro` protects the socket file only; the Docker API behind it is not restricted. See
+      # "Known gaps" in the runbook (socket proxy).
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - edge
+    healthcheck:
+      # busybox wget ships in the image.
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8082/ping']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # Above gracetimeout, so compose does not kill Traefik in the middle of its 30 s drain.
+    stop_grace_period: 35s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  web:
+    <<: *defaults
+    image: ${IMAGE_PREFIX:-app}-web:${APP_VERSION:-local}
+    init: true
+    cap_drop:
+      - ALL
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      # Priority 1 keeps the api router winning for /api and /socket.io on the same host.
+      - traefik.http.routers.web.rule=Host(`${APP_HOST:?set APP_HOST}`)
+      - traefik.http.routers.web.entrypoints=web
+      - traefik.http.routers.web.priority=1
+      - traefik.http.services.web.loadbalancer.server.port=3000
+    healthcheck:
+      <<: *node-healthcheck
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('node:http').get('http://127.0.0.1:3000/', r => { r.resume(); process.exitCode = r.statusCode === 200 ? 0 : 1 }).on('error', () => { process.exitCode = 1 })"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # Two replicas of one service: Traefik finds both through the Docker provider and pins a client
+  # to one of them with the `io_srv` cookie (Socket.IO long-polling needs it, architecture §4.1).
+  api:
+    <<: *defaults
+    image: ${IMAGE_PREFIX:-app}-api:${APP_VERSION:-local}
+    init: true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379
+      # S3_* (endpoint http://seaweedfs:8333) join here with the files feature in Phase 7.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # Start order for a first `up`: migrate, then the api. It is not a deploy guard: on a new
+      # tag compose removes the old api containers before it runs migrate, so a deploy runs
+      # `run --rm migrate` first and continues only if that succeeds (see the migrate service).
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - edge
+      - data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=Host(`${APP_HOST:?set APP_HOST}`) && (Path(`/api`) || PathPrefix(`/api/`) || PathPrefix(`/socket.io/`))
+      - traefik.http.routers.api.entrypoints=web
+      - traefik.http.services.api.loadbalancer.server.port=3001
+      - traefik.http.services.api.loadbalancer.sticky.cookie.name=io_srv
+      - traefik.http.services.api.loadbalancer.sticky.cookie.httponly=true
+      - traefik.http.services.api.loadbalancer.sticky.cookie.samesite=lax
+      # `true` once the site is served over HTTPS (UL-163), `false` on plain HTTP: a browser
+      # drops a Secure cookie there and long-polling breaks. Required, so it is always a choice.
+      - traefik.http.services.api.loadbalancer.sticky.cookie.secure=${STICKY_COOKIE_SECURE:?set STICKY_COOKIE_SECURE to true (HTTPS) or false (plain HTTP)}
+      # Traefik stops routing to a replica whose liveness fails, e.g. during a rolling update.
+      - traefik.http.services.api.loadbalancer.healthcheck.path=/api/health
+      - traefik.http.services.api.loadbalancer.healthcheck.interval=5s
+      - traefik.http.services.api.loadbalancer.healthcheck.timeout=3s
+    healthcheck:
+      <<: *node-healthcheck
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('node:http').get('http://127.0.0.1:3001/api/health', r => { r.resume(); process.exitCode = r.statusCode === 200 ? 0 : 1 }).on('error', () => { process.exitCode = 1 })"
+    # Time for open sockets and requests to finish before SIGKILL.
+    stop_grace_period: 30s
+    deploy:
+      replicas: ${API_REPLICAS:-2}
+      resources:
+        limits:
+          memory: 512M
+
+  # One-shot `prisma migrate deploy` from the api image of the same tag (the Prisma CLI and the
+  # migrations ship in it). A deploy runs it as its own gating step (UL-164):
+  #   docker compose -f compose.prod.yml run --rm migrate && docker compose -f compose.prod.yml up -d
+  # If it fails, nothing else has been touched and the previous api keeps serving. Two api
+  # replicas never race to migrate: neither migrates on start.
+  migrate:
+    image: ${IMAGE_PREFIX:-app}-api:${APP_VERSION:-local}
+    command: ['node_modules/.bin/prisma', 'migrate', 'deploy']
+    init: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - data
+    restart: 'no'
+
+  # Phase 7: the worker is the api image with the worker entry point (BullMQ processors). It has
+  # no Traefik labels and no published port: it talks to Postgres, Redis and S3 on `data` and
+  # reaches the outside (Telegram, LLM) through `edge`.
+  # worker:
+  #   <<: *defaults
+  #   image: ${IMAGE_PREFIX:-app}-api:${APP_VERSION:-local}
+  #   command: ['node', 'dist/worker.js']
+  #   environment: # same DATABASE_URL and REDIS_URL as the api
+  #   depends_on: # postgres, redis (healthy) and migrate (completed), as the api
+  #   networks: [edge, data]
+
+  postgres:
+    <<: *defaults
+    image: pgvector/pgvector:0.8.6-pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a # built 2026-08-13
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      # Postgres 18 images keep PGDATA under /var/lib/postgresql/18/docker and declare the
+      # volume at /var/lib/postgresql, so the named volume goes there, not at .../data.
+      # No initdb script: the api's first migration creates the `vector` extension itself.
+      - pgdata:/var/lib/postgresql
+    networks:
+      - data
+    shm_size: 256m
+    healthcheck:
+      # Over TCP, not the unix socket: on a fresh volume the entrypoint first runs initdb on a
+      # temporary socket-only server, and a socket probe would pass before the real server is up.
+      test:
+        ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 5432 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  redis:
+    <<: *defaults
+    image: redis:8.10.3@sha256:1f88291b4c57bdf249f02eb085a8669889b2d2954e91d4de5118a5da6b78dd53 # built 2026-11-05
+    # The Socket.IO adapter sends unsigned packets through Redis, so it stays on `data` and takes
+    # a password on top. The password goes through a config file readable by the redis user only,
+    # so it never shows in the host's process list; `exec` keeps redis-server as PID 1, so it
+    # gets SIGTERM and shuts down cleanly.
+    command:
+      - sh
+      - -c
+      - |
+        umask 077
+        printf 'appendonly yes\nrequirepass "%s"\n' "$$REDIS_PASSWORD" > /tmp/redis.conf
+        exec redis-server /tmp/redis.conf
+    user: redis
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+    volumes:
+      - redisdata:/data
+    networks:
+      - data
+    healthcheck:
+      test: ['CMD-SHELL', 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  # S3-compatible object storage: SeaweedFS runs master, volume, filer and the S3 gateway in one
+  # container (`server -s3`), same image as compose.yaml. Nothing reads it before Phase 7; that
+  # phase also decides how browsers reach presigned URLs (a Traefik route or a proxy in the api).
+  seaweedfs:
+    <<: *defaults
+    image: chrislusf/seaweedfs:4.51@sha256:f7a49e3f3972ebed5be2ed4befa4a0c68eb7bdddba6e692d42729ceb545134b8 # built 2026-10-26
+    command: server -s3 -dir=/data -ip=seaweedfs -ip.bind=0.0.0.0
+    environment:
+      # The S3 admin identity: with it set, the gateway refuses anonymous requests.
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY}
+    volumes:
+      - s3data:/data
+    networks:
+      - data
+    healthcheck:
+      # busybox wget ships in the image.
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8333/healthz']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # One-shot job: creates the bucket if it is missing; safe to re-run on every `up`.
+  s3-init:
+    image: chrislusf/seaweedfs:4.51@sha256:f7a49e3f3972ebed5be2ed4befa4a0c68eb7bdddba6e692d42729ceb545134b8 # built 2026-10-26
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET}
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - data
+    entrypoint: ['/bin/sh', '-c']
+    # `weed shell` exits 0 even when a command fails, so the job lists the buckets again
+    # afterwards and fails unless the bucket is there. The name is compared literally against the
+    # first field of each listed line: a regex would read the `.` that bucket names allow as
+    # "any character".
+    command:
+      - |
+        set -eu
+        has_bucket() {
+          echo s3.bucket.list | weed shell -master=seaweedfs:9333 2>/dev/null |
+            awk '{ print $$1 }' | grep -Fxq -- "$${S3_BUCKET}"
+        }
+        if has_bucket; then
+          echo "s3-init: bucket $${S3_BUCKET} already exists"
+        else
+          echo "s3-init: creating bucket $${S3_BUCKET}"
+          echo "s3.bucket.create -name $${S3_BUCKET}" | weed shell -master=seaweedfs:9333
+        fi
+        if ! has_bucket; then
+          echo "s3-init: bucket $${S3_BUCKET} is missing after create" >&2
+          exit 1
+        fi
+        echo "s3-init: ready"
+    restart: 'no'
+
+networks:
+  # Traefik, web and api. A normal bridge: the api reaches the outside through it.
+  edge:
+  # Postgres, Redis, S3 and their clients. `internal`: no route to or from the outside, and
+  # nothing on it publishes a port.
+  data:
+    internal: true
+
+volumes:
+  pgdata:
+  redisdata:
+  s3data:
