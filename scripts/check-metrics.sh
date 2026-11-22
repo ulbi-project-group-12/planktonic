@@ -10,14 +10,17 @@
 #   2. Prometheus found EXPECTED_API_REPLICAS api containers by itself, through Docker service
 #      discovery on the `metrics` network. Until the api serves /metrics (UL-173) the replicas
 #      are discovered but not scraped; once they are targets, step 1 also requires them UP.
-#   3. Prometheus and the exporters are not reachable from outside: no published port, no host
+#   3. cAdvisor reports containers, not only the host: it has memory series for at least
+#      EXPECTED_API_REPLICAS api containers. Its target is UP even when it cannot read the
+#      container runtime, so step 1 does not cover this.
+#   4. Prometheus and the exporters are not reachable from outside: no published port, no host
 #      network, no Traefik router.
 #
 # Environment:
 #   EXPECTED_JOBS          jobs that must have a target (default "prometheus node cadvisor traefik")
 #   EXPECTED_API_REPLICAS  number of api replicas (default 2)
-#   PRIVATE_SERVICES       services checked in step 3 (default "prometheus node-exporter cadvisor")
-#   WAIT_SECONDS           how long to wait for steps 1 and 2 to hold (default 90; 0 = one look).
+#   PRIVATE_SERVICES       services checked in step 4 (default "prometheus node-exporter cadvisor")
+#   WAIT_SECONDS           how long to wait for steps 1 to 3 to hold (default 90; 0 = one look).
 #                          A new container is discovered within 15 s and scraped 15 s later.
 #
 # Exit codes: 0 all checks passed, 1 a check failed, 2 bad usage or Prometheus is not running.
@@ -83,6 +86,8 @@ fi
 #                                              found and relabeling dropped
 #   N <count>                                  active targets in the response; the caller
 #                                              compares it with the number of T lines
+#   C <count>                                  api containers of the project that cAdvisor
+#                                              has memory series for (absent when none)
 # The API returns compact JSON with sorted label names, which the patterns rely on.
 # shellcheck disable=SC2016
 remote='
@@ -97,6 +102,9 @@ split "$dropped" |
   grep "\"__meta_docker_container_label_com_docker_compose_service\":\"api\"" |
   grep "\"__meta_docker_network_name\":\"$1_metrics\"" |
   sed -n "s/.*\"__meta_docker_container_name\":\"\/\([^\"]*\)\".*/A \1/p" | sort -u
+promtool query instant http://127.0.0.1:9090 \
+  "count(container_memory_working_set_bytes{job=\"cadvisor\",compose_project=\"$1\",compose_service=\"api\"})" |
+  sed -n "s/^{} => \([0-9][0-9]*\) .*/C \1/p"
 '
 
 # Reads the targets into $work: `targets` ("<health> <job> <instance> <last error>"), `count`
@@ -108,6 +116,14 @@ snapshot() {
   sed -n 's/^T //p' "$work/clean" > "$work/targets"
   sed -n 's/^N \([0-9][0-9]*\)$/\1/p' "$work/clean" > "$work/count"
   sed -n 's/^A //p' "$work/clean" > "$work/discovered"
+  sed -n 's/^C \([0-9][0-9]*\)$/\1/p' "$work/clean" > "$work/containers"
+}
+
+# api containers cAdvisor has series for; 0 when it has none.
+cadvisor_containers() {
+  local count
+  count=$(head -n 1 "$work/containers")
+  echo "${count:-0}"
 }
 
 # api replicas Prometheus knows about: scraped targets of the job `api` plus discovered ones.
@@ -115,7 +131,7 @@ api_replicas() {
   { awk '$2 == "api" { print $3 }' "$work/targets"; cat "$work/discovered"; } | sort -u
 }
 
-# True when steps 1 and 2 hold for the current snapshot.
+# True when steps 1 to 3 hold for the current snapshot.
 settled() {
   [[ "$(cat "$work/count")" -eq "$(grep -c . "$work/targets" || true)" ]] || return 1
   [[ -z "$(awk '$1 != "up"' "$work/targets")" ]] || return 1
@@ -123,7 +139,8 @@ settled() {
   for job in $EXPECTED_JOBS; do
     awk -v job="$job" '$2 == job { found = 1 } END { exit !found }' "$work/targets" || return 1
   done
-  [[ "$(api_replicas | grep -c . || true)" -eq "$EXPECTED_API_REPLICAS" ]]
+  [[ "$(api_replicas | grep -c . || true)" -eq "$EXPECTED_API_REPLICAS" ]] || return 1
+  [[ "$(cadvisor_containers)" -ge "$EXPECTED_API_REPLICAS" ]]
 }
 
 echo "Metrics check for project ${PROJECT} (${EXPECTED_API_REPLICAS} api replicas expected)"
@@ -179,8 +196,18 @@ else
   fail "Prometheus sees ${replicas} api replicas, expected ${EXPECTED_API_REPLICAS}"
 fi
 
-# --- 3. nothing reachable from outside ---
-echo "3. Not published"
+# --- 3. cAdvisor reports containers ---
+# "At least": a replaced container stays in query results for five more minutes.
+echo "3. Container metrics"
+reported=$(cadvisor_containers)
+if [[ "$reported" -ge "$EXPECTED_API_REPLICAS" ]]; then
+  pass "cAdvisor reports ${reported} api containers"
+else
+  fail "cAdvisor reports ${reported} api containers, expected at least ${EXPECTED_API_REPLICAS}"
+fi
+
+# --- 4. nothing reachable from outside ---
+echo "4. Not published"
 for service in $PRIVATE_SERVICES; do
   ids=$(containers "$service")
   if [[ -z "$ids" ]]; then

@@ -206,8 +206,8 @@ files (the server needs that file too).
   server itself can still reach the containers' addresses; the tunnel below relies on it.
 
 `scripts/check-metrics.sh` asks Prometheus from inside its container and exits 0 only when
-every target is UP, `EXPECTED_API_REPLICAS` (default 2) api replicas are discovered, and the
-three services publish nothing. Exit codes are those of the sticky check.
+every target is UP, `EXPECTED_API_REPLICAS` (default 2) api replicas are discovered, cAdvisor
+reports those containers, and the three services publish nothing. Exit codes are those of the sticky check.
 
 To look at Prometheus:
 
