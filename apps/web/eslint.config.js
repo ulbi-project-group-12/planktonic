@@ -29,7 +29,8 @@ export default [
         {
           patterns: [
             {
-              regex: '(^|/)shared/(api-mocks-node|lib/testing)(/|$)',
+              // The alias form and relative paths from inside shared/ (../api-mocks-node, ./testing).
+              regex: '(^|/)(api-mocks-node|lib/testing)(/|$)|^\\./testing(/|$)',
               message: 'Test-only module: import it from *.test.ts(x) files only.',
             },
           ],
