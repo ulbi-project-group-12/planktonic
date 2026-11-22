@@ -1,3 +1,6 @@
+import { WorkspaceSlug } from '@app/contracts';
+import { HttpResponse, http } from 'msw';
+import { z } from 'zod';
 import {
   getAuthRegisterMockHandler,
   getHealthLiveMockHandler,
@@ -5,6 +8,62 @@ import {
   getMessagesCreateMockHandler,
   getMessagesListMockHandler,
 } from '../api/generated/api.msw';
+
+/**
+ * Workspace requests and responses live here until UL-143 lands the real contracts and the
+ * OpenAPI schema gains the endpoints — then Orval regenerates the handlers and this block goes.
+ */
+const CreateWorkspaceRequest = z.object({
+  name: z.string().trim().min(1).max(80),
+  slug: WorkspaceSlug,
+});
+
+interface MockWorkspace {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+/** POST /api/workspaces + GET /api/workspaces over an in-memory list (per handler set). */
+function createWorkspaceHandlers() {
+  const workspaces = new Map<string, MockWorkspace>();
+
+  return [
+    http.get('*/api/workspaces', () => HttpResponse.json([...workspaces.values()])),
+    http.post('*/api/workspaces', async ({ request }) => {
+      const parsed = CreateWorkspaceRequest.safeParse(await request.json());
+      if (!parsed.success) {
+        return HttpResponse.json(
+          {
+            statusCode: 400,
+            message: 'Validation failed',
+            issues: parsed.error.issues.map((issue) => ({
+              path: issue.path.join('.'),
+              message: issue.message,
+            })),
+          },
+          { status: 400 },
+        );
+      }
+      const { name, slug } = parsed.data;
+      if (workspaces.has(slug)) {
+        // Same shape as the registration conflict (register.service.ts): issues carry the field.
+        return HttpResponse.json(
+          {
+            statusCode: 409,
+            message: `Workspace slug "${slug}" is already taken`,
+            error: 'Conflict',
+            issues: [{ path: 'slug', message: 'This slug is already taken' }],
+          },
+          { status: 409 },
+        );
+      }
+      const workspace: MockWorkspace = { id: crypto.randomUUID(), name, slug };
+      workspaces.set(slug, workspace);
+      return HttpResponse.json(workspace, { status: 201 });
+    }),
+  ];
+}
 
 /**
  * The default mock of every REST operation: Vitest, Storybook and the dev app (with
@@ -28,5 +87,6 @@ export function createApiHandlers() {
     getHealthReadyMockHandler(),
     getMessagesCreateMockHandler(),
     getMessagesListMockHandler(),
+    ...createWorkspaceHandlers(),
   ];
 }

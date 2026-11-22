@@ -52,3 +52,43 @@ it('generates message sequence numbers the contract accepts', async () => {
   const page = await messagesList('019a8f00-0000-7000-8000-000000000001');
   expect(page.messages.every((message) => MessageSeq.safeParse(message.seq).success)).toBe(true);
 });
+
+// Workspaces are mocked by hand until UL-143 adds the endpoints to the OpenAPI schema. The list
+// lives in memory for the whole test file (server.resetHandlers() does not empty it), so each
+// test below uses its own slug.
+function postWorkspace(body: unknown): Promise<Response> {
+  return fetch('http://api.example.invalid/api/workspaces', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+it('creates a workspace and returns it in the list', async () => {
+  const created = await postWorkspace({ name: '  Team One  ', slug: 'team-one' });
+  expect(created.status).toBe(201);
+  const workspace: unknown = await created.json();
+  expect(workspace).toMatchObject({ name: 'Team One', slug: 'team-one' });
+
+  const list = await fetch('http://api.example.invalid/api/workspaces');
+  expect(await list.json()).toContainEqual(workspace);
+});
+
+it('answers 409 with a slug issue when the slug is taken', async () => {
+  await postWorkspace({ name: 'Team Two', slug: 'team-two' });
+  const conflict = await postWorkspace({ name: 'Another name', slug: 'team-two' });
+
+  expect(conflict.status).toBe(409);
+  expect(await conflict.json()).toMatchObject({
+    statusCode: 409,
+    issues: [{ path: 'slug' }],
+  });
+});
+
+it('answers 400 with field issues for a slug the contract rejects', async () => {
+  for (const slug of ['Bad Slug', '-edge-', 'create']) {
+    const response = await postWorkspace({ name: 'Team', slug });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ statusCode: 400, issues: [{ path: 'slug' }] });
+  }
+});

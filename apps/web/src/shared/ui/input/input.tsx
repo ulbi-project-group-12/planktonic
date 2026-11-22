@@ -1,4 +1,4 @@
-import { useId, useRef } from 'react';
+import { useId } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
 import { CircleAlert, CircleCheck } from 'lucide-react';
 import { cn } from '@/shared/lib';
@@ -7,7 +7,7 @@ import { Label } from '@/shared/ui/label';
 const inputStatuses = ['default', 'error', 'success'] as const;
 type InputStatus = (typeof inputStatuses)[number];
 
-interface InputProps extends ComponentProps<'input'> {
+interface InputProps extends Omit<ComponentProps<'input'>, 'prefix'> {
   /** Label above the field, 13/700; automatically linked to the field via htmlFor. */
   label?: string;
   /** Hint under the field, 12 px muted; yields to message. */
@@ -18,6 +18,8 @@ interface InputProps extends ComponentProps<'input'> {
   message?: string;
   /** Icon on the left inside the field (e.g. search). */
   icon?: ReactNode;
+  /** Static text on the left inside the field (e.g. a domain prefix). */
+  prefix?: ReactNode;
   /** Units on the right inside the field (e.g. "days"). */
   suffix?: ReactNode;
 }
@@ -36,6 +38,7 @@ function Input({
   status: statusProp = 'default',
   message,
   icon,
+  prefix,
   suffix,
   id,
   disabled,
@@ -44,7 +47,6 @@ function Input({
 }: InputProps) {
   const autoId = useId();
   const inputId = id ?? autoId;
-  const inputRef = useRef<HTMLInputElement>(null);
   // An aria-invalid from outside (Field sets it on error) shows the error look too, so the
   // screen does not have to pass both Field's error and status="error".
   const invalid = props['aria-invalid'] === true || props['aria-invalid'] === 'true';
@@ -67,8 +69,11 @@ function Input({
         data-slot="input"
         data-status={status}
         onClick={(event) => {
-          // Clicking any part of the outline (padding, icons) focuses the field.
-          if (event.target !== inputRef.current) inputRef.current?.focus();
+          // Clicking any part of the outline (padding, icons, prefix) focuses the field. The field
+          // is looked up in the DOM, not through a ref of our own: a `ref` from the caller
+          // (react-hook-form's register) arrives in props and would replace it.
+          const field = event.currentTarget.querySelector('input');
+          if (event.target !== field) field?.focus();
         }}
         className={cn(
           'flex h-10 cursor-text items-center gap-2 rounded-button border border-line bg-surface px-3 transition-colors',
@@ -89,8 +94,10 @@ function Input({
             {icon}
           </span>
         ) : null}
+        {prefix ? (
+          <span className="shrink-0 text-body-s leading-5 text-fg-muted select-none">{prefix}</span>
+        ) : null}
         <input
-          ref={inputRef}
           id={inputId}
           disabled={disabled}
           aria-invalid={status === 'error' || undefined}

@@ -1,4 +1,6 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
 import { Input } from './input';
 
@@ -11,6 +13,23 @@ describe('Input', () => {
   it('links the label to the input', () => {
     render(<Input label="Название пространства" />);
     expect(screen.getByLabelText('Название пространства')).toBeInTheDocument();
+  });
+
+  it('renders a prefix before the value', () => {
+    render(<Input prefix="example.app/" defaultValue="hq" aria-label="Адрес" />);
+    expect(screen.getByText('example.app/')).toBeInTheDocument();
+    expect(screen.getByLabelText('Адрес')).toHaveValue('hq');
+  });
+
+  it('focuses the field on a prefix click and still hands the element to the caller ref', async () => {
+    // react-hook-form's register() passes a ref: it must not switch the click-to-focus off.
+    const ref = createRef<HTMLInputElement>();
+    render(<Input ref={ref} prefix="example.app/" aria-label="Адрес" />);
+
+    await userEvent.click(screen.getByText('example.app/'));
+
+    expect(screen.getByLabelText('Адрес')).toHaveFocus();
+    expect(ref.current).toBe(screen.getByLabelText('Адрес'));
   });
 
   it('shows an error message and error status', () => {
