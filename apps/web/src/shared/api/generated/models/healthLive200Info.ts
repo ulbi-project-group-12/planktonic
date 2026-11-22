@@ -5,4 +5,4 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type HealthLive200Info = { [key: string]: unknown };
+export type HealthLive200Info = { [key: string]: never };
