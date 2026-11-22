@@ -1,0 +1,71 @@
+# Prometheus for the production stack (UL-171). Mounted by compose.prod.observability.yml;
+# runbook: docs/prod-compose.md, "Metrics".
+#
+# COMPOSE_PROJECT_NAME below is a placeholder: Prometheus does not expand environment variables
+# in this file, so the container replaces it with the compose project name at start.
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+
+# The VPS disk is small: samples are dropped after 15 days or once the blocks reach 2 GB,
+# whichever comes first. The write-ahead log (about two hours of samples) comes on top.
+storage:
+  tsdb:
+    retention:
+      time: 15d
+      size: 2GB
+
+scrape_configs:
+  # One job for every container: Prometheus asks the Docker API for the containers of this
+  # compose project and scrapes those that carry the labels
+  #   prometheus.job=<job name>   prometheus.port=<port>   [prometheus.path=<path>]
+  # So a new replica or a new service needs no change here, only labels in the compose file.
+  # A container without `prometheus.port` (the api until UL-173) is discovered and dropped.
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+        # A container gets one target per network; the rules below pick the network.
+        match_first_network: false
+        filters:
+          - name: label
+            values:
+              - com.docker.compose.project=COMPOSE_PROJECT_NAME
+    relabel_configs:
+      # Only addresses on the two networks Prometheus is attached to.
+      - source_labels: [__meta_docker_network_name]
+        regex: COMPOSE_PROJECT_NAME_(metrics|exporters)
+        action: keep
+      # Prometheus itself sits on both; scrape it once.
+      - source_labels:
+          [__meta_docker_container_label_com_docker_compose_service, __meta_docker_network_name]
+        regex: prometheus;.+_exporters
+        action: drop
+      - source_labels: [__meta_docker_container_label_prometheus_port]
+        regex: \d+
+        action: keep
+      - source_labels: [__meta_docker_network_ip, __meta_docker_container_label_prometheus_port]
+        regex: (.+);(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - source_labels: [__meta_docker_container_label_prometheus_path]
+        regex: (/.*)
+        target_label: __metrics_path__
+      - source_labels: [__meta_docker_container_label_prometheus_job]
+        regex: (.+)
+        target_label: job
+      # `service` and `instance` are the two labels logs carry too (Alloy, UL-170): the compose
+      # service and the container name, e.g. service="api", instance="app-prod-api-2".
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label: service
+      - source_labels: [__meta_docker_container_name]
+        regex: /(.+)
+        target_label: instance
+    metric_relabel_configs:
+      # cAdvisor series describe other containers: `name` is the container, and the two compose
+      # labels get short names that do not collide with the target's own `service`.
+      - regex: container_label_com_docker_(compose_project|compose_service)
+        action: labelmap
+      - regex: container_label_com_docker_compose_.+
+        action: labeldrop
