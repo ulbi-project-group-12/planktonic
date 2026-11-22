@@ -64,6 +64,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
 failures=0
+max_time=10 # seconds per request
 pass() { echo "  ok    $1"; }
 fail() {
   echo "  FAIL  $1"
@@ -75,7 +76,7 @@ fail() {
 request() {
   local cookie="$1" path="$2"
   shift 2
-  local args=(--silent --show-error --max-time 10 --output "$work/body" --dump-header "$work/headers"
+  local args=(--silent --show-error --max-time "$max_time" --output "$work/body" --dump-header "$work/headers"
     --write-out '%{http_code}')
   if [[ -n "$cookie" ]]; then
     args+=(--cookie "${COOKIE_NAME}=${cookie}")
@@ -97,23 +98,28 @@ set_cookie_value() {
 
 echo "Sticky check against ${BASE_URL} (${REQUESTS} requests per step, ${EXPECTED_INSTANCES} replicas expected)"
 
-# Wait until the api answers and every replica has been seen, or WAIT_SECONDS pass. A stack that
-# never answers 200 is unreachable (exit 2); a missing replica is left for step 1 to report.
+# Wait until the api answers and every replica has been seen, or WAIT_SECONDS pass; with
+# WAIT_SECONDS=0 this is a single request. The deadline is checked before every request and also
+# caps that request's timeout. A stack that never answers 200 is unreachable (exit 2); a missing
+# replica is left for step 1 to report.
 deadline=$((SECONDS + WAIT_SECONDS))
+: > "$work/seen"
 while :; do
-  : > "$work/seen"
-  for ((i = 0; i < EXPECTED_INSTANCES * 4; i++)); do
-    status=$(request '' /api/health)
-    if [[ "$status" == 200 ]]; then
-      instance_id >> "$work/seen"
-    fi
-  done
+  remaining=$((deadline - SECONDS))
+  if [[ "$WAIT_SECONDS" -gt 0 && "$remaining" -lt "$max_time" ]]; then
+    max_time=$((remaining > 1 ? remaining : 1))
+  fi
+  status=$(request '' /api/health)
+  if [[ "$status" == 200 ]]; then
+    instance_id >> "$work/seen"
+  fi
   seen=$(sort -u "$work/seen" | grep -c . || true)
   if [[ "$seen" -ge "$EXPECTED_INSTANCES" || "$SECONDS" -ge "$deadline" ]]; then
     break
   fi
-  sleep 2
+  sleep 1
 done
+max_time=10
 if [[ "$seen" -eq 0 ]]; then
   echo "GET ${BASE_URL}/api/health answered ${status}, expected 200: $(cat "$work/error")" >&2
   exit 2

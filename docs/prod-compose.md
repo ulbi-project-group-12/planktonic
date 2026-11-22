@@ -132,16 +132,39 @@ docker compose -f compose.prod.yml pull &&
   `docker compose up -d` would otherwise go back to the tag in the file.
 - **`migrate` is a gate, so the steps are chained with `&&`.** It runs from the api image of the
   same tag, which ships the Prisma CLI, `prisma/schema` and `prisma/migrations`. If it fails,
-  nothing else has been touched and the previous api keeps serving.
+  the chain stops: the api containers have not been touched and the previous api keeps serving.
+  The database may be partly migrated, though; see "When a migration fails" below.
 - **Never deploy a new tag with a bare `up -d`.** Compose removes the old api containers before
   it runs `migrate`, so a failed migration there leaves no api running. The `depends_on` on
   `migrate` only orders a first start.
 - The api never migrates on start, so two replicas cannot race.
-- **Rollback** is the same steps with the previous tag. Migrations are expand/contract, so the
-  previous api still works on the newer schema.
+- **Rollback after a successful deploy** is the same steps with the previous tag. Migrations are
+  expand/contract, so the previous api still works on the newer schema, and `migrate` from the
+  older image finds nothing to apply.
 - `up -d` recreates both replicas at once. Updating them one at a time is UL-164's job; this
   file guarantees that Traefik routes only to a replica that is healthy (`/api/health` every 5 s,
   and a new container gets traffic after its first healthy probe).
+
+### When a migration fails
+
+Migrations that completed before the failing one stay applied, and Prisma records the failing
+one as failed. Until that record is settled every `prisma migrate deploy` stops with an error,
+from any tag, so switching back to the previous tag and repeating the chain does not work. The
+previous api is still running; do not run `up -d`. Then:
+
+1. Read the error (`run --rm migrate` prints it) and look at what the failed migration really
+   changed: its SQL may have been applied partly.
+2. Either undo those changes by hand and mark it rolled back, or finish them by hand and mark
+   it applied:
+
+   ```bash
+   docker compose -f compose.prod.yml run --rm migrate \
+     node_modules/.bin/prisma migrate resolve --rolled-back <migration_name>   # or --applied
+   ```
+
+3. Fix the migration in a new release if it was rolled back, then run the deploy chain again.
+
+Take a database backup before a release that carries a risky migration.
 
 ## Limits and health
 
