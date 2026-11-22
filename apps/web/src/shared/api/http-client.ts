@@ -41,7 +41,8 @@ function normalizeHeaders(input: HeadersInit | undefined): Headers {
 }
 
 export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}): Promise<T> {
-  if (!url.startsWith('/api/')) throw new TypeError('Expected a relative /api/ URL');
+  // Not a TypeError: that is what fetch throws for a network failure, and those are retried.
+  if (!url.startsWith('/api/')) throw new Error('Expected a relative /api/ URL');
 
   const headers = normalizeHeaders(options.headers);
   const accessToken = accessTokenProvider?.();

@@ -1,7 +1,8 @@
 'use client';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useState } from 'react';
+import { createQueryClient } from '@/shared/api';
 import { Button } from '@/shared/ui';
 
 export function ApiProviders({ children }: { children: ReactNode }) {
@@ -9,7 +10,7 @@ export function ApiProviders({ children }: { children: ReactNode }) {
   // REST request from the MSW mock set, so screens work without the api.
   const mocking =
     process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_API_MOCKING === 'true';
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => createQueryClient());
   const [mockState, setMockState] = useState<'starting' | 'ready' | 'failed'>('starting');
 
   useEffect(() => {

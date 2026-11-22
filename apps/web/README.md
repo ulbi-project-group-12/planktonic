@@ -24,9 +24,46 @@ What to import from where:
 | The Vitest MSW server                                       | `@/shared/api-mocks-node` (tests only)        |
 
 Hooks work in client components only: the client accepts relative `/api/…` URLs, which a server
-component cannot fetch. Hook errors are `unknown`; narrow them with `error instanceof ApiError`,
-then read `status` and `body`. `setAccessTokenProvider` is the one place that supplies the bearer
-token to every request.
+component cannot fetch.
+`setAccessTokenProvider` is the one place that supplies the bearer token to every request.
+
+### Errors
+
+Hook errors are `unknown`: the body is not validated and `fetch` can fail in other ways. Three
+helpers from `@/shared/api` cover what a screen needs:
+
+- `isApiError(error)`: the api answered with an HTTP error. Network failures and aborted requests
+  are not `ApiError`.
+- `hasApiStatus(error, 409)`: the api answered with exactly this status.
+- `getApiIssues(error)`: the api's `issues: [{ path, message }]`, or an empty list.
+
+A form shows each issue next to its field and keeps a general message for everything else. `path`
+is a plain string and is not always a field of the form: it can be `''`, `body` or nested
+(`items.0.name`), so check it before using it as a field name.
+
+```ts
+const fields = ['name', 'email', 'password', 'confirmPassword'] as const;
+const isField = (path: string): path is (typeof fields)[number] =>
+  (fields as readonly string[]).includes(path);
+
+function showServerError(error: unknown) {
+  const issues = getApiIssues(error);
+  const matched = issues.filter((issue) => isField(issue.path));
+  for (const { path, message } of matched) {
+    if (isField(path)) setFieldError(path, message);
+  }
+  // No issue belongs to a field: network failure, 5xx, or an issue for the whole request.
+  if (matched.length === 0) setFormError('Could not save. Try again.');
+}
+```
+
+### QueryClient
+
+Create it only with `createQueryClient()` from `@/shared/api`; ESLint rejects `new QueryClient`
+anywhere else. Queries get two more attempts after a network failure or a 5xx answer and none after
+a 4xx; mutations are never retried. Tests render through `renderWithApi(<Screen />)` from
+`@/shared/lib/testing`: a fresh client per test with retries off. That module and
+`@/shared/api-mocks-node` are test-only, and ESLint rejects them outside `*.test.ts(x)` files.
 
 ### Mocks
 

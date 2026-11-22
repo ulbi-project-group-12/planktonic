@@ -1,4 +1,3 @@
-import { QueryClient } from '@tanstack/react-query';
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import {
   getAuthRegisterMutationOptions,
@@ -7,6 +6,7 @@ import {
 } from './generated/api';
 import type { AuthRegisterBody } from './generated/models';
 import { ApiError, apiFetch, setAccessTokenProvider } from './http-client';
+import { createQueryClient } from './query-client';
 
 it('passes a relative URL, caller headers, signal and the provided bearer token to fetch', async () => {
   const fetcher = vi
@@ -91,7 +91,7 @@ describe('generated registration mutation', () => {
   function mutation(request?: Parameters<typeof apiFetch>[1]) {
     const { mutationFn } = getAuthRegisterMutationOptions({ request });
     if (!mutationFn) throw new Error('Expected a generated mutation function');
-    return mutationFn({ data }, { client: new QueryClient(), meta: undefined });
+    return mutationFn({ data }, { client: createQueryClient(), meta: undefined });
   }
 
   afterEach(() => vi.restoreAllMocks());
