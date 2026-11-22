@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@app/contracts": "workspace:*",
+    "@hookform/resolvers": "catalog:",
     "@tanstack/react-query": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
@@ -26,9 +27,11 @@
     "radix-ui": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-hook-form": "catalog:",
     "socket.io-client": "catalog:",
     "tailwind-merge": "catalog:",
     "tw-animate-css": "catalog:",
+    "zod": "catalog:",
     "zustand": "catalog:"
   },
   "devDependencies": {

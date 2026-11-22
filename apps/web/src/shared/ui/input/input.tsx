@@ -7,7 +7,7 @@ import { Label } from '@/shared/ui/label';
 const inputStatuses = ['default', 'error', 'success'] as const;
 type InputStatus = (typeof inputStatuses)[number];
 
-interface InputProps extends ComponentProps<'input'> {
+interface InputProps extends Omit<ComponentProps<'input'>, 'prefix'> {
   /** Label above the field, 13/700; automatically linked to the field via htmlFor. */
   label?: string;
   /** Hint under the field, 12 px muted; yields to message. */
@@ -18,6 +18,8 @@ interface InputProps extends ComponentProps<'input'> {
   message?: string;
   /** Icon on the left inside the field (e.g. search). */
   icon?: ReactNode;
+  /** Static text on the left inside the field (e.g. a domain prefix). */
+  prefix?: ReactNode;
   /** Units on the right inside the field (e.g. "days"). */
   suffix?: ReactNode;
 }
@@ -36,6 +38,7 @@ function Input({
   status: statusProp = 'default',
   message,
   icon,
+  prefix,
   suffix,
   id,
   disabled,
@@ -88,6 +91,9 @@ function Input({
           <span className="flex size-3.5 items-center justify-center text-fg-muted [&_svg]:size-3.5">
             {icon}
           </span>
+        ) : null}
+        {prefix ? (
+          <span className="shrink-0 text-body-s leading-5 text-fg-muted select-none">{prefix}</span>
         ) : null}
         <input
           ref={inputRef}

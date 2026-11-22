@@ -165,6 +165,33 @@ const numberRows: SpecRowConfig[] = [
       ),
     },
   },
+  {
+    name: 'С префиксом',
+    spec: 'текст слева, например домен',
+    cells: {
+      default: <Input prefix="example.app/" defaultValue="my-team" aria-label="Адрес" />,
+      error: (
+        <Input
+          prefix="example.app/"
+          defaultValue="my team"
+          status="error"
+          message="Недопустимые символы"
+          aria-label="Адрес с ошибкой"
+        />
+      ),
+      success: (
+        <Input
+          prefix="example.app/"
+          defaultValue="my-team"
+          status="success"
+          aria-label="Адрес, успех"
+        />
+      ),
+      disabled: (
+        <Input prefix="example.app/" defaultValue="my-team" disabled aria-label="Адрес отключен" />
+      ),
+    },
+  },
 ];
 
 const columns: { key: keyof SpecRowConfig['cells']; title: string; caption: string }[] = [

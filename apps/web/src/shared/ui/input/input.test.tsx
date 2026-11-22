@@ -13,6 +13,12 @@ describe('Input', () => {
     expect(screen.getByLabelText('Название пространства')).toBeInTheDocument();
   });
 
+  it('renders a prefix before the value', () => {
+    render(<Input prefix="example.app/" defaultValue="hq" aria-label="Адрес" />);
+    expect(screen.getByText('example.app/')).toBeInTheDocument();
+    expect(screen.getByLabelText('Адрес')).toHaveValue('hq');
+  });
+
   it('shows an error message and error status', () => {
     render(<Input label="Slug" defaultValue="hq" status="error" message="Slug уже занят" />);
     expect(screen.getByText('Slug уже занят')).toBeInTheDocument();
