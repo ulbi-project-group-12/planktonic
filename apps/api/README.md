@@ -335,7 +335,10 @@ emitted, and both clients receive `debug:ping` with that `instanceId`.
 `Dockerfile` builds from the repo root: a frozen pnpm install of `@app/api` and its workspace
 dependencies, `prisma generate`, `tsc`, then `pnpm deploy --prod`. The runtime stage holds `dist`,
 `package.json` and production `node_modules`, runs as uid 1000 and starts `node dist/main.js`. The
-Prisma CLI stays a dev dependency; Phase 4 decides how migrations run in production.
+Prisma CLI is a production dependency and the image also carries `prisma/schema`,
+`prisma/migrations` and `prisma.config.ts` (UL-162): in production the one-shot `migrate` service
+of `compose.prod.yml` runs `prisma migrate deploy` from this image
+([runbook](../../docs/prod-compose.md)). The api itself never migrates on start.
 
 The Docker API runs compiled code without hot reload. After API source changes, rebuild and
 recreate the replicas from the repo root:
@@ -344,5 +347,5 @@ recreate the replicas from the repo root:
 docker compose --profile realtime up -d --build api
 ```
 
-Compose does not apply migrations automatically. Run `pnpm db:migrate` separately from the
-host; the runtime image does not include the Prisma CLI.
+The dev compose (`compose.yaml`) does not apply migrations automatically: run `pnpm db:migrate`
+separately from the host.

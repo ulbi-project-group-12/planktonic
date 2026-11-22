@@ -1,0 +1,14 @@
+# Local override for compose.prod.yml: builds the two app images from this checkout under the
+# names the production file expects (app-web:local and app-api:local by default), so the stack
+# can be tried before any release exists. Servers never use this file: they pull release images.
+#
+#   docker compose --env-file .env.prod -f compose.prod.yml -f compose.prod.build.yml build
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile

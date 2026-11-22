@@ -7,8 +7,10 @@
 # younger than 14 days until 2026-11-19 and kept under the Phase 1 D-29 exception until then
 # (no older Node 26 image exists; re-check recorded in STATE.md).
 # Prisma: the generated client is compiled into dist, and @prisma/client, @prisma/adapter-pg and
-# pg ship as production dependencies. The Prisma CLI stays a devDependency and is not in the
-# runtime image; the Phase 4 migrate service decides how migrations run in production.
+# pg ship as production dependencies. So does the Prisma CLI (UL-162), with prisma/schema,
+# prisma/migrations, prisma.config.ts and the one source file that config imports (package.json
+# `files`): the one-shot `migrate` service of compose.prod.yml runs `prisma migrate deploy` from
+# this same image, so a release tag always carries its own migrations and no third image exists.
 
 # --- build: install the api's workspace graph, compile, then deploy prod deps to /out ---
 FROM node:26.13.0-alpine3.24@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS build
@@ -28,7 +30,8 @@ RUN pnpm install --frozen-lockfile --ignore-pnpmfile --filter "@app/api..."
 RUN pnpm --filter @app/contracts build
 RUN pnpm --filter @app/api generate
 RUN pnpm --filter @app/api build
-# Copies the package `files` (dist), package.json and production node_modules only.
+# Copies the package `files` (dist and the migration inputs), package.json and production
+# node_modules only.
 RUN pnpm --filter @app/api deploy --prod /out
 
 # --- runtime: dist + production dependencies, non-root ---

@@ -5,7 +5,11 @@
   "type": "module",
   "description": "NestJS 12 API (ESM)",
   "files": [
-    "dist"
+    "dist",
+    "prisma/schema",
+    "prisma/migrations",
+    "prisma.config.ts",
+    "src/core/config/env-file.ts"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -35,6 +39,7 @@
     "@socket.io/redis-streams-adapter": "catalog:",
     "argon2": "catalog:",
     "pg": "catalog:",
+    "prisma": "catalog:",
     "redis": "catalog:",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:",
@@ -48,7 +53,6 @@
     "@swc/core": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",
-    "prisma": "catalog:",
     "socket.io-client": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",

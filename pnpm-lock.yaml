@@ -445,6 +445,9 @@ importers:
       pg:
         specifier: 'catalog:'
         version: 8.23.1
+      prisma:
+        specifier: 'catalog:'
+        version: 7.10.1(@types/node@26.6.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3)
       redis:
         specifier: 'catalog:'
         version: 6.3.1
@@ -479,9 +482,6 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 10.13.0(jiti@2.7.0)
-      prisma:
-        specifier: 'catalog:'
-        version: 7.10.1(@types/node@26.6.5)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3)
       socket.io-client:
         specifier: 'catalog:'
         version: 4.8.4
