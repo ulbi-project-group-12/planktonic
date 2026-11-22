@@ -10,8 +10,8 @@
 #   2. Prometheus found EXPECTED_API_REPLICAS api containers by itself, through Docker service
 #      discovery on the `metrics` network. Until the api serves /metrics (UL-173) the replicas
 #      are discovered but not scraped; once they are targets, step 1 also requires them UP.
-#   3. cAdvisor reports containers, not only the host: it saw at least EXPECTED_API_REPLICAS
-#      api containers in the last minute. Its target is UP even when it cannot read the
+#   3. cAdvisor reports containers, not only the host: it has memory series for at least
+#      EXPECTED_API_REPLICAS api containers that it saw in the last minute. Its target is UP even when it cannot read the
 #      container runtime, so step 1 does not cover this.
 #   4. Prometheus and the exporters are not reachable from outside: no published port, no host
 #      network, no Traefik router.
@@ -87,7 +87,8 @@ fi
 #   N <count>                                  active targets in the response; the caller
 #                                              compares it with the number of T lines
 #   C <count>                                  api containers of the project that cAdvisor
-#                                              saw in the last minute (absent when none).
+#                                              has a memory series for and saw in the last
+#                                              minute (absent when none).
 #                                              cAdvisor timestamps its samples, so a series
 #                                              stays in query results for five minutes
 #                                              after its last sample; the value of
@@ -106,8 +107,9 @@ split "$dropped" |
   grep "\"__meta_docker_container_label_com_docker_compose_service\":\"api\"" |
   grep "\"__meta_docker_network_name\":\"$1_metrics\"" |
   sed -n "s/.*\"__meta_docker_container_name\":\"\/\([^\"]*\)\".*/A \1/p" | sort -u
+api="job=\"cadvisor\",compose_project=\"$1\",compose_service=\"api\""
 promtool query instant http://127.0.0.1:9090 \
-  "count(container_last_seen{job=\"cadvisor\",compose_project=\"$1\",compose_service=\"api\"} > time() - 60)" |
+  "count(container_memory_working_set_bytes{$api} and on (id) (container_last_seen{$api} > time() - 60))" |
   sed -n "s/^{} => \([0-9][0-9]*\) .*/C \1/p"
 '
 
@@ -123,7 +125,7 @@ snapshot() {
   sed -n 's/^C \([0-9][0-9]*\)$/\1/p' "$work/clean" > "$work/containers"
 }
 
-# api containers cAdvisor saw in the last minute; 0 when none.
+# api containers cAdvisor measured and saw in the last minute; 0 when none.
 cadvisor_containers() {
   local count
   count=$(head -n 1 "$work/containers")
