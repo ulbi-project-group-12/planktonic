@@ -11,7 +11,7 @@ interface GlobalErrorProps {
 
 export function GlobalError({ error, reset }: GlobalErrorProps) {
   return (
-    <html lang="en">
+    <html lang="ru">
       <body>
         <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center gap-4 p-8">
           <h1 className="text-body-xl font-bold">Что-то пошло не так</h1>
