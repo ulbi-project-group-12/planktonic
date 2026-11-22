@@ -1,33 +1,46 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { usePathname } from 'next/navigation';
-import { expect, it, vi } from 'vitest';
-import { startDemoApiMocks } from '@/shared/api';
+import { afterEach, expect, it, vi } from 'vitest';
+import { startApiMocks } from '@/shared/api-mocks';
 import { ApiProviders } from './api-providers';
 
-vi.mock('next/navigation', () => ({ usePathname: vi.fn() }));
-vi.mock('@/shared/api', () => ({ apiDemoMocksEnabled: true, startDemoApiMocks: vi.fn() }));
+vi.mock('@/shared/api-mocks', () => ({ startApiMocks: vi.fn() }));
 
-it('retries a failed demo startup and keeps the successful state across navigation', async () => {
-  const pathname = vi.mocked(usePathname);
-  const start = vi.mocked(startDemoApiMocks);
-  pathname.mockReturnValue('/api-demo');
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.mocked(startApiMocks).mockReset();
+});
+
+it('renders the page without starting mocks unless they are switched on in development', () => {
+  vi.stubEnv('NODE_ENV', 'production');
+  vi.stubEnv('NEXT_PUBLIC_API_MOCKING', 'true');
+  const first = render(<ApiProviders>Page content</ApiProviders>);
+  expect(screen.getByText('Page content')).toBeVisible();
+  first.unmount();
+
+  vi.stubEnv('NODE_ENV', 'development');
+  vi.stubEnv('NEXT_PUBLIC_API_MOCKING', '');
+  render(<ApiProviders>Page content</ApiProviders>);
+  expect(screen.getByText('Page content')).toBeVisible();
+  expect(startApiMocks).not.toHaveBeenCalled();
+});
+
+it('waits for the mocks on every page, retries a failed startup and starts them once', async () => {
+  vi.stubEnv('NODE_ENV', 'development');
+  vi.stubEnv('NEXT_PUBLIC_API_MOCKING', 'true');
+  const start = vi.mocked(startApiMocks);
   start.mockRejectedValueOnce(new Error('Temporary registration failure')).mockResolvedValueOnce();
   const user = userEvent.setup();
   const app = render(<ApiProviders>Page content</ApiProviders>);
 
-  expect(await screen.findByRole('alert')).toHaveTextContent('Could not start API mocks.');
   expect(screen.queryByText('Page content')).not.toBeInTheDocument();
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not start API mocks.');
   await user.click(screen.getByRole('button', { name: 'Retry' }));
 
   expect(await screen.findByText('Page content')).toBeVisible();
   expect(start).toHaveBeenCalledTimes(2);
 
-  pathname.mockReturnValue('/prototype');
-  app.rerender(<ApiProviders>Page content</ApiProviders>);
-  pathname.mockReturnValue('/api-demo');
-  app.rerender(<ApiProviders>Page content</ApiProviders>);
-
-  expect(screen.getByText('Page content')).toBeVisible();
+  app.rerender(<ApiProviders>Other page</ApiProviders>);
+  expect(screen.getByText('Other page')).toBeVisible();
   expect(start).toHaveBeenCalledTimes(2);
 });

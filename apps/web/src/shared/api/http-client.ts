@@ -10,9 +10,17 @@ export class ApiError extends Error {
   }
 }
 
-export interface ApiRequestOptions extends RequestInit {
-  /** Optional access token supplied by the caller from application memory. */
-  accessToken?: string;
+export type ApiRequestOptions = RequestInit;
+
+let accessTokenProvider: (() => string | undefined) | undefined;
+
+/**
+ * Registers the single source of the access token (kept in application memory by the auth
+ * code). Every request asks it and sends `Authorization: Bearer <token>` when it returns one.
+ * Pass `undefined` to remove it.
+ */
+export function setAccessTokenProvider(provider: (() => string | undefined) | undefined): void {
+  accessTokenProvider = provider;
 }
 
 // Orval supplies the documented error body as a type argument. HTTP bodies are
@@ -32,13 +40,11 @@ function normalizeHeaders(input: HeadersInit | undefined): Headers {
   return headers;
 }
 
-export async function apiFetch<T>(
-  url: string,
-  { accessToken, ...options }: ApiRequestOptions = {},
-): Promise<T> {
+export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}): Promise<T> {
   if (!url.startsWith('/api/')) throw new TypeError('Expected a relative /api/ URL');
 
   const headers = normalizeHeaders(options.headers);
+  const accessToken = accessTokenProvider?.();
   if (accessToken && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${accessToken}`);
   }

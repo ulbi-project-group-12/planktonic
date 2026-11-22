@@ -6,27 +6,46 @@ import {
   type useHealthReady,
 } from './generated/api';
 import type { AuthRegisterBody } from './generated/models';
-import { ApiError, apiFetch } from './http-client';
+import { ApiError, apiFetch, setAccessTokenProvider } from './http-client';
 
-it('passes a relative URL, caller headers, signal and in-memory bearer token to fetch', async () => {
+it('passes a relative URL, caller headers, signal and the provided bearer token to fetch', async () => {
   const fetcher = vi
     .spyOn(globalThis, 'fetch')
     .mockImplementationOnce(() => Promise.resolve(Response.json({ status: 'ok' })));
   const { signal } = new AbortController();
+  setAccessTokenProvider(() => 'demo-token');
 
   try {
     await expect(
-      apiFetch('/api/health', {
-        headers: { Accept: 'application/json' },
-        accessToken: 'demo-token',
-        signal,
-      }),
+      apiFetch('/api/health', { headers: { Accept: 'application/json' }, signal }),
     ).resolves.toEqual({ status: 'ok' });
     expect(fetcher).toHaveBeenCalledExactlyOnceWith('/api/health', {
       headers: new Headers({ Accept: 'application/json', Authorization: 'Bearer demo-token' }),
       signal,
     });
   } finally {
+    setAccessTokenProvider(undefined);
+    fetcher.mockRestore();
+  }
+});
+
+it('sends no Authorization header without a token and keeps a caller-supplied one', async () => {
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(() => Promise.resolve(Response.json({ status: 'ok' })));
+
+  try {
+    setAccessTokenProvider(() => undefined);
+    await apiFetch('/api/health');
+    expect(fetcher).toHaveBeenLastCalledWith('/api/health', { headers: new Headers() });
+
+    setAccessTokenProvider(() => 'demo-token');
+    await apiFetch('/api/health', { headers: { Authorization: 'Bearer caller' } });
+    expect(fetcher).toHaveBeenLastCalledWith('/api/health', {
+      headers: new Headers({ Authorization: 'Bearer caller' }),
+    });
+  } finally {
+    setAccessTokenProvider(undefined);
     fetcher.mockRestore();
   }
 });

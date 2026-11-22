@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { faker } from '@faker-js/faker';
 import { defineConfig } from 'orval';
 
 const checkDir = process.env.ORVAL_CHECK_DIR;
@@ -19,9 +20,19 @@ export default defineConfig({
       override: {
         mutator: { path: mutator, name: 'apiFetch' },
         fetch: { includeHttpResponseReturnType: false },
+        mock: {
+          properties: {
+            // The contract describes seq with an anchored pattern, and faker's fromRegExp keeps
+            // the anchors ("^2$"). Orval copies this function into the generated mocks.
+            seq: () =>
+              faker.string.numeric({ length: { min: 1, max: 6 }, allowLeadingZeros: false }),
+          },
+        },
       },
       mock: {
-        generators: [{ type: 'msw', delay: false }],
+        // generateEachHttpStatus adds a response factory and a handler per documented status,
+        // so tests and stories can mock 400, 404 and 409 without hand-written bodies.
+        generators: [{ type: 'msw', delay: false, generateEachHttpStatus: true }],
       },
     },
   },

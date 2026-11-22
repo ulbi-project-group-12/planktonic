@@ -1,39 +1,42 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { usePathname } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
-import { apiDemoMocksEnabled, startDemoApiMocks } from '@/shared/api';
 import { Button } from '@/shared/ui';
 
 export function ApiProviders({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  const needsDemoMocks = apiDemoMocksEnabled && pathname === '/api-demo';
+  // Opt-in and development only: `pnpm dev` with NEXT_PUBLIC_API_MOCKING=true serves every
+  // REST request from the MSW mock set, so screens work without the api.
+  const mocking =
+    process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_API_MOCKING === 'true';
   const [queryClient] = useState(() => new QueryClient());
   const [mockState, setMockState] = useState<'starting' | 'ready' | 'failed'>('starting');
 
   useEffect(() => {
-    if (!needsDemoMocks || mockState !== 'starting') return;
+    if (!mocking || mockState !== 'starting') return;
 
     let active = true;
-    void startDemoApiMocks().then(
-      () => {
-        if (active) setMockState('ready');
-      },
-      () => {
-        if (active) setMockState('failed');
-      },
-    );
+    // Loaded on demand: MSW and faker never reach a page that does not mock.
+    void import('@/shared/api-mocks')
+      .then(({ startApiMocks }) => startApiMocks())
+      .then(
+        () => {
+          if (active) setMockState('ready');
+        },
+        () => {
+          if (active) setMockState('failed');
+        },
+      );
     return () => {
       active = false;
     };
-  }, [needsDemoMocks, mockState]);
+  }, [mocking, mockState]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      {needsDemoMocks && mockState === 'starting' ? (
+      {mocking && mockState === 'starting' ? (
         <p role="status">Starting API mocks…</p>
-      ) : needsDemoMocks && mockState === 'failed' ? (
+      ) : mocking && mockState === 'failed' ? (
         <div>
           <p role="alert">Could not start API mocks.</p>
           <Button

@@ -1,12 +1,9 @@
 'use client';
 
-import { API_DEMO_MOCK_HEADER, apiDemoMocksEnabled, useHealthLive } from '@/shared/api';
+import { useHealthLive } from '@/shared/api';
 
 export function ApiDemoPage() {
-  const health = useHealthLive({
-    query: { retry: false },
-    request: apiDemoMocksEnabled ? { headers: { [API_DEMO_MOCK_HEADER]: 'true' } } : undefined,
-  });
+  const health = useHealthLive({ query: { retry: false } });
 
   return (
     <main className="mx-auto max-w-lg p-6">

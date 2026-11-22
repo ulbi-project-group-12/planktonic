@@ -1,15 +1,18 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll } from 'vitest';
-import { createApiHandlers } from './src/shared/api/mocks/handlers';
+import { faker } from '@faker-js/faker';
+import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
+import { server } from './src/shared/api-mocks-node';
 
-const server = setupServer(...createApiHandlers());
 beforeAll(() => {
   server.listen({ onUnhandledFrame: 'error' });
 });
 afterAll(() => {
   server.close();
+});
+// Generated mock data is the same in every run and does not depend on test order.
+beforeEach(() => {
+  faker.seed(1);
 });
 
 // jsdom не реализует Pointer Events полностью — radix (Toast и др.) зовёт hasPointerCapture.

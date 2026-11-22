@@ -11,12 +11,20 @@ import type { HttpResponseResolver, PathParams, RequestHandlerOptions } from 'ms
 
 import type {
   AuthRegister201,
+  AuthRegister400,
+  AuthRegister409,
   AuthRegisterBody,
   HealthLive200,
   HealthReady200,
+  HealthReady503,
   MessagesCreate201,
+  MessagesCreate400,
+  MessagesCreate404,
+  MessagesCreate409,
   MessagesCreateBody,
   MessagesList200,
+  MessagesList400,
+  MessagesList404,
 } from './models';
 
 export const getAuthRegisterResponseMock = (
@@ -28,7 +36,55 @@ export const getAuthRegisterResponseMock = (
   ...overrideResponse,
 });
 
+export const getAuthRegisterResponseMock201 = (
+  overrideResponse: Partial<Extract<AuthRegister201, object>> = {},
+): AuthRegister201 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  email: faker.internet.email(),
+  ...overrideResponse,
+});
+
+export const getAuthRegisterResponseMock400 = (
+  overrideResponse: Partial<Extract<AuthRegister400, object>> = {},
+): AuthRegister400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getAuthRegisterResponseMock409 = (
+  overrideResponse: Partial<Extract<AuthRegister409, object>> = {},
+): AuthRegister409 => ({
+  statusCode: faker.helpers.arrayElement([409] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.helpers.arrayElement(['email'] as const),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
 export const getHealthLiveResponseMock = (
+  overrideResponse: Partial<Extract<HealthLive200, object>> = {},
+): HealthLive200 => ({
+  status: faker.helpers.arrayElement(['ok'] as const),
+  info: {},
+  error: {},
+  details: {},
+  instanceId: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getHealthLiveResponseMock200 = (
   overrideResponse: Partial<Extract<HealthLive200, object>> = {},
 ): HealthLive200 => ({
   status: faker.helpers.arrayElement(['ok'] as const),
@@ -85,16 +141,153 @@ export const getHealthReadyResponseMock = (
   ...overrideResponse,
 });
 
+export const getHealthReadyResponseMock200 = (
+  overrideResponse: Partial<Extract<HealthReady200, object>> = {},
+): HealthReady200 => ({
+  status: faker.helpers.arrayElement([
+    faker.helpers.arrayElement(['ok', 'degraded'] as const),
+    undefined,
+  ]),
+  info: faker.helpers.arrayElement([
+    {
+      [faker.string.alphanumeric(5)]: {
+        status: faker.helpers.arrayElement(['up', 'degraded', 'down'] as const),
+        responseTime: faker.helpers.arrayElement([
+          faker.number.float({ fractionDigits: 2 }),
+          undefined,
+        ]),
+      },
+    },
+    null,
+  ]),
+  error: faker.helpers.arrayElement([
+    {
+      [faker.string.alphanumeric(5)]: {
+        status: faker.helpers.arrayElement(['up', 'degraded', 'down'] as const),
+        responseTime: faker.helpers.arrayElement([
+          faker.number.float({ fractionDigits: 2 }),
+          undefined,
+        ]),
+      },
+    },
+    null,
+  ]),
+  details: faker.helpers.arrayElement([
+    {
+      [faker.string.alphanumeric(5)]: {
+        status: faker.helpers.arrayElement(['up', 'degraded', 'down'] as const),
+        responseTime: faker.helpers.arrayElement([
+          faker.number.float({ fractionDigits: 2 }),
+          undefined,
+        ]),
+      },
+    },
+    undefined,
+  ]),
+  ...overrideResponse,
+});
+
+export const getHealthReadyResponseMock503 = (
+  overrideResponse: Partial<Extract<HealthReady503, object>> = {},
+): HealthReady503 => ({
+  status: faker.helpers.arrayElement([
+    faker.helpers.arrayElement(['error', 'shutting_down'] as const),
+    undefined,
+  ]),
+  info: faker.helpers.arrayElement([
+    {
+      [faker.string.alphanumeric(5)]: {
+        status: faker.helpers.arrayElement(['up', 'degraded', 'down'] as const),
+        responseTime: faker.helpers.arrayElement([
+          faker.number.float({ fractionDigits: 2 }),
+          undefined,
+        ]),
+      },
+    },
+    null,
+  ]),
+  error: faker.helpers.arrayElement([
+    {
+      [faker.string.alphanumeric(5)]: {
+        status: faker.helpers.arrayElement(['up', 'degraded', 'down'] as const),
+        responseTime: faker.helpers.arrayElement([
+          faker.number.float({ fractionDigits: 2 }),
+          undefined,
+        ]),
+      },
+    },
+    null,
+  ]),
+  details: faker.helpers.arrayElement([
+    {
+      [faker.string.alphanumeric(5)]: {
+        status: faker.helpers.arrayElement(['up', 'degraded', 'down'] as const),
+        responseTime: faker.helpers.arrayElement([
+          faker.number.float({ fractionDigits: 2 }),
+          undefined,
+        ]),
+      },
+    },
+    undefined,
+  ]),
+  ...overrideResponse,
+});
+
 export const getMessagesCreateResponseMock = (
   overrideResponse: Partial<Extract<MessagesCreate201, object>> = {},
 ): MessagesCreate201 => ({
   id: faker.string.uuid(),
-  seq: faker.helpers.fromRegExp('^[1-9][0-9]*$'),
+  seq: (() => faker.string.numeric({ length: { min: 1, max: 6 }, allowLeadingZeros: false }))(),
   channelId: faker.string.uuid(),
   authorId: faker.string.uuid(),
   clientMsgId: faker.string.uuid(),
   body: faker.string.alpha({ length: { min: 10, max: 20 } }),
   createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z',
+  ...overrideResponse,
+});
+
+export const getMessagesCreateResponseMock201 = (
+  overrideResponse: Partial<Extract<MessagesCreate201, object>> = {},
+): MessagesCreate201 => ({
+  id: faker.string.uuid(),
+  seq: (() => faker.string.numeric({ length: { min: 1, max: 6 }, allowLeadingZeros: false }))(),
+  channelId: faker.string.uuid(),
+  authorId: faker.string.uuid(),
+  clientMsgId: faker.string.uuid(),
+  body: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z',
+  ...overrideResponse,
+});
+
+export const getMessagesCreateResponseMock400 = (
+  overrideResponse: Partial<Extract<MessagesCreate400, object>> = {},
+): MessagesCreate400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getMessagesCreateResponseMock404 = (
+  overrideResponse: Partial<Extract<MessagesCreate404, object>> = {},
+): MessagesCreate404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getMessagesCreateResponseMock409 = (
+  overrideResponse: Partial<Extract<MessagesCreate409, object>> = {},
+): MessagesCreate409 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
   ...overrideResponse,
 });
 
@@ -104,7 +297,7 @@ export const getMessagesListResponseMock = (
   messages: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
     () => ({
       id: faker.string.uuid(),
-      seq: faker.helpers.fromRegExp('^[1-9][0-9]*$'),
+      seq: (() => faker.string.numeric({ length: { min: 1, max: 6 }, allowLeadingZeros: false }))(),
       channelId: faker.string.uuid(),
       authorId: faker.string.uuid(),
       clientMsgId: faker.string.uuid(),
@@ -113,6 +306,47 @@ export const getMessagesListResponseMock = (
     }),
   ),
   hasMore: faker.datatype.boolean(),
+  ...overrideResponse,
+});
+
+export const getMessagesListResponseMock200 = (
+  overrideResponse: Partial<Extract<MessagesList200, object>> = {},
+): MessagesList200 => ({
+  messages: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      id: faker.string.uuid(),
+      seq: (() => faker.string.numeric({ length: { min: 1, max: 6 }, allowLeadingZeros: false }))(),
+      channelId: faker.string.uuid(),
+      authorId: faker.string.uuid(),
+      clientMsgId: faker.string.uuid(),
+      body: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z',
+    }),
+  ),
+  hasMore: faker.datatype.boolean(),
+  ...overrideResponse,
+});
+
+export const getMessagesListResponseMock400 = (
+  overrideResponse: Partial<Extract<MessagesList400, object>> = {},
+): MessagesList400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getMessagesListResponseMock404 = (
+  overrideResponse: Partial<Extract<MessagesList404, object>> = {},
+): MessagesList404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
   ...overrideResponse,
 });
 
@@ -134,6 +368,78 @@ export const getAuthRegisterMockHandler = (
             : overrideResponse
           : getAuthRegisterResponseMock(),
         { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthRegisterMockHandler201 = (
+  overrideResponse?:
+    | AuthRegister201
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, AuthRegisterBody>>[0],
+      ) => Promise<AuthRegister201> | AuthRegister201),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, AuthRegisterBody>(
+    '*/api/auth/register',
+    async (info: Parameters<HttpResponseResolver<PathParams, AuthRegisterBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthRegisterResponseMock201(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthRegisterMockHandler400 = (
+  overrideResponse?:
+    | AuthRegister400
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, AuthRegisterBody>>[0],
+      ) => Promise<AuthRegister400> | AuthRegister400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, AuthRegisterBody>(
+    '*/api/auth/register',
+    async (info: Parameters<HttpResponseResolver<PathParams, AuthRegisterBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthRegisterResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthRegisterMockHandler409 = (
+  overrideResponse?:
+    | AuthRegister409
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, AuthRegisterBody>>[0],
+      ) => Promise<AuthRegister409> | AuthRegister409),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, AuthRegisterBody>(
+    '*/api/auth/register',
+    async (info: Parameters<HttpResponseResolver<PathParams, AuthRegisterBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthRegisterResponseMock409(),
+        { status: 409 },
       );
     },
     options,
@@ -162,6 +468,28 @@ export const getHealthLiveMockHandler = (
   );
 };
 
+export const getHealthLiveMockHandler200 = (
+  overrideResponse?:
+    | HealthLive200
+    | ((info: Parameters<HttpResponseResolver>[0]) => Promise<HealthLive200> | HealthLive200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    '*/api/health',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getHealthLiveResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getHealthReadyMockHandler = (
   overrideResponse?:
     | HealthReady200
@@ -178,6 +506,50 @@ export const getHealthReadyMockHandler = (
             : overrideResponse
           : getHealthReadyResponseMock(),
         { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getHealthReadyMockHandler200 = (
+  overrideResponse?:
+    | HealthReady200
+    | ((info: Parameters<HttpResponseResolver>[0]) => Promise<HealthReady200> | HealthReady200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    '*/api/health/ready',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getHealthReadyResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getHealthReadyMockHandler503 = (
+  overrideResponse?:
+    | HealthReady503
+    | ((info: Parameters<HttpResponseResolver>[0]) => Promise<HealthReady503> | HealthReady503),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    '*/api/health/ready',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getHealthReadyResponseMock503(),
+        { status: 503 },
       );
     },
     options,
@@ -210,6 +582,110 @@ export const getMessagesCreateMockHandler = (
   );
 };
 
+export const getMessagesCreateMockHandler201 = (
+  overrideResponse?:
+    | MessagesCreate201
+    | ((
+        info: Parameters<HttpResponseResolver<{ channelId: string }, MessagesCreateBody>>[0],
+      ) => Promise<MessagesCreate201> | MessagesCreate201),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ channelId: string }, MessagesCreateBody>(
+    '*/api/channels/:channelId/messages',
+    async (
+      info: Parameters<HttpResponseResolver<{ channelId: string }, MessagesCreateBody>>[0],
+    ) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMessagesCreateResponseMock201(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getMessagesCreateMockHandler400 = (
+  overrideResponse?:
+    | MessagesCreate400
+    | ((
+        info: Parameters<HttpResponseResolver<{ channelId: string }, MessagesCreateBody>>[0],
+      ) => Promise<MessagesCreate400> | MessagesCreate400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ channelId: string }, MessagesCreateBody>(
+    '*/api/channels/:channelId/messages',
+    async (
+      info: Parameters<HttpResponseResolver<{ channelId: string }, MessagesCreateBody>>[0],
+    ) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMessagesCreateResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getMessagesCreateMockHandler404 = (
+  overrideResponse?:
+    | MessagesCreate404
+    | ((
+        info: Parameters<HttpResponseResolver<{ channelId: string }, MessagesCreateBody>>[0],
+      ) => Promise<MessagesCreate404> | MessagesCreate404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ channelId: string }, MessagesCreateBody>(
+    '*/api/channels/:channelId/messages',
+    async (
+      info: Parameters<HttpResponseResolver<{ channelId: string }, MessagesCreateBody>>[0],
+    ) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMessagesCreateResponseMock404(),
+        { status: 404 },
+      );
+    },
+    options,
+  );
+};
+
+export const getMessagesCreateMockHandler409 = (
+  overrideResponse?:
+    | MessagesCreate409
+    | ((
+        info: Parameters<HttpResponseResolver<{ channelId: string }, MessagesCreateBody>>[0],
+      ) => Promise<MessagesCreate409> | MessagesCreate409),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ channelId: string }, MessagesCreateBody>(
+    '*/api/channels/:channelId/messages',
+    async (
+      info: Parameters<HttpResponseResolver<{ channelId: string }, MessagesCreateBody>>[0],
+    ) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMessagesCreateResponseMock409(),
+        { status: 409 },
+      );
+    },
+    options,
+  );
+};
+
 export const getMessagesListMockHandler = (
   overrideResponse?:
     | MessagesList200
@@ -228,6 +704,78 @@ export const getMessagesListMockHandler = (
             : overrideResponse
           : getMessagesListResponseMock(),
         { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getMessagesListMockHandler200 = (
+  overrideResponse?:
+    | MessagesList200
+    | ((
+        info: Parameters<HttpResponseResolver<{ channelId: string }>>[0],
+      ) => Promise<MessagesList200> | MessagesList200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ channelId: string }>(
+    '*/api/channels/:channelId/messages',
+    async (info: Parameters<HttpResponseResolver<{ channelId: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMessagesListResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getMessagesListMockHandler400 = (
+  overrideResponse?:
+    | MessagesList400
+    | ((
+        info: Parameters<HttpResponseResolver<{ channelId: string }>>[0],
+      ) => Promise<MessagesList400> | MessagesList400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ channelId: string }>(
+    '*/api/channels/:channelId/messages',
+    async (info: Parameters<HttpResponseResolver<{ channelId: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMessagesListResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getMessagesListMockHandler404 = (
+  overrideResponse?:
+    | MessagesList404
+    | ((
+        info: Parameters<HttpResponseResolver<{ channelId: string }>>[0],
+      ) => Promise<MessagesList404> | MessagesList404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ channelId: string }>(
+    '*/api/channels/:channelId/messages',
+    async (info: Parameters<HttpResponseResolver<{ channelId: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMessagesListResponseMock404(),
+        { status: 404 },
       );
     },
     options,

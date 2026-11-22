@@ -41,6 +41,13 @@ try {
         !expectedFiles.has(file) ||
         !readFileSync(join(current, file)).equals(readFileSync(join(expected, file))),
     );
+  // The checked-in browser worker must be the one the installed MSW ships.
+  const worker = 'apps/web/public/mockServiceWorker.js';
+  const installed = 'apps/web/node_modules/msw/lib/mockServiceWorker.js';
+  if (!readFileSync(join(root, worker)).equals(readFileSync(join(root, installed)))) {
+    console.error(`${worker} differs from the installed MSW. Refresh it (apps/web/README.md).`);
+    process.exitCode = 1;
+  }
   if (changes.length > 0) {
     console.error('Generated API drift. Run pnpm gen:api and review these paths:');
     for (const file of changes) console.error(file);

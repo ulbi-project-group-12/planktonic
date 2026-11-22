@@ -1,1 +1,4 @@
 * text=auto eol=lf
+# Orval output: collapsed in GitHub diffs, still linted, typechecked and drift-checked in CI.
+apps/web/src/shared/api/generated/** linguist-generated=true
+apps/web/public/mockServiceWorker.js linguist-vendored=true
