@@ -15,7 +15,8 @@ import { slugify } from '../model/slugify';
 /**
  * Create-workspace form, step 1 of the flow (mockup screen.ws.create1): name and address.
  * The slug is suggested from the name until the user edits the address field.
- * A 409 lands on the slug field; anything else shows a banner and keeps the entered values.
+ * A 409 lands on the slug field, field issues of a 400 land on their fields; a server error
+ * or a network failure shows a banner and keeps the entered values.
  */
 export function CreateWorkspaceForm() {
   const router = useRouter();
@@ -26,8 +27,9 @@ export function CreateWorkspaceForm() {
     handleSubmit,
     setValue,
     setError,
+    getValues,
     watch,
-    formState: { errors },
+    formState: { errors, isSubmitted },
   } = useForm<WorkspaceFormValues>({
     resolver: zodResolver(workspaceFormSchema),
     defaultValues: { name: '', slug: '' },
@@ -38,25 +40,56 @@ export function CreateWorkspaceForm() {
   const slugEditedRef = useRef(false);
   const name = watch('name');
   useEffect(() => {
-    if (!slugEditedRef.current) setValue('slug', slugify(name));
-  }, [name, setValue]);
+    if (slugEditedRef.current) return;
+    const suggestion = slugify(name);
+    // Only a new suggestion is written: the effect also runs when isSubmitted flips, and
+    // re-validating the same address then would wipe the "taken" error the server just sent.
+    if (getValues('slug') === suggestion) return;
+    // After the first submit the suggestion is validated like typed input, so an error that
+    // belongs to the previous address ("taken", "reserved") does not stay next to a new one.
+    setValue('slug', suggestion, { shouldValidate: isSubmitted });
+  }, [name, setValue, getValues, isSubmitted]);
+
+  // "Отмена" during a request: the workspace may still be created, but the user has already
+  // left for the list, so the answer must not pull them to another page.
+  const leftRef = useRef(false);
 
   const slugField = register('slug');
 
-  const onSubmit = handleSubmit(async (values) => {
-    setSubmitError(undefined);
-    try {
-      const workspace = await createWorkspace.mutateAsync(values);
-      router.push(routes.workspace(workspace.slug));
-    } catch (error) {
-      if (hasApiStatus(error, 409)) {
-        setError('slug', { message: 'Этот адрес уже занят — придумайте другой' });
-        return;
+  const onSubmit = handleSubmit(
+    async (values) => {
+      setSubmitError(undefined);
+      try {
+        const workspace = await createWorkspace.mutateAsync(values);
+        if (!leftRef.current) router.push(routes.workspace(workspace.slug));
+      } catch (error) {
+        if (leftRef.current) return;
+        if (hasApiStatus(error, 409)) {
+          // The fields stay editable during the request: "taken" is about the address that was
+          // sent, so it is not shown next to one the user has typed since.
+          if (getValues('slug') === values.slug) {
+            setError(
+              'slug',
+              { message: 'Этот адрес уже занят — придумайте другой' },
+              { shouldFocus: true },
+            );
+          }
+          return;
+        }
+        if (isApiError(error)) {
+          if (mapIssuesToFields(error, setError)) return;
+          // The api answered, so the connection is fine: do not send the user to check it.
+          setSubmitError('Сервер ответил ошибкой. Попробуйте ещё раз чуть позже.');
+          return;
+        }
+        setSubmitError('Проверьте подключение к сети и попробуйте ещё раз.');
       }
-      if (isApiError(error) && mapIssuesToFields(error, setError)) return;
-      setSubmitError('Проверьте подключение к сети и попробуйте ещё раз.');
-    }
-  });
+    },
+    () => {
+      // Invalid fields: the banner of the previous attempt no longer describes what is wrong.
+      setSubmitError(undefined);
+    },
+  );
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex w-full flex-col gap-5">
@@ -87,6 +120,7 @@ export function CreateWorkspaceForm() {
           type="button"
           variant="secondary"
           onClick={() => {
+            leftRef.current = true;
             router.push(routes.workspaces());
           }}
         >
