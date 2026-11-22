@@ -40,7 +40,7 @@ catalog:
   '@nestjs/terminus': 12.1.0
   '@nestjs/testing': 12.3.2
   '@nestjs/websockets': 12.3.2
-  '@next/eslint-plugin-next': 16.4.3
+  '@next/eslint-plugin-next': 16.4.5
   '@prisma/adapter-pg': 7.10.1
   '@prisma/client': 7.10.1
   '@socket.io/redis-streams-adapter': 0.3.1
@@ -68,7 +68,7 @@ catalog:
   lint-staged: 17.6.0
   lucide-react: 1.64.0
   msw: 3.0.4
-  next: 16.4.3
+  next: 16.4.5
   orval: 8.46.0
   pg: 8.23.1
   prettier: 3.9.10
