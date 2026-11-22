@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type UseFormSetError } from 'react-hook-form';
@@ -27,17 +27,21 @@ export function CreateWorkspaceForm() {
     setValue,
     setError,
     watch,
-    formState: { errors, dirtyFields },
+    formState: { errors },
   } = useForm<WorkspaceFormValues>({
     resolver: zodResolver(workspaceFormSchema),
     defaultValues: { name: '', slug: '' },
   });
 
+  // dirtyFields would do it wrong: a cleared slug equals the default again, so it flips back
+  // to "clean" and the suggestion would jump in. Once touched, the field is the user's.
+  const slugEditedRef = useRef(false);
   const name = watch('name');
-  const slugDirty = Boolean(dirtyFields.slug);
   useEffect(() => {
-    if (!slugDirty) setValue('slug', slugify(name));
-  }, [name, slugDirty, setValue]);
+    if (!slugEditedRef.current) setValue('slug', slugify(name));
+  }, [name, setValue]);
+
+  const slugField = register('slug');
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(undefined);
@@ -68,7 +72,15 @@ export function CreateWorkspaceForm() {
         hint="Адрес пространства — латиница, цифры и дефис"
         error={errors.slug?.message}
       >
-        <Input prefix={`${PRODUCT_SLUG}.app/`} placeholder="my-team" {...register('slug')} />
+        <Input
+          prefix={`${PRODUCT_SLUG}.app/`}
+          placeholder="my-team"
+          {...slugField}
+          onChange={(event) => {
+            slugEditedRef.current = true;
+            void slugField.onChange(event);
+          }}
+        />
       </Field>
       <div className="flex justify-end gap-3 pt-1">
         <Button

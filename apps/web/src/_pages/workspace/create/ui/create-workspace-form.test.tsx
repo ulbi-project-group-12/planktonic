@@ -53,6 +53,18 @@ describe('CreateWorkspaceForm', () => {
     expect(slug).toHaveValue('hq');
   });
 
+  it('does not bring the suggestion back after the address was fully cleared', async () => {
+    const user = userEvent.setup();
+    renderWithApi(<CreateWorkspaceForm />);
+
+    await user.type(screen.getByLabelText(/Название/), 'Команда маркетинга');
+    const slug = screen.getByLabelText(/Адрес/);
+    await user.clear(slug);
+    await user.type(screen.getByLabelText(/Название/), ' и продажи');
+
+    expect(slug).toHaveValue('');
+  });
+
   it('shows validation errors and does not submit', async () => {
     let posts = 0;
     server.use(
