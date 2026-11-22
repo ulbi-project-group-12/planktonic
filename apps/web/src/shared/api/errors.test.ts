@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getAuthRegisterMockHandler400, getAuthRegisterMockHandler409 } from '../api-mocks';
 import { server } from '../api-mocks-node';
-import { getApiIssues, isApiError } from './errors';
+import { getApiIssues, hasApiStatus, isApiError } from './errors';
 import { authRegister } from './generated/api';
 import { ApiError } from './http-client';
 
@@ -22,12 +22,9 @@ async function failure(request: Promise<unknown>): Promise<unknown> {
 }
 
 describe('isApiError', () => {
-  it('accepts an HTTP error and matches an optional status', () => {
-    const error = new ApiError(409, undefined);
-
-    expect(isApiError(error)).toBe(true);
-    expect(isApiError(error, 409)).toBe(true);
-    expect(isApiError(error, 400)).toBe(false);
+  it('accepts an HTTP error with any status', () => {
+    expect(isApiError(new ApiError(409, undefined))).toBe(true);
+    expect(isApiError(new ApiError(500, 'Bad gateway'))).toBe(true);
   });
 
   it('rejects network failures, aborts and foreign values', () => {
@@ -35,6 +32,24 @@ describe('isApiError', () => {
     expect(isApiError(new DOMException('Aborted', 'AbortError'))).toBe(false);
     expect(isApiError({ status: 400, body: {} })).toBe(false);
     expect(isApiError(undefined)).toBe(false);
+  });
+});
+
+describe('hasApiStatus', () => {
+  it('matches one status of an HTTP error and nothing else', () => {
+    const error: unknown = new ApiError(409, undefined);
+
+    expect(hasApiStatus(error, 409)).toBe(true);
+    expect(hasApiStatus(error, 400)).toBe(false);
+    expect(hasApiStatus(new TypeError('Failed to fetch'), 409)).toBe(false);
+  });
+
+  it('leaves an already narrowed error usable in the other branch', () => {
+    const error = new ApiError(400, undefined);
+
+    // A type predicate here would narrow `error` to never in the else branch.
+    const status = hasApiStatus(error, 409) ? 409 : error.status;
+    expect(status).toBe(400);
   });
 });
 
@@ -67,8 +82,14 @@ describe('getApiIssues', () => {
     );
 
     const error = await failure(authRegister(registration));
-    expect(isApiError(error, 409)).toBe(true);
+    expect(hasApiStatus(error, 409)).toBe(true);
     expect(getApiIssues(error)).toEqual([{ path: 'email', message: 'Email is taken' }]);
+  });
+
+  it('accepts issues with any status', () => {
+    const issues = [{ path: 'name', message: 'Reserved' }];
+
+    expect(getApiIssues(new ApiError(422, { issues }))).toEqual(issues);
   });
 
   it.each([

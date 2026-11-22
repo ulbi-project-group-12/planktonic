@@ -29,28 +29,41 @@ component cannot fetch.
 
 ### Errors
 
-Hook errors are `unknown`: the body is not validated and `fetch` can fail in other ways. Two helpers
-from `@/shared/api` cover what a screen needs:
+Hook errors are `unknown`: the body is not validated and `fetch` can fail in other ways. Three
+helpers from `@/shared/api` cover what a screen needs:
+
+- `isApiError(error)`: the api answered with an HTTP error. Network failures and aborted requests
+  are not `ApiError`.
+- `hasApiStatus(error, 409)`: the api answered with exactly this status.
+- `getApiIssues(error)`: the api's `issues: [{ path, message }]`, or an empty list.
+
+A form shows each issue next to its field and keeps a general message for everything else. `path`
+is a plain string and is not always a field of the form: it can be `''`, `body` or nested
+(`items.0.name`), so check it before using it as a field name.
 
 ```ts
-const register = useAuthRegister();
+const fields = ['name', 'email', 'password', 'confirmPassword'] as const;
+const isField = (path: string): path is (typeof fields)[number] =>
+  (fields as readonly string[]).includes(path);
 
-if (isApiError(register.error, 409)) {
-  // the api answered with this status; network failures and aborts are not ApiError
-}
-for (const { path, message } of getApiIssues(register.error)) {
-  form.setError(path, { message }); // issues: [{ path, message }] from 400 and 409
+function showServerError(error: unknown) {
+  const issues = getApiIssues(error);
+  const matched = issues.filter((issue) => isField(issue.path));
+  for (const { path, message } of matched) {
+    if (isField(path)) setFieldError(path, message);
+  }
+  // No issue belongs to a field: network failure, 5xx, or an issue for the whole request.
+  if (matched.length === 0) setFormError('Could not save. Try again.');
 }
 ```
 
-`getApiIssues` returns an empty list when the error has no field issues; show a general message
-then.
-
 ### QueryClient
 
-Create it only with `createQueryClient()` from `@/shared/api`. Queries are retried twice on network
-and 5xx errors and never on 4xx; mutations are never retried. Tests render through
-`renderWithApi(<Screen />)` from `@/shared/lib/testing`: a fresh client per test with retries off.
+Create it only with `createQueryClient()` from `@/shared/api`; ESLint rejects `new QueryClient`
+anywhere else. Queries get two more attempts after a network failure or a 5xx answer and none after
+a 4xx; mutations are never retried. Tests render through `renderWithApi(<Screen />)` from
+`@/shared/lib/testing`: a fresh client per test with retries off. That module and
+`@/shared/api-mocks-node` are test-only, and ESLint rejects them outside `*.test.ts(x)` files.
 
 ### Mocks
 
