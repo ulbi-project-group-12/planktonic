@@ -247,6 +247,8 @@ const manifests = [
   ...new Set(
     globs
       .flatMap((glob) => globSync(`${glob.replace(/\/+$/, '')}/package.json`))
+      // Windows globSync returns `\`-separated paths; messages and the checks use `/`.
+      .map((file) => file.replaceAll('\\', '/'))
       .filter((file) => !/(^|\/)node_modules\//.test(file)),
   ),
 ].sort((a, b) => (a === 'package.json' ? -1 : b === 'package.json' ? 1 : a.localeCompare(b)));
