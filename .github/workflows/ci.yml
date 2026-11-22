@@ -74,6 +74,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
+      - name: Check generated API files
+        run: pnpm check:api
       - run: pnpm turbo run build
 
   # api integration suite (UL-132) on real Postgres and Redis service containers. A required

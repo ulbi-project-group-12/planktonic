@@ -6,6 +6,63 @@ standalone server, which the multi-stage `Dockerfile` ships as a non-root image.
 
 Run it from the repo root with `pnpm dev` (README "Quick start"); it serves http://localhost:3000.
 
+## REST client and API mocks
+
+Run `pnpm gen:api` from the repo root after changing an API contract. Orval reads the exported
+OpenAPI document and writes the REST client, TanStack Query hooks, TypeScript models and MSW handlers
+to `src/shared/api/generated/`. Include those files in the same PR. `pnpm check:api` compares them
+with fresh output in a temporary directory, and compares `public/mockServiceWorker.js` with the
+installed MSW. CI and `pnpm check:all` run the same check.
+
+What to import from where:
+
+| Need                                                        | Import from                                   |
+| ----------------------------------------------------------- | --------------------------------------------- |
+| Hooks, query keys (`get…QueryKey`), `ApiError`, model types | `@/shared/api`                                |
+| Form and request validation (zod schemas)                   | `@app/contracts`                              |
+| Mock handlers and response factories, `startApiMocks`       | `@/shared/api-mocks` (tests and stories only) |
+| The Vitest MSW server                                       | `@/shared/api-mocks-node` (tests only)        |
+
+Hooks work in client components only: the client accepts relative `/api/…` URLs, which a server
+component cannot fetch. Hook errors are `unknown`; narrow them with `error instanceof ApiError`,
+then read `status` and `body`. `setAccessTokenProvider` is the one place that supplies the bearer
+token to every request.
+
+### Mocks
+
+`src/shared/api-mocks/handlers.ts` is the default mock of every operation. Vitest, Storybook and
+the dev app all start from it. Each operation also has a generated handler and response factory per
+documented status, for example `getAuthRegisterMockHandler409`.
+
+- **Dev app.** Work on a screen without the backend:
+
+  ```sh
+  NEXT_PUBLIC_API_MOCKING=true pnpm dev --filter=@app/web
+  ```
+
+  Every REST request on every page is then served by MSW, `/prototype` included; requests without
+  a handler go to the network. http://127.0.0.1:3000/api-demo shows status `ok` and instance
+  `msw-demo`. Without the variable, and in production builds, nothing is mocked.
+
+- **Vitest.** The server starts automatically and fails a test on an unhandled request. Replace a
+  response for one test; the override is dropped after the test:
+
+  ```ts
+  import { getAuthRegisterMockHandler409 } from '@/shared/api-mocks';
+  import { server } from '@/shared/api-mocks-node';
+
+  server.use(getAuthRegisterMockHandler409());
+  ```
+
+- **Storybook.** A story that calls the API starts the worker in a loader and may pass its own
+  handlers; see `src/_pages/api-demo/ui/api-demo-page.stories.tsx`.
+
+Generated data comes from faker with a fixed seed, so it is the same on every run.
+
+When updating MSW, refresh the checked-in browser worker with
+`pnpm --filter @app/web exec msw init public --no-save` and refresh `public/msw-LICENSE.txt`
+from the installed package's `LICENSE.md`. `pnpm check:api` fails until the worker matches.
+
 ## Layout
 
 ```

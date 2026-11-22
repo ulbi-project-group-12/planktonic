@@ -1,7 +1,19 @@
-import { useEffect } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import type { Decorator, Preview } from '@storybook/nextjs-vite';
 // Tailwind 4 + the design tokens: the same globals the root layout loads.
 import '../src/_app/styles/globals.css';
+
+const ApiDecorator: Decorator = (Story) => {
+  const [client] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+  );
+  return (
+    <QueryClientProvider client={client}>
+      <Story />
+    </QueryClientProvider>
+  );
+};
 
 /** Applies the toolbar theme to the whole canvas — portals (modal, dropdown, select,
  * tooltip) render into body, so the .dark class belongs on documentElement. */
@@ -51,7 +63,7 @@ const preview: Preview = {
   initialGlobals: {
     theme: 'light',
   },
-  decorators: [ThemeDecorator],
+  decorators: [ThemeDecorator, ApiDecorator],
 };
 
 export default preview;
