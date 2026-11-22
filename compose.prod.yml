@@ -5,6 +5,8 @@
 #   scripts/check-sticky.sh http://localhost:58180                   # waits, then sticky proof
 #   docker compose --env-file .env.prod -f compose.prod.yml down -v  # stop, drop volumes
 #
+# Metrics (Prometheus, node_exporter, cAdvisor) are an overlay: compose.prod.observability.yml.
+#
 # On the server the env file sits next to this file as `.env` (compose reads it by default), so
 # the commands lose `--env-file`. Only .env.prod.example is committed.
 #

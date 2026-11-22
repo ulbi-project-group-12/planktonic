@@ -1,0 +1,204 @@
+# Observability overlay for compose.prod.yml (UL-171): Prometheus, node_exporter and cAdvisor.
+# Runbook: docs/prod-compose.md, "Metrics".
+#
+#   docker compose --env-file .env.prod -f compose.prod.yml -f compose.prod.observability.yml up -d
+#   scripts/check-metrics.sh                 # every target UP, both api replicas discovered
+#
+# A separate file, so a small server can run the app without it, and so the services that read
+# the host (see each service) stay in one place. Loki, Alloy and Grafana (UL-170, UL-172) join
+# this file. Always pass both files once the overlay is in use: a `down` without it leaves these
+# containers running.
+#
+# - Nothing here publishes a port or has a Traefik router. Both networks are `internal`.
+# - Images follow the rule of compose.prod.yml: at least 14 days old, pinned by index digest.
+
+x-defaults: &defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '5'
+
+# A socket that is missing on the host stops `up` with an error; the short syntax would create
+# an empty directory in its place and the service would run without its data.
+x-docker-socket: &docker-socket
+  type: bind
+  source: /var/run/docker.sock
+  target: /var/run/docker.sock
+  read_only: true
+  bind:
+    create_host_path: false
+
+x-healthcheck: &healthcheck
+  interval: 10s
+  timeout: 5s
+  retries: 3
+  start_period: 10s
+
+services:
+  # Additions to services of compose.prod.yml: the network Prometheus scrapes them on and the
+  # labels that make a container a scrape target (infra/prometheus/prometheus.yml).
+  traefik:
+    networks:
+      - metrics
+    labels:
+      - prometheus.job=traefik
+      - prometheus.port=8082
+
+  api:
+    networks:
+      - metrics
+    # UL-173: once the api serves /metrics on its internal port, these two labels make every
+    # replica a target. Until then Prometheus discovers the replicas and does not scrape them.
+    # labels:
+    #   - prometheus.job=api
+    #   - prometheus.port=<internal metrics port>
+
+  prometheus:
+    <<: *defaults
+    image: prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06 # built 2026-11-05
+    # The config file names the compose project (the Docker discovery filter), and Prometheus
+    # does not expand variables in it, so the placeholder is filled in here. `exec` keeps
+    # Prometheus as PID 1. Retention lives in the config file. The query limits keep a heavy
+    # query from the `metrics` network from exhausting the memory limit.
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        set -eu
+        sed "s/COMPOSE_PROJECT_NAME/$${COMPOSE_PROJECT_NAME}/g" /etc/prometheus/prometheus.yml > /tmp/prometheus.yml
+        exec /bin/prometheus --config.file=/tmp/prometheus.yml --storage.tsdb.path=/prometheus \
+          --query.timeout=30s --query.max-concurrency=4 --query.max-samples=5000000
+    environment:
+      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+    # Host access: the Docker socket, to list this project's containers. Prometheus runs as
+    # `nobody`, so it needs the group that owns the socket. `:ro` does not restrict the Docker
+    # API; see "Known gaps" in the runbook.
+    group_add:
+      - '${DOCKER_GID:?set DOCKER_GID to the group id of /var/run/docker.sock}'
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - *docker-socket
+      - promdata:/prometheus
+    networks:
+      - metrics
+      - exporters
+    labels:
+      - prometheus.job=prometheus
+      - prometheus.port=9090
+    healthcheck:
+      <<: *healthcheck
+      # busybox wget ships in the image.
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:9090/-/ready']
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  # Host metrics: CPU, memory, disks, filesystems, load.
+  # Host access: the host's root filesystem, read-only (it includes /proc and /sys). Runs as
+  # `nobody` with no capabilities, so it reads only what any local user could. It stays off the
+  # host network, so nothing listens on the server's own address; the cost is that it cannot
+  # see the host's network interfaces, and those collectors are off.
+  node-exporter:
+    <<: *defaults
+    image: prom/node-exporter:v1.12.1@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0 # built 2026-07-14
+    command:
+      - --path.rootfs=/host
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.udev.data=/host/run/udev/data
+      - --no-collector.netdev
+      - --no-collector.netclass
+      - --no-collector.netstat
+      - --no-collector.sockstat
+      - --no-collector.arp
+      - --no-collector.conntrack
+    cap_drop:
+      - ALL
+    read_only: true
+    volumes:
+      # No `rslave`: Docker Desktop refuses it. A filesystem the host mounts later shows up after
+      # a restart of this container.
+      - /:/host:ro
+    networks:
+      - exporters
+    labels:
+      - prometheus.job=node
+      - prometheus.port=9100
+    healthcheck:
+      <<: *healthcheck
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:9100/']
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  # Container metrics: CPU, memory, network and disk I/O per container, and OOM kills. It
+  # reports every container on the host, not only this project's.
+  # Host access, all read-only: the root filesystem, /sys (cgroups), the kernel log (/dev/kmsg,
+  # for OOM events) and the Docker and containerd sockets (container names and labels). It runs
+  # as root, the image's default, with one capability, so it can read every root-owned file of
+  # the host; only Prometheus can reach it.
+  cadvisor:
+    <<: *defaults
+    image: ghcr.io/google/cadvisor:v0.60.6@sha256:b8e7d1093144fd088f425ff003d75a4aa405de075db78dae3bc563730b1bd07a # built 2026-09-18
+    command:
+      # Containers only (plus the root cgroup), not every system cgroup.
+      - --docker_only=true
+      - --housekeeping_interval=15s
+      # Of all container labels only these two become metric labels; no environment variables.
+      - --store_container_labels=false
+      - --whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service
+      # An explicit list: no per-CPU series, no process or TCP details, and no `app` (metrics
+      # endpoints that containers could declare through their own labels).
+      - --enable_metrics=cpu,memory,network,diskIO,oom_event,pressure
+    cap_drop:
+      - ALL
+    cap_add:
+      # To read /dev/kmsg.
+      - SYSLOG
+    read_only: true
+    volumes:
+      # /rootfs/proc gives the network counters of every container and of the host.
+      - /:/rootfs:ro
+      - /sys:/sys:ro
+      - *docker-socket
+      # Docker 29 keeps images in containerd; without this socket cAdvisor reports the host only.
+      - <<: *docker-socket
+        source: /run/containerd/containerd.sock
+        target: /run/containerd/containerd.sock
+    devices:
+      - /dev/kmsg:/dev/kmsg:r
+    networks:
+      - exporters
+    labels:
+      - prometheus.job=cadvisor
+      - prometheus.port=8080
+    healthcheck:
+      <<: *healthcheck
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/healthz']
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+networks:
+  # Prometheus and the app services it scrapes (Traefik, the api). `internal`: no route out.
+  metrics:
+    internal: true
+  # Prometheus and the two exporters that read the host. The api and Traefik are not on it, so
+  # a compromised app container cannot talk to them.
+  exporters:
+    internal: true
+
+volumes:
+  promdata:

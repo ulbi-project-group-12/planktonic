@@ -29,7 +29,7 @@ everything else goes to web. A request for any other host name gets 404.
 - **`data` network** is `internal`: containers on it have no route to or from the outside. The
   api joins both networks; Postgres, Redis and S3 join only `data`.
 - The api's future `/metrics` port (prom-client) must stay off the Traefik routers: Prometheus
-  (UL-171) scrapes it and Traefik's 8082 from inside the networks.
+  scrapes it and Traefik's 8082 from inside the networks (see "Metrics").
 - Traefik only reads containers of its own compose project (a constraint on the
   `com.docker.compose.project` label), so two stacks on one host never route to each other.
 
@@ -166,10 +166,79 @@ previous api is still running; do not run `up -d`. Then:
 
 Take a database backup before a release that carries a risky migration.
 
+## Metrics
+
+`compose.prod.observability.yml` is an overlay with Prometheus, node_exporter and cAdvisor
+(UL-171). It is a separate file, so a small server can run the app without it; Loki, Alloy and
+Grafana (UL-170, UL-172) will join it. Once it is in use, pass both files to every command:
+
+```bash
+docker compose --env-file .env.prod -f compose.prod.yml -f compose.prod.observability.yml up -d
+scripts/check-metrics.sh        # project name as the argument, default app-prod
+```
+
+It needs `DOCKER_GID` in the env file and `infra/prometheus/prometheus.yml` next to the compose
+files (the server needs that file too).
+
+| Target (`job`) | Service         | What it measures                                            |
+| -------------- | --------------- | ----------------------------------------------------------- |
+| `prometheus`   | `prometheus`    | Prometheus itself: scrapes, storage size.                   |
+| `node`         | `node-exporter` | The host: CPU, memory, disks, filesystems, load.            |
+| `cadvisor`     | `cadvisor`      | Every container: CPU, memory, network, disk I/O, OOM kills. |
+| `traefik`      | `traefik`       | Requests per router and service (entrypoint 8082).          |
+
+- **Discovery.** Prometheus lists this project's containers through the Docker API and scrapes
+  those labelled `prometheus.job` and `prometheus.port` (optionally `prometheus.path`). A new
+  replica is found within 15 s. The api replicas are found already but have no metrics port;
+  UL-173 adds the two labels to the `api` service in the overlay and every replica becomes a
+  target.
+- **Labels.** Every series has `service` (the compose service) and `instance` (the container
+  name, e.g. `app-prod-api-2`); logs will use the same two (UL-170). cAdvisor series name the
+  container they describe in `name`, `compose_service` and `compose_project`; a container
+  sets the last two itself, so trust `name`. cAdvisor timestamps its samples: a removed
+  container stays in query results for 5 more minutes.
+- **Retention.** 15 days or 2 GB, whichever comes first (`storage.tsdb.retention` in
+  `infra/prometheus/prometheus.yml`), in the volume `promdata`. Restart Prometheus after
+  editing the file.
+- **Not published.** No host port, no Traefik router. Prometheus, Traefik and the api share
+  the internal network `metrics`; the exporters sit with Prometheus on the internal network
+  `exporters`, out of the api's reach. Neither network has a route out. A process on the
+  server itself can still reach the containers' addresses; the tunnel below relies on it.
+
+`scripts/check-metrics.sh` asks Prometheus from inside its container and exits 0 only when
+every target is UP, `EXPECTED_API_REPLICAS` (default 2) api replicas are discovered, cAdvisor
+reports those containers, and the three services publish nothing. Exit codes are those of the sticky check.
+
+To look at Prometheus:
+
+```bash
+# One query, no port opened:
+docker exec app-prod-prometheus-1 promtool query instant http://127.0.0.1:9090 'up'
+
+# The web UI (Status > Target health) through an SSH tunnel to the container's address.
+# On the server, print the address:
+docker inspect app-prod-prometheus-1 \
+  --format '{{(index .NetworkSettings.Networks "app-prod_metrics").IPAddress}}'
+# On your machine, then open http://localhost:9090:
+ssh -N -L 9090:<address>:9090 <server>
+```
+
+Host access of the overlay, all mounts read-only:
+
+- **prometheus:** the Docker socket, to list containers. Runs as `nobody` in the socket's group.
+- **node-exporter:** the host's `/` (with `/proc` and `/sys`). Runs as `nobody` without
+  capabilities. It is not on the host network, so its network collectors are off; host traffic
+  per interface is in cAdvisor's `container_network_*{id="/"}`.
+- **cadvisor:** `/` (with `/proc` and `/var/lib/docker`), `/sys`, `/dev/kmsg`, and the Docker
+  and containerd sockets. Runs as root with one capability, `SYSLOG` (to read the kernel log),
+  so it can read every root-owned file of the host. Besides `/metrics` its port serves
+  cAdvisor's own UI and API; only Prometheus can reach it.
+
 ## Limits and health
 
 - Memory limits: api 512 MB per replica, web 512 MB, Postgres 1 GB, SeaweedFS 512 MB, Redis
-  384 MB, Traefik 256 MB. Raise them in the compose file when cAdvisor (UL-171) shows a need.
+  384 MB, Traefik 256 MB. Raise them in the compose file when cAdvisor shows a need. The
+  overlay adds Prometheus 384 MB, cAdvisor 128 MB and node_exporter 64 MB.
 - Container logs are capped at 5 × 10 MB per container.
 - Every long-running service has a healthcheck and `restart: unless-stopped`. An `unhealthy`
   status alone does not restart a container.
@@ -183,6 +252,12 @@ Take a database backup before a release that carries a risky migration.
   every container's environment and start containers. A socket proxy limited to read-only
   container and network queries closes this; no release of one was old enough for the 14-day
   rule when this file was written.
+- Prometheus and cAdvisor mount the Docker socket as well, and cAdvisor the containerd socket:
+  the same gap. They are not reachable from outside, and the api cannot reach cAdvisor. The
+  socket proxy would serve all three.
+- Prometheus has no authentication: anything on the `metrics` network (Traefik, the api) can
+  read every metric and the Docker labels of this project's containers, so never put a secret
+  in a label. Its admin API is off.
 - The api connects to Postgres as the role that owns the database (`POSTGRES_USER`, a superuser
   in this image). A separate non-superuser role for the api, with `migrate` keeping the owner,
   is a later hardening step.
