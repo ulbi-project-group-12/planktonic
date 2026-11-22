@@ -4,11 +4,11 @@ import { notFound } from 'next/navigation';
 import { Typography } from '@/shared/ui/typography';
 
 interface ChannelPageProps {
-  params: Promise<{ workspaceSlug: string; projectKey: string; channelId: string }>;
+  params: Promise<{ workspaceSlug: string; channelId: string }>;
 }
 
 export async function ChannelPage({ params }: ChannelPageProps) {
-  const { workspaceSlug, projectKey, channelId } = await params;
+  const { workspaceSlug, channelId } = await params;
 
   // A channel is addressed by uuid only; anything else is not a channel address.
   if (!ChannelId.safeParse(channelId).success) {
@@ -21,7 +21,7 @@ export async function ChannelPage({ params }: ChannelPageProps) {
         Скоро здесь будет страница канала {PRODUCT_DISPLAY_NAME}
       </Typography>
       <Typography as="p" color="text-secondary">
-        workspaceSlug = {workspaceSlug}, projectKey = {projectKey}, channelId = {channelId}
+        workspaceSlug = {workspaceSlug}, channelId = {channelId}
       </Typography>
     </main>
   );

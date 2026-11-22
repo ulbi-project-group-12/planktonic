@@ -14,7 +14,7 @@ const UUID = '0190f5a2-7c1e-7b3a-9f4d-2a6b8c1d0e5f';
 
 async function renderPage(channelId: string) {
   const element = await ChannelPage({
-    params: Promise.resolve({ workspaceSlug: 'my-team', projectKey: 'WEB', channelId }),
+    params: Promise.resolve({ workspaceSlug: 'my-team', channelId }),
   });
   return render(element);
 }

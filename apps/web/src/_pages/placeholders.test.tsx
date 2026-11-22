@@ -27,6 +27,6 @@ const pages = [
 describe('placeholder pages', () => {
   it.each(pages)('%s renders its stub heading', (_, Page) => {
     render(<Page />);
-    expect(screen.getByRole('heading', { name: /Скоро здесь будет/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Скоро здесь буд[еу]т/ })).toBeInTheDocument();
   });
 });

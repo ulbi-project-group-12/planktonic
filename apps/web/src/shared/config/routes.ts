@@ -1,18 +1,28 @@
 const ws = (slug: string) => `/workspaces/${slug}`;
 const project = (slug: string, key: string) => `${ws(slug)}/projects/${key}`;
+const withQuery = (path: string, query: Record<string, string | undefined>) => {
+  const params = new URLSearchParams();
+  for (const [name, value] of Object.entries(query)) {
+    if (value) params.set(name, value);
+  }
+  const search = params.toString();
+  return search ? `${path}?${search}` : path;
+};
 
+// Only addresses that exist in `app/`. Add a builder together with its route.
 export const routes = {
   // Public
   home: () => '/',
   prototype: () => '/prototype',
-  invite: (token: string) => `/invite/${token}`,
-  verifyEmail: () => '/verify-email',
+  invite: (token: string) => `/invite/${encodeURIComponent(token)}`,
+  /** Without a token: the "confirm your email" screen. With a token: the link page. */
+  verifyEmail: (token?: string) => withQuery('/verify-email', { token }),
 
   // Auth
   login: () => '/login',
   register: () => '/register',
   forgotPassword: () => '/forgot-password',
-  resetPassword: () => '/reset-password',
+  resetPassword: (token?: string) => withQuery('/reset-password', { token }),
 
   // Account
   profileSettings: () => '/settings/profile',
@@ -26,42 +36,17 @@ export const routes = {
   workspace: (slug: string) => ws(slug),
   workspaceMembers: (slug: string) => `${ws(slug)}/members`,
   workspaceSettings: (slug: string) => `${ws(slug)}/settings`,
-  workspaceMessages: (slug: string) => `${ws(slug)}/messages`,
-  conversation: (slug: string, conversationId: string) => `${ws(slug)}/messages/${conversationId}`,
-  workspaceSaved: (slug: string) => `${ws(slug)}/saved`,
-  workspaceMyWork: (slug: string) => `${ws(slug)}/my-work`,
-  workspaceNotifications: (slug: string) => `${ws(slug)}/notifications`,
-  workspaceActivity: (slug: string) => `${ws(slug)}/activity`,
-  workspaceSearch: (slug: string) => `${ws(slug)}/search`,
 
   // Projects
   projectCreate: (slug: string) => `${ws(slug)}/projects/create`,
   project: (slug: string, key: string) => project(slug, key),
   projectMembers: (slug: string, key: string) => `${project(slug, key)}/members`,
-  projectSettings: (slug: string, key: string) => `${project(slug, key)}/settings`,
-  projectSettingsGithub: (slug: string, key: string) => `${project(slug, key)}/settings/github`,
-  projectBoard: (slug: string, key: string) => `${project(slug, key)}/board`,
-  projectTasks: (slug: string, key: string) => `${project(slug, key)}/tasks`,
-  task: (slug: string, key: string, taskNumber: number) =>
-    `${project(slug, key)}/tasks/${String(taskNumber)}`,
-  projectStandups: (slug: string, key: string) => `${project(slug, key)}/standups`,
-  standupDay: (slug: string, key: string, date: string) => `${project(slug, key)}/standups/${date}`,
-  projectDecisions: (slug: string, key: string) => `${project(slug, key)}/decisions`,
-  decision: (slug: string, key: string, decisionId: string) =>
-    `${project(slug, key)}/decisions/${decisionId}`,
 
-  // Channels
+  // Channels: a channel belongs to the workspace (ADR-0003), so its address has no project key.
   channelCreate: (slug: string, key: string) => `${project(slug, key)}/channels/create`,
-  channel: (
-    slug: string,
-    key: string,
-    channelId: string,
-    opts?: { message?: string; thread?: string },
-  ) => {
-    const params = new URLSearchParams();
-    if (opts?.message) params.set('message', opts.message);
-    if (opts?.thread) params.set('thread', opts.thread);
-    const query = params.toString();
-    return `${project(slug, key)}/channels/${channelId}${query ? `?${query}` : ''}`;
-  },
+  channel: (slug: string, channelId: string, opts?: { message?: string; thread?: string }) =>
+    withQuery(`${ws(slug)}/channels/${channelId}`, {
+      message: opts?.message,
+      thread: opts?.thread,
+    }),
 } as const;
