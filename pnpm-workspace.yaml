@@ -69,7 +69,7 @@ catalog:
   lucide-react: 1.64.0
   msw: 3.0.4
   next: 16.4.5
-  orval: 8.46.0
+  orval: 8.47.0
   pg: 8.23.1
   prettier: 3.9.10
   prisma: 7.10.1

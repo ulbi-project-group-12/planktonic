@@ -139,9 +139,7 @@ export type AuthRegisterMutationBody = AuthRegisterBody;
 export type AuthRegisterMutationError = ErrorType<AuthRegister400 | AuthRegister409>;
 export type AuthRegisterMutationVariables = { data: AuthRegisterBody };
 
-/**
- * @summary Register a user
- */
+/** @summary Register a user */
 export const useAuthRegister = <
   TError = ErrorType<AuthRegister400 | AuthRegister409>,
   TContext = unknown,
@@ -252,7 +250,6 @@ export function useHealthLive<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
 export function useHealthLive<
   TData = Awaited<ReturnType<typeof healthLive>>,
   TError = ErrorType<unknown>,
@@ -359,7 +356,6 @@ export function useHealthReady<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
 export function useHealthReady<
   TData = Awaited<ReturnType<typeof healthReady>>,
   TError = ErrorType<HealthReady503>,
@@ -597,7 +593,6 @@ export function useMessagesList<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
 export function useMessagesList<
   TData = Awaited<ReturnType<typeof messagesList>>,
   TError = ErrorType<MessagesList400 | MessagesList404>,
