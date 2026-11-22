@@ -1,0 +1,227 @@
+import { screen, waitFor } from '@testing-library/react';
+import userEvent, { type UserEvent } from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { server } from '@/shared/api-mocks-node';
+import { renderWithApi } from '@/shared/lib/testing';
+import { RegisterForm } from './register-form';
+
+const push = vi.fn();
+
+// Radix renders a hidden native checkbox inside a <form> and sizes it with ResizeObserver,
+// which jsdom lacks.
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+);
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push }),
+}));
+
+const PASSWORD = 'correct-horse-battery';
+
+async function fill(user: UserEvent, overrides: Partial<Record<string, string>> = {}) {
+  const values = {
+    name: 'Ada',
+    email: 'ada@example.com',
+    password: PASSWORD,
+    confirm: PASSWORD,
+    terms: 'yes',
+    ...overrides,
+  };
+  if (values.name) await user.type(screen.getByLabelText(/Имя/), values.name);
+  if (values.email) await user.type(screen.getByLabelText(/Email/), values.email);
+  if (values.password) await user.type(screen.getByLabelText(/^Пароль/), values.password);
+  if (values.confirm) await user.type(screen.getByLabelText(/Повторите пароль/), values.confirm);
+  if (values.terms !== 'no') await user.click(screen.getByRole('checkbox', { name: /условиями/ }));
+}
+
+const submit = () => screen.getByRole('button', { name: 'Создать аккаунт' });
+
+describe('RegisterForm', () => {
+  beforeEach(() => {
+    push.mockClear();
+  });
+
+  it('registers and goes to the login screen', async () => {
+    let posted: unknown;
+    server.use(
+      http.post('*/api/auth/register', async ({ request }) => {
+        posted = await request.json();
+        return HttpResponse.json(
+          { id: '0190a8a4-0000-7000-8000-000000000000', name: 'Ada', email: 'ada@example.com' },
+          { status: 201 },
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<RegisterForm />);
+
+    await fill(user);
+    await user.click(submit());
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith('/login');
+    });
+    expect(posted).toEqual({
+      name: 'Ada',
+      email: 'ada@example.com',
+      password: PASSWORD,
+      confirmPassword: PASSWORD,
+    });
+  });
+
+  it('validates with the contract schema and does not submit', async () => {
+    let posts = 0;
+    server.use(
+      http.post('*/api/auth/register', () => {
+        posts += 1;
+        return HttpResponse.json({}, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<RegisterForm />);
+
+    await fill(user, { name: 'A', email: 'not-an-email', password: 'short', confirm: 'other' });
+    await user.click(submit());
+
+    expect(await screen.findByText('Имя — от 2 до 15 символов')).toBeVisible();
+    expect(screen.getByText('Введите корректный email')).toBeVisible();
+    expect(screen.getByText('Пароль — не короче 12 символов')).toBeVisible();
+    expect(screen.getByText('Пароли не совпадают')).toBeVisible();
+    expect(posts).toBe(0);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('does not submit until the terms are accepted', async () => {
+    let posts = 0;
+    server.use(
+      http.post('*/api/auth/register', () => {
+        posts += 1;
+        return HttpResponse.json({}, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<RegisterForm />);
+
+    await fill(user, { terms: 'no' });
+    await user.click(submit());
+
+    expect(await screen.findByText('Нужно согласие с условиями использования')).toBeVisible();
+    expect(posts).toBe(0);
+
+    await user.click(screen.getByRole('checkbox', { name: /условиями/ }));
+    expect(screen.queryByText('Нужно согласие с условиями использования')).not.toBeInTheDocument();
+  });
+
+  it('shows "email taken" on the email field and focuses it', async () => {
+    server.use(
+      http.post('*/api/auth/register', () =>
+        HttpResponse.json(
+          {
+            statusCode: 409,
+            message: 'Email is already registered',
+            error: 'Conflict',
+            issues: [{ path: 'email', message: 'Email is already registered' }],
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<RegisterForm />);
+
+    await fill(user);
+    await user.click(submit());
+
+    expect(await screen.findByText(/Этот email уже зарегистрирован/)).toBeVisible();
+    expect(screen.getByLabelText(/Email/)).toHaveFocus();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('puts a weak-password issue of a 400 next to the password field', async () => {
+    server.use(
+      http.post('*/api/auth/register', () =>
+        HttpResponse.json(
+          {
+            statusCode: 400,
+            message: 'Validation failed',
+            issues: [{ path: 'password', message: 'Пароль слишком простой' }],
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<RegisterForm />);
+
+    await fill(user);
+    await user.click(submit());
+
+    expect(await screen.findByText('Пароль слишком простой')).toBeVisible();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('does not blame the network when the server answers with an error', async () => {
+    server.use(
+      http.post('*/api/auth/register', () =>
+        HttpResponse.json({ statusCode: 500, message: 'Internal server error' }, { status: 500 }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<RegisterForm />);
+
+    await fill(user);
+    await user.click(submit());
+
+    const banner = await screen.findByRole('alert');
+    expect(banner).toHaveTextContent('Сервер ответил ошибкой');
+    expect(banner).not.toHaveTextContent('подключение к сети');
+  });
+
+  it('shows a banner on a network error and keeps the entered values', async () => {
+    server.use(http.post('*/api/auth/register', () => HttpResponse.error()));
+    const user = userEvent.setup();
+    renderWithApi(<RegisterForm />);
+
+    await fill(user);
+    await user.click(submit());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось зарегистрироваться');
+    expect(screen.getByLabelText(/Email/)).toHaveValue('ada@example.com');
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('disables the submit while the request is in flight', async () => {
+    let release: () => void = () => {};
+    server.use(
+      http.post('*/api/auth/register', async () => {
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return HttpResponse.json(
+          { id: '0190a8a4-0000-7000-8000-000000000000', name: 'Ada', email: 'ada@example.com' },
+          { status: 201 },
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<RegisterForm />);
+
+    await fill(user);
+    await user.click(submit());
+
+    await waitFor(() => {
+      expect(submit()).toBeDisabled();
+    });
+    release();
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith('/login');
+    });
+  });
+});
