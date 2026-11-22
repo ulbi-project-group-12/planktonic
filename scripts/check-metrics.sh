@@ -10,8 +10,8 @@
 #   2. Prometheus found EXPECTED_API_REPLICAS api containers by itself, through Docker service
 #      discovery on the `metrics` network. Until the api serves /metrics (UL-173) the replicas
 #      are discovered but not scraped; once they are targets, step 1 also requires them UP.
-#   3. cAdvisor reports containers, not only the host: it has memory series for at least
-#      EXPECTED_API_REPLICAS api containers. Its target is UP even when it cannot read the
+#   3. cAdvisor reports containers, not only the host: it saw at least EXPECTED_API_REPLICAS
+#      api containers in the last minute. Its target is UP even when it cannot read the
 #      container runtime, so step 1 does not cover this.
 #   4. Prometheus and the exporters are not reachable from outside: no published port, no host
 #      network, no Traefik router.
@@ -87,7 +87,11 @@ fi
 #   N <count>                                  active targets in the response; the caller
 #                                              compares it with the number of T lines
 #   C <count>                                  api containers of the project that cAdvisor
-#                                              has memory series for (absent when none)
+#                                              saw in the last minute (absent when none).
+#                                              cAdvisor timestamps its samples, so a series
+#                                              stays in query results for five minutes
+#                                              after its last sample; the value of
+#                                              container_last_seen tells the two apart.
 # The API returns compact JSON with sorted label names, which the patterns rely on.
 # shellcheck disable=SC2016
 remote='
@@ -103,7 +107,7 @@ split "$dropped" |
   grep "\"__meta_docker_network_name\":\"$1_metrics\"" |
   sed -n "s/.*\"__meta_docker_container_name\":\"\/\([^\"]*\)\".*/A \1/p" | sort -u
 promtool query instant http://127.0.0.1:9090 \
-  "count(container_memory_working_set_bytes{job=\"cadvisor\",compose_project=\"$1\",compose_service=\"api\"})" |
+  "count(container_last_seen{job=\"cadvisor\",compose_project=\"$1\",compose_service=\"api\"} > time() - 60)" |
   sed -n "s/^{} => \([0-9][0-9]*\) .*/C \1/p"
 '
 
@@ -119,7 +123,7 @@ snapshot() {
   sed -n 's/^C \([0-9][0-9]*\)$/\1/p' "$work/clean" > "$work/containers"
 }
 
-# api containers cAdvisor has series for; 0 when it has none.
+# api containers cAdvisor saw in the last minute; 0 when none.
 cadvisor_containers() {
   local count
   count=$(head -n 1 "$work/containers")
@@ -197,7 +201,7 @@ else
 fi
 
 # --- 3. cAdvisor reports containers ---
-# "At least": a replaced container stays in query results for five more minutes.
+# "At least": a replica that was just replaced or scaled away counts for one more minute.
 echo "3. Container metrics"
 reported=$(cadvisor_containers)
 if [[ "$reported" -ge "$EXPECTED_API_REPLICAS" ]]; then
