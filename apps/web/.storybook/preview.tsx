@@ -1,13 +1,12 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import type { Decorator, Preview } from '@storybook/nextjs-vite';
 // Tailwind 4 + the design tokens: the same globals the root layout loads.
 import '../src/_app/styles/globals.css';
+import { createQueryClient } from '../src/shared/api';
 
 const ApiDecorator: Decorator = (Story) => {
-  const [client] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
-  );
+  const [client] = useState(() => createQueryClient({ retry: false }));
   return (
     <QueryClientProvider client={client}>
       <Story />

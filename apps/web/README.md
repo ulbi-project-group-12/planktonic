@@ -24,9 +24,33 @@ What to import from where:
 | The Vitest MSW server                                       | `@/shared/api-mocks-node` (tests only)        |
 
 Hooks work in client components only: the client accepts relative `/api/…` URLs, which a server
-component cannot fetch. Hook errors are `unknown`; narrow them with `error instanceof ApiError`,
-then read `status` and `body`. `setAccessTokenProvider` is the one place that supplies the bearer
-token to every request.
+component cannot fetch.
+`setAccessTokenProvider` is the one place that supplies the bearer token to every request.
+
+### Errors
+
+Hook errors are `unknown`: the body is not validated and `fetch` can fail in other ways. Two helpers
+from `@/shared/api` cover what a screen needs:
+
+```ts
+const register = useAuthRegister();
+
+if (isApiError(register.error, 409)) {
+  // the api answered with this status; network failures and aborts are not ApiError
+}
+for (const { path, message } of getApiIssues(register.error)) {
+  form.setError(path, { message }); // issues: [{ path, message }] from 400 and 409
+}
+```
+
+`getApiIssues` returns an empty list when the error has no field issues; show a general message
+then.
+
+### QueryClient
+
+Create it only with `createQueryClient()` from `@/shared/api`. Queries are retried twice on network
+and 5xx errors and never on 4xx; mutations are never retried. Tests render through
+`renderWithApi(<Screen />)` from `@/shared/lib/testing`: a fresh client per test with retries off.
 
 ### Mocks
 
