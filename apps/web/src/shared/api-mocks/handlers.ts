@@ -29,8 +29,8 @@ function createWorkspaceHandlers() {
   const workspaces = new Map<string, MockWorkspace>();
 
   return [
-    http.get('/api/workspaces', () => HttpResponse.json([...workspaces.values()])),
-    http.post('/api/workspaces', async ({ request }) => {
+    http.get('*/api/workspaces', () => HttpResponse.json([...workspaces.values()])),
+    http.post('*/api/workspaces', async ({ request }) => {
       const parsed = CreateWorkspaceRequest.safeParse(await request.json());
       if (!parsed.success) {
         return HttpResponse.json(
