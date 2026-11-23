@@ -3,11 +3,17 @@ import { expect, it } from 'vitest';
 import { API_PREFIX } from '../../../app.setup.js';
 import { createOpenApiDocument } from '../../../core/openapi/swagger.setup.js';
 import { AuthModule } from '../auth.module.js';
+import { AuthRepository } from '../auth.repository.js';
+import { LoginRepository } from '../login/login.repository.js';
 import { RegisterRepository } from './register.repository.js';
 
 it('documents the registration request and current responses', async () => {
   const moduleRef = await Test.createTestingModule({ imports: [AuthModule] })
     .overrideProvider(RegisterRepository)
+    .useValue({})
+    .overrideProvider(LoginRepository)
+    .useValue({})
+    .overrideProvider(AuthRepository)
     .useValue({})
     .compile();
   const app = moduleRef.createNestApplication({ logger: false });

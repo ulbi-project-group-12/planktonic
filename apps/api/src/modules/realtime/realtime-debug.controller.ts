@@ -1,5 +1,6 @@
 import { Controller, HttpCode, NotFoundException, Post } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
+import { Public } from '../auth/decorators/public.decorator.js';
 import { type DebugPing, RealtimeService } from './realtime.service.js';
 
 /**
@@ -13,6 +14,7 @@ export class RealtimeDebugController {
   constructor(private readonly realtime: RealtimeService) {}
 
   @Post('ping')
+  @Public()
   @HttpCode(202)
   ping(): DebugPing {
     const payload = this.realtime.emitDebugPing();

@@ -2,6 +2,7 @@ import { HealthResponse } from '@app/contracts';
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck } from '@nestjs/terminus';
 import { ApiZodResponse } from '../../core/openapi/zod-decorators.js';
+import { Public } from '../auth/decorators/public.decorator.js';
 import { HealthService } from './health.service.js';
 
 /**
@@ -13,6 +14,7 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
+  @Public()
   @HealthCheck({ noCache: true, swaggerDocumentation: false })
   @ApiZodResponse(200, 'API is alive', HealthResponse)
   live() {
@@ -20,6 +22,7 @@ export class HealthController {
   }
 
   @Get('ready')
+  @Public()
   @HealthCheck()
   ready() {
     return this.healthService.ready();

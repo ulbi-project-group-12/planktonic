@@ -10,6 +10,13 @@ import { HttpResponse, http } from 'msw';
 import type { HttpResponseResolver, PathParams, RequestHandlerOptions } from 'msw';
 
 import type {
+  AuthLogin200,
+  AuthLogin400,
+  AuthLogin401,
+  AuthLogin503,
+  AuthLoginBody,
+  AuthMe200,
+  AuthMe401,
   AuthRegister201,
   AuthRegister400,
   AuthRegister409,
@@ -70,6 +77,78 @@ export const getAuthRegisterResponseMock409 = (
       message: faker.string.alpha({ length: { min: 10, max: 20 } }),
     }),
   ),
+  ...overrideResponse,
+});
+
+export const getAuthLoginResponseMock = (
+  overrideResponse: Partial<Extract<AuthLogin200, object>> = {},
+): AuthLogin200 => ({
+  accessToken: faker.string.alpha({ length: { min: 1, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getAuthLoginResponseMock200 = (
+  overrideResponse: Partial<Extract<AuthLogin200, object>> = {},
+): AuthLogin200 => ({
+  accessToken: faker.string.alpha({ length: { min: 1, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getAuthLoginResponseMock400 = (
+  overrideResponse: Partial<Extract<AuthLogin400, object>> = {},
+): AuthLogin400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getAuthLoginResponseMock401 = (
+  overrideResponse: Partial<Extract<AuthLogin401, object>> = {},
+): AuthLogin401 => ({
+  statusCode: faker.helpers.arrayElement([401] as const),
+  message: faker.helpers.arrayElement(['Invalid email or password'] as const),
+  error: faker.helpers.arrayElement(['Unauthorized'] as const),
+  ...overrideResponse,
+});
+
+export const getAuthLoginResponseMock503 = (
+  overrideResponse: Partial<Extract<AuthLogin503, object>> = {},
+): AuthLogin503 => ({
+  statusCode: faker.helpers.arrayElement([503] as const),
+  message: faker.helpers.arrayElement(['Login is unavailable'] as const),
+  error: faker.helpers.arrayElement(['Service Unavailable'] as const),
+  ...overrideResponse,
+});
+
+export const getAuthMeResponseMock = (
+  overrideResponse: Partial<Extract<AuthMe200, object>> = {},
+): AuthMe200 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  email: faker.internet.email(),
+  ...overrideResponse,
+});
+
+export const getAuthMeResponseMock200 = (
+  overrideResponse: Partial<Extract<AuthMe200, object>> = {},
+): AuthMe200 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  email: faker.internet.email(),
+  ...overrideResponse,
+});
+
+export const getAuthMeResponseMock401 = (
+  overrideResponse: Partial<Extract<AuthMe401, object>> = {},
+): AuthMe401 => ({
+  statusCode: faker.helpers.arrayElement([401] as const),
+  message: faker.helpers.arrayElement(['Unauthorized'] as const),
   ...overrideResponse,
 });
 
@@ -446,6 +525,189 @@ export const getAuthRegisterMockHandler409 = (
   );
 };
 
+export const getAuthLoginMockHandler = (
+  overrideResponse?:
+    | AuthLogin200
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, AuthLoginBody>>[0],
+      ) => Promise<AuthLogin200> | AuthLogin200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, AuthLoginBody>(
+    '*/api/auth/login',
+    async (info: Parameters<HttpResponseResolver<PathParams, AuthLoginBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthLoginResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthLoginMockHandler200 = (
+  overrideResponse?:
+    | AuthLogin200
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, AuthLoginBody>>[0],
+      ) => Promise<AuthLogin200> | AuthLogin200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, AuthLoginBody>(
+    '*/api/auth/login',
+    async (info: Parameters<HttpResponseResolver<PathParams, AuthLoginBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthLoginResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthLoginMockHandler400 = (
+  overrideResponse?:
+    | AuthLogin400
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, AuthLoginBody>>[0],
+      ) => Promise<AuthLogin400> | AuthLogin400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, AuthLoginBody>(
+    '*/api/auth/login',
+    async (info: Parameters<HttpResponseResolver<PathParams, AuthLoginBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthLoginResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthLoginMockHandler401 = (
+  overrideResponse?:
+    | AuthLogin401
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, AuthLoginBody>>[0],
+      ) => Promise<AuthLogin401> | AuthLogin401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, AuthLoginBody>(
+    '*/api/auth/login',
+    async (info: Parameters<HttpResponseResolver<PathParams, AuthLoginBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthLoginResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthLoginMockHandler503 = (
+  overrideResponse?:
+    | AuthLogin503
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, AuthLoginBody>>[0],
+      ) => Promise<AuthLogin503> | AuthLogin503),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, AuthLoginBody>(
+    '*/api/auth/login',
+    async (info: Parameters<HttpResponseResolver<PathParams, AuthLoginBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthLoginResponseMock503(),
+        { status: 503 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthMeMockHandler = (
+  overrideResponse?:
+    AuthMe200 | ((info: Parameters<HttpResponseResolver>[0]) => Promise<AuthMe200> | AuthMe200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    '*/api/auth/me',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthMeResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthMeMockHandler200 = (
+  overrideResponse?:
+    AuthMe200 | ((info: Parameters<HttpResponseResolver>[0]) => Promise<AuthMe200> | AuthMe200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    '*/api/auth/me',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthMeResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthMeMockHandler401 = (
+  overrideResponse?:
+    AuthMe401 | ((info: Parameters<HttpResponseResolver>[0]) => Promise<AuthMe401> | AuthMe401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    '*/api/auth/me',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthMeResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
 export const getHealthLiveMockHandler = (
   overrideResponse?:
     | HealthLive200
@@ -783,6 +1045,8 @@ export const getMessagesListMockHandler404 = (
 };
 export const getApiMock = () => [
   getAuthRegisterMockHandler(),
+  getAuthLoginMockHandler(),
+  getAuthMeMockHandler(),
   getHealthLiveMockHandler(),
   getHealthReadyMockHandler(),
   getMessagesCreateMockHandler(),
