@@ -1,6 +1,6 @@
 // `pnpm openapi:export [path]`: writes the API's OpenAPI document (default `apps/api/dist/openapi.json`).
-// `OPENAPI_EXPORT_PATH` overrides the path: used by check-generated-api.mjs, where argv would
-// pass through cmd.exe and get `%VAR%`-expanded.
+// Without the argument, `OPENAPI_EXPORT_PATH` sets the path: check-generated-api.mjs uses it,
+// because on Windows its argv would pass through cmd.exe and get `%VAR%`-expanded.
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,7 +15,7 @@ Object.assign(process.env, {
   REALTIME_DEBUG: 'false',
 });
 
-const explicitPath = process.env.OPENAPI_EXPORT_PATH ?? process.argv[2];
+const explicitPath = process.argv[2] ?? process.env.OPENAPI_EXPORT_PATH;
 const outputPath = explicitPath
   ? resolve(explicitPath)
   : fileURLToPath(new URL('openapi.json', import.meta.url));
