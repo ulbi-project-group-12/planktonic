@@ -48,7 +48,7 @@ describe('MobileNavDrawer', () => {
     renderWithApi(<MobileNavDrawer open onOpenChange={onOpenChange} />);
 
     await user.click(await screen.findByRole('button', { name: /Выберите пространство/ }));
-    await user.click(screen.getByRole('menuitem', { name: /Alpha Mobile/ }));
+    await user.click(await screen.findByRole('menuitem', { name: /Alpha Mobile/ }));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
