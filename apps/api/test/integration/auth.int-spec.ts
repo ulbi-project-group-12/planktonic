@@ -70,7 +70,9 @@ describe('registration against PostgreSQL', () => {
 });
 
 it('signs in a registered user across API instances with a case-insensitive email', async () => {
-  expect((await register(request.email)).status).toBe(201);
+  const registration = await register(request.email);
+  expect(registration.status).toBe(201);
+  const user = RegisterResponseSchema.parse(await registration.json());
 
   const response = await fetch(`${await stand.apps[1]!.getUrl()}/api/auth/login`, {
     method: 'POST',
@@ -79,7 +81,13 @@ it('signs in a registered user across API instances with a case-insensitive emai
   });
 
   expect(response.status).toBe(200);
-  expect(LoginResponseSchema.parse(await response.json()).accessToken).toBeTruthy();
+  const { accessToken } = LoginResponseSchema.parse(await response.json());
+
+  const me = await fetch(`${await stand.apps[0]!.getUrl()}/api/auth/me`, {
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+  expect(me.status).toBe(200);
+  expect(await me.json()).toEqual(user);
 });
 
 it('returns the authenticated profile and rejects the token after account deactivation', async () => {
