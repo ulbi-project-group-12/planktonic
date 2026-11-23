@@ -22,6 +22,12 @@ afterAll(async () => {
   await app.close();
 });
 
+it.each(['GET', 'POST'])('requires authentication for %s on the messages route', async (method) => {
+  const channelId = '019a8f00-0000-7000-8000-000000000004';
+  const response = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, { method });
+  expect(response.status).toBe(401);
+});
+
 describe('health endpoints without a database', () => {
   it('GET /api/health returns 200 with status ok and instanceId', async () => {
     const response = await fetch(`${baseUrl}/api/health`);

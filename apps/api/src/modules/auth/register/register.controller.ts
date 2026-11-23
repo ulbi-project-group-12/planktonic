@@ -9,6 +9,7 @@ import {
   ValidationErrorResponse,
 } from '@app/contracts';
 import { ApiZodResponse } from '../../../core/openapi/zod-decorators.js';
+import { Public } from '../decorators/public.decorator.js';
 import { RegisterService } from './register.service.js';
 
 @Controller('auth')
@@ -16,6 +17,7 @@ export class RegisterController {
   constructor(private readonly registerService: RegisterService) {}
 
   @Post('register')
+  @Public()
   @ApiOperation({ summary: 'Register a user', operationId: 'Auth_register' })
   @ApiZodResponse(201, 'User registered', RegisterResponseSchema)
   @ApiZodResponse(400, 'Invalid registration fields', ValidationErrorResponse)

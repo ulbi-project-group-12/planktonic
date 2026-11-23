@@ -19,6 +19,7 @@ export const envSchema = z.object({
   DATABASE_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^postgres(ql)?$/ })),
   // Required: Socket.IO crosses replicas through the Redis Streams adapter.
   REDIS_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^rediss?$/ })),
+  JWT_ACCESS_SECRET: z.preprocess(emptyAsUnset, z.string().trim().min(32).optional()),
   // Opt-in diagnostic room and `POST /api/debug/realtime/ping` for the two-replica stand. Always
   // on under NODE_ENV=test; deployments leave it unset.
   REALTIME_DEBUG: z.preprocess(
