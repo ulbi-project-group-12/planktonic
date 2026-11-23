@@ -16,3 +16,8 @@ export async function signIn(credentials: LoginRequest): Promise<void> {
   setAccessTokenProvider(() => sessionStore.getState().accessToken);
   sessionStore.setState({ accessToken });
 }
+
+/** Forgets the access token. The caller drops cached API data and leaves the closed pages. */
+export function signOut(): void {
+  sessionStore.setState({ accessToken: undefined });
+}

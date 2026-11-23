@@ -44,6 +44,30 @@ describe('routes', () => {
     );
   });
 
+  it('carries the return address to the login screen', () => {
+    expect(routes.login()).toBe('/login');
+    expect(routes.login('/workspaces/my-team?tab=1')).toBe(
+      '/login?next=%2Fworkspaces%2Fmy-team%3Ftab%3D1',
+    );
+  });
+
+  it('returns to an in-app address after login', () => {
+    expect(routes.afterLogin('/workspaces/my-team?tab=1')).toBe('/workspaces/my-team?tab=1');
+  });
+
+  it.each([
+    undefined,
+    null,
+    '',
+    'https://evil.example',
+    '//evil.example',
+    '/\\evil.example',
+    'workspaces',
+    '/login?next=%2Flogin',
+  ])('falls back to the workspace list after login for %j', (next) => {
+    expect(routes.afterLogin(next)).toBe('/workspaces');
+  });
+
   it('never writes "undefined" into a query string', () => {
     expect(routes.channel('my-team', 'c1', {})).not.toContain('undefined');
   });

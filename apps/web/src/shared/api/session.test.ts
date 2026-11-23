@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { authMe } from './generated/api';
 import { setAccessTokenProvider } from './http-client';
-import { sessionStore, signIn } from './session';
+import { sessionStore, signIn, signOut } from './session';
 
 const credentials = { email: 'ada@example.com', password: 'example-passphrase' };
 
@@ -32,6 +32,20 @@ it('passes the token from login to the next API request', async () => {
       headers: new Headers({ Authorization: 'Bearer test-access-token' }),
     }),
   );
+});
+
+it('stops sending the token after sign-out', async () => {
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'test-access-token' }))
+    .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+
+  await signIn(credentials);
+  signOut();
+  await expect(authMe()).rejects.toMatchObject({ status: 401 });
+
+  expect(sessionStore.getState().accessToken).toBeUndefined();
+  expect(new Headers(fetcher.mock.calls[1]?.[1]?.headers).has('Authorization')).toBe(false);
 });
 
 it('keeps the session empty when login is rejected', async () => {

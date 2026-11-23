@@ -19,7 +19,15 @@ export const routes = {
   verifyEmail: (token?: string) => withQuery('/verify-email', { token }),
 
   // Auth
-  login: () => '/login',
+  /** `next`: the in-app address to return to after signing in (see `afterLogin`). */
+  login: (next?: string) => withQuery('/login', { next }),
+  /**
+   * Where the login form goes after a successful sign-in: `next` from the query when it is an
+   * address of this app, the workspace list otherwise. An absolute or protocol-relative URL is
+   * never followed, so a crafted link cannot send a signed-in user to another site.
+   */
+  afterLogin: (next?: string | null) =>
+    next && /^\/(?![/\\])/.test(next) && !next.startsWith('/login') ? next : '/workspaces',
   register: () => '/register',
   forgotPassword: () => '/forgot-password',
   resetPassword: (token?: string) => withQuery('/reset-password', { token }),
