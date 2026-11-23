@@ -13,7 +13,7 @@ const documentOptions: SwaggerDocumentOptions = {
 export function createOpenApiDocument(app: INestApplication) {
   return SwaggerModule.createDocument(
     app,
-    new DocumentBuilder().setTitle('API').build(),
+    new DocumentBuilder().setTitle('API').addBearerAuth().build(),
     documentOptions,
   );
 }

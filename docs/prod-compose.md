@@ -38,7 +38,7 @@ everything else goes to web. A request for any other host name gets 404.
 Prerequisites: Docker with Compose v5.7.0 and a free port 58180.
 
 ```bash
-cp .env.prod.example .env.prod   # then fill in the four empty secrets (see Environment)
+cp .env.prod.example .env.prod   # then fill in the five empty secrets (see Environment)
 
 # Build the two app images under the names the stack expects (app-web:local, app-api:local).
 docker compose --env-file .env.prod -f compose.prod.yml -f compose.prod.build.yml build
@@ -106,8 +106,9 @@ Every variable is described in `.env.prod.example`. Secrets have no defaults in 
 file: a missing one stops `up` and names the variable.
 
 - **Local:** `.env.prod` in the repo root (git-ignored), passed with `--env-file .env.prod`.
-  Without the flag compose would read the dev `.env`. The example leaves the four secrets
-  empty; fill them with any generated values, e.g. `openssl rand -hex 24` each.
+  Without the flag compose would read the dev `.env`. The example leaves the five secrets
+  empty; fill them with any generated values, e.g. `openssl rand -hex 24` each
+  (`JWT_ACCESS_SECRET` needs at least 32 characters).
 - **Server:** the filled-in file sits next to `compose.prod.yml` as `.env` with mode 600, so the
   commands need no `--env-file`. Generate every password and key (`openssl rand -hex 32`); they
   end up inside connection URLs, so keep to letters, digits, `-` and `_`.
