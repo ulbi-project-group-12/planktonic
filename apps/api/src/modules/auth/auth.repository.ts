@@ -8,7 +8,7 @@ export class AuthRepository {
   findActiveById(id: string) {
     return this.prisma.user.findUnique({
       where: { id, deactivatedAt: null },
-      select: { id: true, name: true, email: true, tokenVersion: true },
+      select: { id: true, name: true, email: true },
     });
   }
 }

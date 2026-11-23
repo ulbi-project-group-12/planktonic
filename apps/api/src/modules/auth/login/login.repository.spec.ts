@@ -13,7 +13,7 @@ function setup() {
 describe('LoginRepository.findActiveByEmail', () => {
   it('binds the email and selects credentials for an active account', async () => {
     const { repository, $queryRaw } = setup();
-    const user = { id: 'user-id', passwordHash: 'test-hash', tokenVersion: 2 };
+    const user = { id: 'user-id', passwordHash: 'test-hash' };
     $queryRaw.mockResolvedValue([user]);
 
     await expect(repository.findActiveByEmail(email)).resolves.toEqual(user);

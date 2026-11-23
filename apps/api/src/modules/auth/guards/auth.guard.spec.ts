@@ -68,10 +68,10 @@ describe('AuthGuard.canActivate', () => {
     expect(findActiveById).not.toHaveBeenCalled();
   });
 
-  it('attaches the active account profile when the token version matches', async () => {
+  it('attaches the active account profile for a valid token', async () => {
     const { guard, jwt, findActiveById } = await setup();
-    findActiveById.mockResolvedValue({ ...profile, tokenVersion: 2 });
-    const token = jwt.sign({ sub: userId, tokenVersion: 2 }, { expiresIn: '15m' });
+    findActiveById.mockResolvedValue(profile);
+    const token = jwt.sign({ sub: userId }, { expiresIn: '15m' });
 
     const context = requestWithToken(token);
     await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -79,18 +79,15 @@ describe('AuthGuard.canActivate', () => {
     expect(context.switchToHttp().getRequest<AuthRequest>().user).toEqual(profile);
   });
 
-  it.each([null, { ...profile, tokenVersion: 3 }])(
-    'rejects the token when the account lookup returns %j',
-    async (user) => {
-      const { guard, jwt, findActiveById } = await setup();
-      findActiveById.mockResolvedValue(user);
-      const token = jwt.sign({ sub: userId, tokenVersion: 2 }, { expiresIn: '15m' });
+  it('rejects the token when no active account matches', async () => {
+    const { guard, jwt, findActiveById } = await setup();
+    findActiveById.mockResolvedValue(null);
+    const token = jwt.sign({ sub: userId }, { expiresIn: '15m' });
 
-      const context = requestWithToken(token);
-      await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException);
-      expect(context.switchToHttp().getRequest<AuthRequest>().user).toBeUndefined();
-    },
-  );
+    const context = requestWithToken(token);
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(context.switchToHttp().getRequest<AuthRequest>().user).toBeUndefined();
+  });
 
   it.each([
     ['an expired token', { expiresIn: '-1s' }],
@@ -98,7 +95,7 @@ describe('AuthGuard.canActivate', () => {
     ['a token signed with another algorithm', { expiresIn: '15m', algorithm: 'HS512' }],
   ] as const)('rejects %s before looking up the account', async (_name, options) => {
     const { guard, jwt, findActiveById } = await setup();
-    const token = jwt.sign({ sub: userId, tokenVersion: 2 }, options);
+    const token = jwt.sign({ sub: userId }, options);
 
     await expect(guard.canActivate(requestWithToken(token))).rejects.toBeInstanceOf(
       UnauthorizedException,
@@ -108,7 +105,7 @@ describe('AuthGuard.canActivate', () => {
 
   it('rejects a signed token with no expiry before looking up the account', async () => {
     const { guard, jwt, findActiveById } = await setup();
-    const token = jwt.sign({ sub: userId, tokenVersion: 2 });
+    const token = jwt.sign({ sub: userId });
 
     await expect(guard.canActivate(requestWithToken(token))).rejects.toBeInstanceOf(
       UnauthorizedException,

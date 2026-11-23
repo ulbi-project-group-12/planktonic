@@ -15,7 +15,6 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 
 const accessTokenClaims = z.object({
   sub: z.uuid(),
-  tokenVersion: z.int().nonnegative(),
   exp: z.int().positive(),
 });
 
@@ -57,7 +56,7 @@ export class AuthGuard implements CanActivate {
     }
 
     const user = await this.repository.findActiveById(claims.data.sub);
-    if (user?.tokenVersion !== claims.data.tokenVersion) {
+    if (!user) {
       throw new UnauthorizedException();
     }
 

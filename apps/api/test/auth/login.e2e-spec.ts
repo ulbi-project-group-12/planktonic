@@ -55,7 +55,7 @@ function login(body: unknown) {
 
 describe('POST /api/auth/login', () => {
   it('returns a signed access token valid for 15 minutes', async () => {
-    findActiveByEmail.mockResolvedValue({ id: userId, passwordHash, tokenVersion: 2 });
+    findActiveByEmail.mockResolvedValue({ id: userId, passwordHash });
 
     const response = await login({ ...request, email: ` ${request.email} ` });
 
@@ -68,7 +68,7 @@ describe('POST /api/auth/login', () => {
       secret,
       algorithms: ['HS256'],
     });
-    expect(claims).toMatchObject({ sub: userId, tokenVersion: 2 });
+    expect(claims).toMatchObject({ sub: userId });
     expect(claims.exp - claims.iat).toBe(15 * 60);
     expect(findActiveByEmail).toHaveBeenCalledWith(request.email);
   });
@@ -76,7 +76,7 @@ describe('POST /api/auth/login', () => {
   it('uses the same 401 response for an unknown email and a wrong password', async () => {
     findActiveByEmail
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: userId, passwordHash, tokenVersion: 0 });
+      .mockResolvedValueOnce({ id: userId, passwordHash });
 
     const unknownEmail = await login({ ...request, email: 'unknown@example.com' });
     const wrongPassword = await login({ ...request, password: request.password.trim() });

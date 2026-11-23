@@ -32,7 +32,7 @@ export class LoginService {
     }
 
     const accessToken = await this.jwt.signAsync(
-      { sub: user.id, tokenVersion: user.tokenVersion },
+      { sub: user.id },
       { secret, algorithm: 'HS256', expiresIn: '15m' },
     );
     return { accessToken };
