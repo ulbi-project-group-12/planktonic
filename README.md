@@ -194,7 +194,7 @@ loopback connection below.
 | `DATABASE_URL`         | Connection string; must match the four values above                   | `postgresql://app:app_dev_password@127.0.0.1:55432/app` | `@app/api`, Prisma CLI                     |
 | `REDIS_PORT`           | Host port for Redis                                                   | `56379`                                                 | compose `redis`                            |
 | `REDIS_URL`            | Redis connection; must match `REDIS_PORT`                             | `redis://127.0.0.1:56379`                               | required by API realtime                   |
-| `JWT_ACCESS_SECRET`    | Signs access tokens, 32+ chars; login answers `503` while unset       | empty (`openssl rand -hex 32`)                          | `@app/api`                                 |
+| `JWT_ACCESS_SECRET`    | Dev-only access-token signing secret, 32+ chars (`503` if unset)      | `dev-only-access-token-secret-not-for-production`       | `@app/api`                                 |
 | `REALTIME_DEBUG`       | Diagnostic room and `POST /api/debug/realtime/ping` (`true`/`false`)  | empty (`false`)                                         | `@app/api`; compose `realtime` sets `true` |
 | `S3_PORT`              | Host port for the S3 gateway                                          | `58333`                                                 | compose `seaweedfs`                        |
 | `S3_ENDPOINT`          | S3 endpoint; must match `S3_PORT`                                     | `http://127.0.0.1:58333`                                | reserved for Phase 7 (files)               |
