@@ -4,6 +4,7 @@ import { useState, type SyntheticEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type FieldError } from 'react-hook-form';
+import { Eye, EyeOff } from 'lucide-react';
 import { PASSWORD_MIN_LENGTH, RegisterRequestSchema, type RegisterRequest } from '@app/contracts';
 import { getApiIssues, hasApiStatus, isApiError, useAuthRegister } from '@/shared/api';
 import { routes } from '@/shared/config';
@@ -11,6 +12,34 @@ import { Alert, Button, Checkbox, Field, Input } from '@/shared/ui';
 import { EMAIL_TAKEN_MESSAGE, validationMessage, type RegisterField } from '../model/messages';
 
 const FIELDS: readonly RegisterField[] = ['name', 'email', 'password', 'confirmPassword'];
+
+function PasswordVisibilityButton({
+  visible,
+  label,
+  onToggle,
+}: {
+  visible: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`${visible ? 'Скрыть' : 'Показать'} ${label}`}
+      aria-pressed={visible}
+      className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-fg-muted transition-colors hover:bg-sunken hover:text-fg-primary focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:outline-none"
+      onMouseDown={(event) => {
+        event.preventDefault();
+      }}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle();
+      }}
+    >
+      {visible ? <EyeOff className="size-5" aria-hidden /> : <Eye className="size-5" aria-hidden />}
+    </button>
+  );
+}
 
 /**
  * Registration form: validated with the contract's `RegisterRequestSchema`, the same schema the
@@ -27,6 +56,8 @@ export function RegisterForm() {
   const [submitError, setSubmitError] = useState<string>();
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsError, setTermsError] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const {
     register,
     handleSubmit,
@@ -119,19 +150,39 @@ export function RegisterForm() {
         error={errorText('password', errors.password)}
       >
         <Input
-          type="password"
+          type={passwordVisible ? 'text' : 'password'}
           autoComplete="new-password"
           placeholder={`Минимум ${String(PASSWORD_MIN_LENGTH)} символов`}
           aria-required
+          className="pl-3 pr-1.5"
+          action={
+            <PasswordVisibilityButton
+              visible={passwordVisible}
+              label="пароль"
+              onToggle={() => {
+                setPasswordVisible((visible) => !visible);
+              }}
+            />
+          }
           {...register('password')}
         />
       </Field>
       <Field label="Повторите пароль" error={errorText('confirmPassword', errors.confirmPassword)}>
         <Input
-          type="password"
+          type={confirmPasswordVisible ? 'text' : 'password'}
           autoComplete="new-password"
           placeholder="••••••••"
           aria-required
+          className="pl-3 pr-1.5"
+          action={
+            <PasswordVisibilityButton
+              visible={confirmPasswordVisible}
+              label="повтор пароля"
+              onToggle={() => {
+                setConfirmPasswordVisible((visible) => !visible);
+              }}
+            />
+          }
           {...register('confirmPassword')}
         />
       </Field>

@@ -22,6 +22,8 @@ interface InputProps extends Omit<ComponentProps<'input'>, 'prefix'> {
   prefix?: ReactNode;
   /** Units on the right inside the field (e.g. "days"). */
   suffix?: ReactNode;
+  /** Interactive control on the right inside the field (e.g. password visibility). */
+  action?: ReactNode;
 }
 
 /**
@@ -40,6 +42,7 @@ function Input({
   icon,
   prefix,
   suffix,
+  action,
   id,
   disabled,
   'aria-describedby': describedBy,
@@ -112,6 +115,7 @@ function Input({
         ) : suffix ? (
           <span className="shrink-0 text-body-s leading-5 text-fg-muted">{suffix}</span>
         ) : null}
+        {action ? <span className="flex shrink-0 items-center">{action}</span> : null}
       </div>
       {text ? (
         <p id={textId} className={cn('text-caption', textClass)}>

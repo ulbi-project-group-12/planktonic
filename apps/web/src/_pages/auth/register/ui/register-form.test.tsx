@@ -76,6 +76,32 @@ describe('RegisterForm', () => {
     });
   });
 
+  it('toggles each password visibility independently', async () => {
+    const user = userEvent.setup();
+    renderWithApi(<RegisterForm />);
+
+    const password = screen.getByLabelText(/^Пароль/);
+    const confirm = screen.getByLabelText(/Повторите пароль/);
+    await user.type(password, PASSWORD);
+    await user.type(confirm, PASSWORD);
+    expect(password).toHaveAttribute('type', 'password');
+    expect(confirm).toHaveAttribute('type', 'password');
+
+    await user.click(screen.getByRole('button', { name: 'Показать пароль' }));
+    expect(password).toHaveAttribute('type', 'text');
+    expect(password).toHaveValue(PASSWORD);
+    expect(confirm).toHaveAttribute('type', 'password');
+
+    await user.click(screen.getByRole('button', { name: 'Показать повтор пароля' }));
+    expect(confirm).toHaveAttribute('type', 'text');
+    expect(confirm).toHaveValue(PASSWORD);
+
+    await user.click(screen.getByRole('button', { name: 'Скрыть пароль' }));
+    await user.click(screen.getByRole('button', { name: 'Скрыть повтор пароля' }));
+    expect(password).toHaveAttribute('type', 'password');
+    expect(confirm).toHaveAttribute('type', 'password');
+  });
+
   it('validates with the contract schema and does not submit', async () => {
     let posts = 0;
     server.use(
