@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,23 +16,27 @@ function files(directory) {
     .map((entry) => relative(directory, join(entry.parentPath, entry.name)));
 }
 
+/**
+ * Runs pnpm from the repository root. On Windows `pnpm` is a `.cmd` shim that starts only through
+ * a shell, and Node deprecates an args array combined with `shell: true` (DEP0190), so there the
+ * command goes as one string. Nothing in that string is escaped: keep `args` to fixed words and
+ * pass anything that varies (paths) through `env`, since cmd.exe expands `%VAR%` even in quotes.
+ * @param {string[]} args
+ * @param {Record<string, string>} env
+ */
+function pnpm(args, env) {
+  /** @type {import('node:child_process').ExecSyncOptions} */
+  const options = { cwd: root, env: { ...process.env, ...env }, stdio: 'inherit' };
+  if (process.platform === 'win32') execSync(['pnpm', ...args].join(' '), options);
+  else execFileSync('pnpm', args, options);
+}
+
 try {
   // Keep the mutator next to the output so its generated import stays relative.
   copyFileSync(join(api, 'http-client.ts'), join(checkDir, 'http-client.ts'));
-  execFileSync('pnpm', ['openapi:export'], {
-    // On Windows, `pnpm` is a `.cmd` shim that requires a shell to avoid ENOENT. The output
-    // path rides in the environment instead: cmd.exe expands `%VAR%` even inside quotes.
-    shell: process.platform === 'win32',
-    cwd: root,
-    env: { ...process.env, OPENAPI_EXPORT_PATH: join(checkDir, 'openapi.json') },
-    stdio: 'inherit',
-  });
-  execFileSync('pnpm', ['--filter', '@app/web', 'exec', 'orval', '--config', 'orval.config.ts'], {
-    // On Windows, `pnpm` is a `.cmd` shim that requires a shell to avoid ENOENT.
-    shell: process.platform === 'win32',
-    cwd: root,
-    env: { ...process.env, ORVAL_CHECK_DIR: checkDir },
-    stdio: 'inherit',
+  pnpm(['openapi:export'], { OPENAPI_EXPORT_PATH: join(checkDir, 'openapi.json') });
+  pnpm(['--filter', '@app/web', 'exec', 'orval', '--config', 'orval.config.ts'], {
+    ORVAL_CHECK_DIR: checkDir,
   });
 
   const current = join(api, 'generated');
