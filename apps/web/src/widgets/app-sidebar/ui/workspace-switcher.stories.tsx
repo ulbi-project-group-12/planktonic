@@ -5,7 +5,7 @@ import { startApiMocks } from '@/shared/api-mocks';
 import { WorkspaceSwitcher } from './workspace-switcher';
 
 const meta = {
-  title: 'features/WorkspaceSwitcher',
+  title: 'widgets/AppSidebar/WorkspaceSwitcher',
   component: WorkspaceSwitcher,
   parameters: { layout: 'centered' },
 } satisfies Meta<typeof WorkspaceSwitcher>;

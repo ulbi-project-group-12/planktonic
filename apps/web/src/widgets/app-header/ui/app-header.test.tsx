@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
 import { renderWithApi } from '@/shared/lib/testing';
 import { AppHeader } from './app-header';
 
@@ -20,7 +21,7 @@ describe('AppHeader', () => {
 
   it('shows the product logo and name', () => {
     renderWithApi(<AppHeader onOpenMobileSidebar={vi.fn()} />);
-    expect(screen.getByText('planktonic')).toBeInTheDocument();
+    expect(screen.getByText(PRODUCT_DISPLAY_NAME)).toBeInTheDocument();
   });
 
   it('shows a skeleton while the user is loading', () => {

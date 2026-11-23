@@ -36,6 +36,23 @@ describe('MobileNavDrawer', () => {
     });
   });
 
+  it('closes when a workspace is selected', async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    await fetch('http://api.example.invalid/api/workspaces', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Alpha Mobile', slug: 'alpha-mobile' }),
+    });
+
+    renderWithApi(<MobileNavDrawer open onOpenChange={onOpenChange} />);
+
+    await user.click(await screen.findByRole('button', { name: /Выберите пространство/ }));
+    await user.click(screen.getByRole('menuitem', { name: /Alpha Mobile/ }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it('traps focus inside the drawer', async () => {
     const user = userEvent.setup();
     renderWithApi(<MobileNavDrawer open onOpenChange={vi.fn()} />);

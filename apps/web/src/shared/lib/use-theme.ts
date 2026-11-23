@@ -18,9 +18,13 @@ function getSystemTheme(): 'light' | 'dark' {
 
 function readStoredTheme(): Theme {
   if (typeof window === 'undefined') return 'system';
-  const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-  if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
-  return 'system';
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
+    if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
+    return 'system';
+  } catch {
+    return 'system';
+  }
 }
 
 function resolveTheme(theme: Theme): 'light' | 'dark' {
@@ -38,10 +42,14 @@ export function useTheme() {
     setThemeState(next);
     setResolvedTheme(resolved);
     document.documentElement.classList.toggle('dark', resolved === 'dark');
-    if (next === 'system') {
-      localStorage.removeItem(STORAGE_KEY);
-    } else {
-      localStorage.setItem(STORAGE_KEY, next);
+    try {
+      if (next === 'system') {
+        localStorage.removeItem(STORAGE_KEY);
+      } else {
+        localStorage.setItem(STORAGE_KEY, next);
+      }
+    } catch {
+      // Storage may be unavailable (private mode, quota). The theme still applies in memory.
     }
   }, []);
 

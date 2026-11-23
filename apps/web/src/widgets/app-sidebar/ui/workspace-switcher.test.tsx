@@ -122,7 +122,11 @@ describe('WorkspaceSwitcher', () => {
 
     await user.keyboard('{Escape}');
     await waitFor(() => {
-      expect(screen.queryByRole('menuitem', { name: /Alpha Escape/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('textbox', { name: /Поиск пространств/ })).not.toBeInTheDocument();
     });
+
+    await user.click(screen.getByRole('button', { name: /Выберите пространство/ }));
+    expect(screen.getByRole('textbox', { name: /Поиск пространств/ })).toHaveValue('');
+    expect(await screen.findByRole('menuitem', { name: /Alpha Escape/ })).toBeInTheDocument();
   });
 });

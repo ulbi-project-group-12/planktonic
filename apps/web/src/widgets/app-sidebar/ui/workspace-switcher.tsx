@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentProps } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Check, ChevronDown, HelpCircle, Plus, Search } from 'lucide-react';
 import { WorkspaceSlug } from '@app/contracts';
@@ -24,18 +24,10 @@ function isCurrentWorkspaceSlug(value: unknown): value is string {
 
 function CurrentWorkspaceTrigger({
   workspace,
-  disabled,
-}: {
-  workspace?: WorkspaceSummary;
-  disabled: boolean;
-}) {
+  ...props
+}: ComponentProps<typeof Button> & { workspace?: WorkspaceSummary }) {
   return (
-    <Button
-      variant="secondary"
-      size="m"
-      disabled={disabled}
-      className="w-full justify-between gap-2 px-2"
-    >
+    <Button variant="secondary" size="m" className="w-full justify-between gap-2 px-2" {...props}>
       {workspace ? (
         <>
           <span className="flex items-center gap-2 overflow-hidden">
@@ -57,7 +49,7 @@ function CurrentWorkspaceTrigger({
   );
 }
 
-export function WorkspaceSwitcher() {
+export function WorkspaceSwitcher({ onWorkspaceSelect }: { onWorkspaceSelect?: () => void }) {
   const router = useRouter();
   const params = useParams();
   const currentSlug = isCurrentWorkspaceSlug(params.workspaceSlug)
@@ -78,10 +70,12 @@ export function WorkspaceSwitcher() {
   }, [query]);
 
   const { data, isPending, error, refetch } = useWorkspaces(debouncedQuery);
+  const { data: allWorkspacesData } = useWorkspaces();
   const list = data ?? [];
+  const allWorkspaces = allWorkspacesData ?? [];
 
   const currentWorkspace = currentSlug
-    ? list.find((workspace) => workspace.slug === currentSlug)
+    ? allWorkspaces.find((workspace) => workspace.slug === currentSlug)
     : undefined;
 
   const hasWorkspaces = list.length > 0;
@@ -98,9 +92,7 @@ export function WorkspaceSwitcher() {
       }}
     >
       <DropdownTrigger>
-        <span>
-          <CurrentWorkspaceTrigger workspace={currentWorkspace} disabled={triggerDisabled} />
-        </span>
+        <CurrentWorkspaceTrigger workspace={currentWorkspace} disabled={triggerDisabled} />
       </DropdownTrigger>
       <DropdownContent className="w-72" align="start">
         <div className="p-2">
@@ -145,6 +137,7 @@ export function WorkspaceSwitcher() {
                   key={workspace.slug}
                   onClick={() => {
                     router.push(routes.workspace(workspace.slug));
+                    onWorkspaceSelect?.();
                   }}
                   className="justify-between"
                 >

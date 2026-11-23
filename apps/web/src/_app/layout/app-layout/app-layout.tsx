@@ -26,9 +26,13 @@ export function AppLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="flex h-svh flex-col overflow-hidden">
       <AppHeader
-        onOpenMobileSidebar={() => {
-          setIsMobileNavOpen(true);
-        }}
+        onOpenMobileSidebar={
+          showSidebar
+            ? () => {
+                setIsMobileNavOpen(true);
+              }
+            : undefined
+        }
       />
       <div className="flex flex-1 min-h-0 overflow-auto">
         {showSidebar ? (

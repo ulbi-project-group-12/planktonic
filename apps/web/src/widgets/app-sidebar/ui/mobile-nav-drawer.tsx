@@ -42,7 +42,12 @@ export function MobileNavDrawer({ open, onOpenChange }: MobileNavDrawerProps) {
             </button>
           </DialogPrimitive.Close>
           <div className="h-full overflow-auto">
-            <AppSidebar className="border-r-0" />
+            <AppSidebar
+              className="border-r-0"
+              onWorkspaceSelect={() => {
+                onOpenChange(false);
+              }}
+            />
           </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

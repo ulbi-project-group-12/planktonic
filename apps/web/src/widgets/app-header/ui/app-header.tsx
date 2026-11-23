@@ -6,7 +6,7 @@ import { LogOut, Menu, Settings } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { WorkspaceSlug } from '@app/contracts';
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
-import { useCurrentUser } from '@/entities/user';
+import { useCurrentUser } from '../api/use-current-user';
 import { routes } from '@/shared/config';
 import {
   Avatar,

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { FolderKanban, Inbox, Layers, Mail, MessageSquare } from 'lucide-react';
 import { WorkspaceSlug } from '@app/contracts';
-import { WorkspaceSwitcher } from '@/features/workspace-switcher';
+import { WorkspaceSwitcher } from './workspace-switcher';
 import { routes } from '@/shared/config';
 import { cn } from '@/shared/lib';
 import { Badge, Separator } from '@/shared/ui';
@@ -61,12 +61,29 @@ interface AppSidebarProps {
   width?: number;
   onWidthChange?: (width: number) => void;
   className?: string;
+  onWorkspaceSelect?: () => void;
 }
 
-export function AppSidebar({ width = 264, onWidthChange, className }: AppSidebarProps) {
+export function AppSidebar({
+  width = 264,
+  onWidthChange,
+  className,
+  onWorkspaceSelect,
+}: AppSidebarProps) {
   const pathname = usePathname();
   const params = useParams();
   const workspaceSlug = isWorkspaceSlug(params.workspaceSlug) ? params.workspaceSlug : undefined;
+
+  function handleResizeKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!onWidthChange) return;
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      onWidthChange(Math.max(MIN_WIDTH, width - 16));
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      onWidthChange(Math.min(MAX_WIDTH, width + 16));
+    }
+  }
 
   function handleResizeStart(event: React.PointerEvent<HTMLDivElement>) {
     const changeWidth = onWidthChange;
@@ -103,7 +120,7 @@ export function AppSidebar({ width = 264, onWidthChange, className }: AppSidebar
       style={{ width }}
     >
       <div className="mb-3">
-        <WorkspaceSwitcher />
+        <WorkspaceSwitcher onWorkspaceSelect={onWorkspaceSelect} />
       </div>
 
       <nav aria-label="Workspace navigation" className="flex flex-col gap-1">
@@ -165,6 +182,7 @@ export function AppSidebar({ width = 264, onWidthChange, className }: AppSidebar
         aria-label="Resize sidebar"
         aria-orientation="vertical"
         onPointerDown={handleResizeStart}
+        onKeyDown={handleResizeKeyDown}
         className={cn(
           'absolute top-0 right-[-2px] hidden h-full w-1 cursor-col-resize desktop-s:flex',
           'hover:bg-brand-primary/10',

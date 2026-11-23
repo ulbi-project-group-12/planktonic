@@ -58,4 +58,24 @@ describe('AppSidebar', () => {
 
     fireEvent.pointerUp(window);
   });
+
+  it('calls onWidthChange with arrow keys within min and max bounds', () => {
+    const onWidthChange = vi.fn();
+    const { rerender } = renderWithApi(<AppSidebar width={264} onWidthChange={onWidthChange} />);
+
+    const handle = screen.getByRole('separator', { name: 'Resize sidebar' });
+    fireEvent.keyDown(handle, { key: 'ArrowRight' });
+    expect(onWidthChange).toHaveBeenLastCalledWith(280);
+
+    fireEvent.keyDown(handle, { key: 'ArrowLeft' });
+    expect(onWidthChange).toHaveBeenLastCalledWith(248);
+
+    rerender(<AppSidebar width={200} onWidthChange={onWidthChange} />);
+    fireEvent.keyDown(handle, { key: 'ArrowLeft' });
+    expect(onWidthChange).toHaveBeenLastCalledWith(200);
+
+    rerender(<AppSidebar width={400} onWidthChange={onWidthChange} />);
+    fireEvent.keyDown(handle, { key: 'ArrowRight' });
+    expect(onWidthChange).toHaveBeenLastCalledWith(400);
+  });
 });
