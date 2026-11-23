@@ -20,10 +20,14 @@ try {
   // Keep the mutator next to the output so its generated import stays relative.
   copyFileSync(join(api, 'http-client.ts'), join(checkDir, 'http-client.ts'));
   execFileSync('pnpm', ['openapi:export', join(checkDir, 'openapi.json')], {
+    // On Windows, `pnpm` is a `.cmd` shim that requires a shell to avoid ENOENT.
+    shell: process.platform === 'win32',
     cwd: root,
     stdio: 'inherit',
   });
   execFileSync('pnpm', ['--filter', '@app/web', 'exec', 'orval', '--config', 'orval.config.ts'], {
+    // On Windows, `pnpm` is a `.cmd` shim that requires a shell to avoid ENOENT.
+    shell: process.platform === 'win32',
     cwd: root,
     env: { ...process.env, ORVAL_CHECK_DIR: checkDir },
     stdio: 'inherit',
