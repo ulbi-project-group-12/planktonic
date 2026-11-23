@@ -168,6 +168,19 @@ jobs:
           IMAGE_NAME: ${{ vars.PRODUCT_SLUG || github.event.repository.name }}
       - run: node --test --test-reporter=tap scripts/check-product-name.test.mjs
 
+  # UL-228: scripts that spawn pnpm from Node break only on Windows, where pnpm is a `.cmd` shim,
+  # and every other job runs on Linux. NOT a required check and not in the ruleset.
+  windows-check-api:
+    name: windows-check-api
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm check:api
+
   # Non-blocking warnings (D-14, D-24). NOT a required check and never added to the ruleset.
   # The PR title reaches the script only through step env, never through `run:` interpolation.
   pr-hygiene:
