@@ -92,6 +92,20 @@ describe('AuthGuard.canActivate', () => {
     },
   );
 
+  it.each([
+    ['an expired token', { expiresIn: '-1s' }],
+    ['a token signed with another secret', { expiresIn: '15m', secret: `${secret}-other` }],
+    ['a token signed with another algorithm', { expiresIn: '15m', algorithm: 'HS512' }],
+  ] as const)('rejects %s before looking up the account', async (_name, options) => {
+    const { guard, jwt, findActiveById } = await setup();
+    const token = jwt.sign({ sub: userId, tokenVersion: 2 }, options);
+
+    await expect(guard.canActivate(requestWithToken(token))).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(findActiveById).not.toHaveBeenCalled();
+  });
+
   it('rejects a signed token with no expiry before looking up the account', async () => {
     const { guard, jwt, findActiveById } = await setup();
     const token = jwt.sign({ sub: userId, tokenVersion: 2 });
