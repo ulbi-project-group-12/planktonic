@@ -19,7 +19,11 @@ function files(directory) {
 try {
   // Keep the mutator next to the output so its generated import stays relative.
   copyFileSync(join(api, 'http-client.ts'), join(checkDir, 'http-client.ts'));
-  execFileSync('pnpm', ['openapi:export', join(checkDir, 'openapi.json')], {
+  const openapiOutput = join(checkDir, 'openapi.json');
+  // cmd.exe needs the path quoted against spaces; without a shell the quotes
+  // would reach pnpm literally.
+  const outputArg = process.platform === 'win32' ? `"${openapiOutput}"` : openapiOutput;
+  execFileSync('pnpm', ['openapi:export', outputArg], {
     // On Windows, `pnpm` is a `.cmd` shim that requires a shell to avoid ENOENT.
     shell: process.platform === 'win32',
     cwd: root,
