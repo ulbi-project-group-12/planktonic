@@ -1,4 +1,6 @@
 import {
+  LoginResponseSchema,
+  MeResponseSchema,
   RegisterConflictResponseSchema,
   RegisterResponseSchema,
   type RegisterRequest,
@@ -65,4 +67,51 @@ describe('registration against PostgreSQL', () => {
     });
     expect(stored).toEqual([user]);
   });
+});
+
+it('signs in a registered user across API instances with a case-insensitive email', async () => {
+  expect((await register(request.email)).status).toBe(201);
+
+  const response = await fetch(`${await stand.apps[1]!.getUrl()}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: request.email.toLowerCase(), password: request.password }),
+  });
+
+  expect(response.status).toBe(200);
+  expect(LoginResponseSchema.parse(await response.json()).accessToken).toBeTruthy();
+});
+
+it('returns the authenticated profile and rejects the token after account deactivation', async () => {
+  const registration = await register(request.email);
+  expect(registration.status).toBe(201);
+  const user = RegisterResponseSchema.parse(await registration.json());
+  const baseUrl = await stand.apps[0]!.getUrl();
+  expect((await fetch(`${baseUrl}/api/auth/me`)).status).toBe(401);
+
+  const login = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: request.email, password: request.password }),
+  });
+  expect(login.status).toBe(200);
+  const { accessToken } = LoginResponseSchema.parse(await login.json());
+
+  const me = await fetch(`${baseUrl}/api/auth/me`, {
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+  expect(me.status).toBe(200);
+  const profile: unknown = await me.json();
+  expect(MeResponseSchema.parse(profile)).toEqual(user);
+  expect(profile).toEqual(user);
+
+  await stand.prisma.user.update({
+    where: { id: user.id },
+    data: { deactivatedAt: new Date() },
+  });
+  const rejected = await fetch(`${baseUrl}/api/auth/me`, {
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+  expect(rejected.status).toBe(401);
+  expect(await rejected.json()).toEqual({ statusCode: 401, message: 'Unauthorized' });
 });

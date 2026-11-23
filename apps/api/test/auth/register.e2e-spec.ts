@@ -4,6 +4,8 @@ import { ValidationErrorResponse, type RegisterRequest } from '@app/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { configureApp } from '../../src/app.setup.js';
 import { AuthModule } from '../../src/modules/auth/auth.module.js';
+import { AuthRepository } from '../../src/modules/auth/auth.repository.js';
+import { LoginRepository } from '../../src/modules/auth/login/login.repository.js';
 import { RegisterRepository } from '../../src/modules/auth/register/register.repository.js';
 
 const request: RegisterRequest = {
@@ -26,6 +28,10 @@ beforeAll(async () => {
   const moduleRef = await Test.createTestingModule({ imports: [AuthModule] })
     .overrideProvider(RegisterRepository)
     .useValue({ create })
+    .overrideProvider(LoginRepository)
+    .useValue({})
+    .overrideProvider(AuthRepository)
+    .useValue({})
     .compile();
   app = configureApp(moduleRef.createNestApplication({ logger: false }));
   await app.listen(0, '127.0.0.1');

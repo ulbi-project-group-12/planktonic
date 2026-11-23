@@ -5,6 +5,7 @@ model User {
   /// Case-insensitive uniqueness is enforced by users_email_lower_key in SQL.
   email         String
   passwordHash  String    @map("password_hash")
+  tokenVersion  Int       @default(0) @map("token_version")
   tz            String    @default("Europe/Moscow")
   deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(3)
 

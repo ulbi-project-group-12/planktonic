@@ -1,0 +1,104 @@
+import { type ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { Test } from '@nestjs/testing';
+import { describe, expect, it, vi } from 'vitest';
+import { AuthRepository } from '../auth.repository.js';
+import type { AuthRequest } from '../auth.request.js';
+import { Public } from '../decorators/public.decorator.js';
+import { AuthGuard } from './auth.guard.js';
+
+const secret = 'test-only-access-token-signing-secret';
+const userId = '019a8f00-0000-7000-8000-000000000004';
+const profile = { id: userId, name: 'Ada', email: 'ada@example.com' };
+
+async function setup() {
+  const jwt = new JwtService({ secret });
+  const findActiveById = vi.fn<AuthRepository['findActiveById']>();
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      AuthGuard,
+      { provide: JwtService, useValue: jwt },
+      { provide: ConfigService, useValue: { get: () => secret } },
+      { provide: AuthRepository, useValue: { findActiveById } },
+    ],
+  }).compile();
+  return { guard: moduleRef.get(AuthGuard), jwt, findActiveById };
+}
+
+class TestController {
+  @Public()
+  publicRoute() {}
+
+  protectedRoute() {}
+}
+
+function requestWithToken(token?: string, route: keyof TestController = 'protectedRoute') {
+  const request: AuthRequest = {
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+  };
+  return {
+    getHandler: () => TestController.prototype[route],
+    getClass: () => TestController,
+    switchToHttp: () => ({
+      getRequest: () => request,
+    }),
+  } as unknown as ExecutionContext;
+}
+
+describe('AuthGuard.canActivate', () => {
+  it('allows a public route without checking the token or looking up the account', async () => {
+    const { guard, jwt, findActiveById } = await setup();
+    const verify = vi.spyOn(jwt, 'verifyAsync');
+
+    const context = requestWithToken(undefined, 'publicRoute');
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(context.switchToHttp().getRequest<AuthRequest>().user).toBeUndefined();
+    await expect(guard.canActivate(requestWithToken('invalid', 'publicRoute'))).resolves.toBe(true);
+    expect(verify).not.toHaveBeenCalled();
+    expect(findActiveById).not.toHaveBeenCalled();
+  });
+
+  it('rejects a protected route without a token', async () => {
+    const { guard, findActiveById } = await setup();
+
+    await expect(guard.canActivate(requestWithToken())).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(findActiveById).not.toHaveBeenCalled();
+  });
+
+  it('attaches the active account profile when the token version matches', async () => {
+    const { guard, jwt, findActiveById } = await setup();
+    findActiveById.mockResolvedValue({ ...profile, tokenVersion: 2 });
+    const token = jwt.sign({ sub: userId, tokenVersion: 2 }, { expiresIn: '15m' });
+
+    const context = requestWithToken(token);
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(findActiveById).toHaveBeenCalledExactlyOnceWith(userId);
+    expect(context.switchToHttp().getRequest<AuthRequest>().user).toEqual(profile);
+  });
+
+  it.each([null, { ...profile, tokenVersion: 3 }])(
+    'rejects the token when the account lookup returns %j',
+    async (user) => {
+      const { guard, jwt, findActiveById } = await setup();
+      findActiveById.mockResolvedValue(user);
+      const token = jwt.sign({ sub: userId, tokenVersion: 2 }, { expiresIn: '15m' });
+
+      const context = requestWithToken(token);
+      await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(context.switchToHttp().getRequest<AuthRequest>().user).toBeUndefined();
+    },
+  );
+
+  it('rejects a signed token with no expiry before looking up the account', async () => {
+    const { guard, jwt, findActiveById } = await setup();
+    const token = jwt.sign({ sub: userId, tokenVersion: 2 });
+
+    await expect(guard.canActivate(requestWithToken(token))).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(findActiveById).not.toHaveBeenCalled();
+  });
+});

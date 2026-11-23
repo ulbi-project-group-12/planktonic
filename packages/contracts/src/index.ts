@@ -36,6 +36,13 @@ export {
 export { HttpErrorResponse, ValidationErrorResponse } from './errors.js';
 export { HealthResponse } from './health.js';
 export {
+  type LoginRequest,
+  LoginRequestSchema,
+  type LoginResponse,
+  LoginResponseSchema,
+} from './auth/login.js';
+export { type MeResponse, MeResponseSchema } from './auth/me.js';
+export {
   EMAIL_MAX_LENGTH,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
