@@ -1,5 +1,6 @@
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
 import { Typography } from '@/shared/ui/typography';
+import { InviteMemberButton } from '@/widgets/invite-member';
 
 interface WorkspaceDashboardPageProps {
   params: Promise<{ workspaceSlug: string }>;
@@ -16,6 +17,10 @@ export async function WorkspaceDashboardPage({ params }: WorkspaceDashboardPageP
       <Typography as="p" color="text-secondary">
         workspaceSlug = {workspaceSlug}
       </Typography>
+      {/* UL-220 test stand: fixed OWNER until UL-151 exposes the real role. */}
+      <div className="self-center">
+        <InviteMemberButton workspaceSlug={workspaceSlug} inviterRole="OWNER" />
+      </div>
     </main>
   );
 }

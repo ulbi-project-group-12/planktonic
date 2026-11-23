@@ -1,12 +1,15 @@
-import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
-import { Typography } from '@/shared/ui/typography';
+import { InviteAcceptance } from './invite-acceptance';
 
-export function InvitePage() {
+interface InvitePageProps {
+  params: Promise<{ token: string }>;
+}
+
+/** /invite/[token] — the «Присоединиться» screen (UL-220). */
+export async function InvitePage({ params }: InvitePageProps) {
+  const { token } = await params;
   return (
-    <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center gap-4 p-8">
-      <Typography as="h1" size="h3">
-        Скоро здесь будет страница приглашения {PRODUCT_DISPLAY_NAME}
-      </Typography>
+    <main className="mx-auto flex min-h-svh max-w-lg flex-col justify-center gap-6 p-8">
+      <InviteAcceptance token={token} />
     </main>
   );
 }
