@@ -1,14 +1,6 @@
 import { render } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ChannelPage } from './channel-page';
-
-const notFoundMock = vi.hoisted(() =>
-  vi.fn(() => {
-    throw new Error('NEXT_NOT_FOUND');
-  }),
-);
-
-vi.mock('next/navigation', () => ({ notFound: notFoundMock }));
 
 const UUID = '0190f5a2-7c1e-7b3a-9f4d-2a6b8c1d0e5f';
 
@@ -20,13 +12,14 @@ async function renderPage(channelId: string) {
 }
 
 describe('ChannelPage', () => {
-  it('renders for a uuid channel id', async () => {
-    const screen = await renderPage(UUID);
-    expect(screen.getByText(/channelId = /)).toBeInTheDocument();
-    expect(notFoundMock).not.toHaveBeenCalled();
-  });
-
-  it.each(['123', 'general', ''])('calls notFound for %s', async (channelId) => {
-    await expect(renderPage(channelId)).rejects.toThrow('NEXT_NOT_FOUND');
-  });
+  it.each([UUID, '123', 'general', ''])(
+    'renders a placeholder for channel id %s',
+    async (channelId) => {
+      const screen = await renderPage(channelId);
+      expect(screen.getByText(/Скоро здесь будет страница канала/)).toBeInTheDocument();
+      expect(screen.container.querySelector('p')).toHaveTextContent(
+        new RegExp(`workspaceSlug = my-team, channelId =\\s*${channelId}`),
+      );
+    },
+  );
 });

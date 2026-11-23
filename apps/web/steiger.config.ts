@@ -13,4 +13,15 @@ export default defineConfig([
     files: ['./src/_app/**', './src/_pages/**'],
     rules: { 'fsd/typo-in-layer-name': 'off' },
   },
+  {
+    // Educational project stage (UL-144): these slices are intentionally introduced early and
+    // will gain more consumers in upcoming tickets; keeping them as slices preserves the target
+    // architecture instead of inlining and re-extracting later.
+    files: [
+      './src/entities/user/**',
+      './src/entities/workspace/**',
+      './src/features/workspace-switcher/**',
+    ],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
 ]);

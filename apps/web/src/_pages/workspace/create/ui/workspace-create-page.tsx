@@ -8,7 +8,7 @@ import { CreateWorkspaceForm } from './create-workspace-form';
  */
 export function WorkspaceCreatePage() {
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center gap-8 p-8">
+    <main className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-md flex-col justify-center gap-8 p-8">
       <div className="flex flex-col gap-3">
         <Typography size="caption" color="text-secondary">
           Шаг 1 из 2 — название и адрес

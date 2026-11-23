@@ -240,6 +240,12 @@ These addresses have no route and no builder in `routes.ts` yet. Add both with t
 
 - `WorkspaceLayout` rejects a malformed slug; `ProjectLayout` rejects a malformed key;
   `ChannelPage` rejects a channel id that is not a uuid.
+- `AppLayout` is a client component that chooses a shell variant from `usePathname()`:
+  - `full` — header + sidebar + content, used for `/workspaces`, `/workspaces/:slug`, `/settings/*`,
+    and every other `(app)` route;
+  - `headonly` — header + content only, used for `/workspaces/create`, `/workspaces/:slug/settings`,
+    `/workspaces/:slug/projects/create`, and future project settings.
+    The sidebar itself reads the current workspace from `useParams().workspaceSlug` when present.
 - `app/not-found.tsx` shows the 404 page for any unknown address.
 - `app/error.tsx` shows the error digest, never the raw message. `app/global-error.tsx` covers
   errors in the root layout; it lives in `src/_app/global-error`, renders its own `<html>` and

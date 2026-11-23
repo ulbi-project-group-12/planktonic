@@ -24,12 +24,29 @@ interface MockWorkspace {
   slug: string;
 }
 
+const currentUser = {
+  id: '019a8f00-0000-7000-8000-000000000004',
+  name: 'Ada',
+  email: 'ada@example.com',
+};
+
 /** POST /api/workspaces + GET /api/workspaces over an in-memory list (per handler set). */
 function createWorkspaceHandlers() {
   const workspaces = new Map<string, MockWorkspace>();
 
   return [
-    http.get('*/api/workspaces', () => HttpResponse.json([...workspaces.values()])),
+    http.get('*/api/workspaces', ({ request }) => {
+      const url = new URL(request.url);
+      const q = url.searchParams.get('q')?.trim().toLowerCase() ?? '';
+      const list = [...workspaces.values()];
+      if (!q) return HttpResponse.json(list);
+      return HttpResponse.json(
+        list.filter(
+          (workspace) =>
+            workspace.name.toLowerCase().includes(q) || workspace.slug.toLowerCase().includes(q),
+        ),
+      );
+    }),
     http.post('*/api/workspaces', async ({ request }) => {
       const parsed = CreateWorkspaceRequest.safeParse(await request.json());
       if (!parsed.success) {
@@ -72,10 +89,11 @@ function createWorkspaceHandlers() {
  */
 export function createApiHandlers() {
   return [
+    http.get('*/api/users/me', () => HttpResponse.json(currentUser)),
     getAuthRegisterMockHandler({
-      id: '019a8f00-0000-7000-8000-000000000004',
-      name: 'Ada',
-      email: 'ada@example.com',
+      id: currentUser.id,
+      name: currentUser.name,
+      email: currentUser.email,
     }),
     getHealthLiveMockHandler({
       status: 'ok',
