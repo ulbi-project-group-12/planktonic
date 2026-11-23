@@ -124,7 +124,7 @@ describe('RegisterForm', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it('does not submit until the terms are accepted', async () => {
+  it('keeps submit disabled until the terms are accepted', async () => {
     let posts = 0;
     server.use(
       http.post('*/api/auth/register', () => {
@@ -136,13 +136,12 @@ describe('RegisterForm', () => {
     renderWithApi(<RegisterForm />);
 
     await fill(user, { terms: 'no' });
-    await user.click(submit());
-
-    expect(await screen.findByText('Нужно согласие с условиями использования')).toBeVisible();
+    expect(submit()).toBeDisabled();
     expect(posts).toBe(0);
+    expect(screen.queryByText('Нужно согласие с условиями использования')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('checkbox', { name: /условиями/ }));
-    expect(screen.queryByText('Нужно согласие с условиями использования')).not.toBeInTheDocument();
+    expect(submit()).toBeEnabled();
   });
 
   it('shows "email taken" on the email field and focuses it', async () => {

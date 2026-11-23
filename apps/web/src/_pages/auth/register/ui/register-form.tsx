@@ -203,7 +203,13 @@ export function RegisterForm() {
           </p>
         ) : null}
       </div>
-      <Button type="submit" size="l" loading={registerUser.isPending} className="w-full">
+      <Button
+        type="submit"
+        size="l"
+        loading={registerUser.isPending}
+        disabled={!termsAccepted}
+        className="w-full"
+      >
         Создать аккаунт
       </Button>
     </form>
