@@ -28,7 +28,7 @@ export const sessionStore = createStore<SessionState>()(() => ({
 let refreshPromise: Promise<RefreshResult> | undefined;
 let refreshPromiseGeneration: number | undefined;
 const LOGOUT_TIMEOUT_MS = 5_000;
-const SIGNED_OUT_FLAG_KEY = `__${PRODUCT_SLUG}_signed_out`;
+export const SIGNED_OUT_FLAG_KEY = `__${PRODUCT_SLUG}_signed_out`;
 
 function setSignedOutFlag(): void {
   try {

@@ -5,6 +5,7 @@ import {
   clearSignedOutFlag,
   refreshAccessToken,
   restoreSession,
+  SIGNED_OUT_FLAG_KEY,
   sessionStore,
   signIn,
   signOut,
@@ -255,12 +256,12 @@ it('keeps a new sign-in when an older logout completes', async () => {
 
   await signIn(credentials);
   const signingOut = signOut();
-  expect(localStorage.getItem('__planktonic_signed_out')).toBe('1');
+  expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).toBe('1');
   await signIn(credentials);
   logout.resolve(Response.json({}));
   await signingOut;
 
-  expect(localStorage.getItem('__planktonic_signed_out')).toBeNull();
+  expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).toBeNull();
   expect(sessionStore.getState()).toMatchObject({
     accessToken: 'new-token',
     restoreStatus: 'done',
