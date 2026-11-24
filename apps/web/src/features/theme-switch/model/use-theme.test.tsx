@@ -152,6 +152,7 @@ describe('useTheme', () => {
       expect(result.current.theme).toBe('system');
     });
 
+    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
     act(() => {
       window.dispatchEvent(
         new StorageEvent('storage', { key: THEME_STORAGE_KEY, newValue: 'dark' }),
@@ -162,6 +163,7 @@ describe('useTheme', () => {
     });
     expect(document.documentElement.classList.contains('dark')).toBe(true);
 
+    localStorage.removeItem(THEME_STORAGE_KEY);
     act(() => {
       window.dispatchEvent(new StorageEvent('storage', { key: THEME_STORAGE_KEY, newValue: null }));
     });
@@ -169,12 +171,15 @@ describe('useTheme', () => {
       expect(result.current.theme).toBe('system');
     });
 
+    localStorage.setItem(THEME_STORAGE_KEY, 'invalid');
     act(() => {
       window.dispatchEvent(
         new StorageEvent('storage', { key: THEME_STORAGE_KEY, newValue: 'invalid' }),
       );
     });
-    expect(result.current.theme).toBe('system');
+    await waitFor(() => {
+      expect(result.current.theme).toBe('system');
+    });
   });
 
   it('removes subscriptions on unmount', async () => {

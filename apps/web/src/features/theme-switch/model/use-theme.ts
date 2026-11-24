@@ -66,12 +66,9 @@ export function useTheme() {
   useEffect(() => {
     const handler = (event: StorageEvent) => {
       if (event.key !== THEME_STORAGE_KEY) return;
-      const next: Theme =
-        event.newValue === 'light' || event.newValue === 'dark' || event.newValue === 'system'
-          ? event.newValue
-          : 'system';
-      // Synchronize from another tab without writing back to storage.
-      syncTheme(next);
+      // Read the actual stored value instead of relying on event.newValue,
+      // and synchronize without writing back to storage.
+      syncTheme(readStoredTheme());
     };
     window.addEventListener('storage', handler);
     return () => {
