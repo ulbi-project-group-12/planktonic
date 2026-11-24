@@ -150,15 +150,18 @@ it('restoreSession does not make a second request', async () => {
 
 it('ignores a pending restore after sign-out and does not start another restore', async () => {
   const { promise, resolve } = Promise.withResolvers<Response>();
-  const fetcher = vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(promise);
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockReturnValueOnce(promise)
+    .mockResolvedValueOnce(Response.json({}));
 
   const pendingRestore = restoreSession();
-  signOut();
+  await signOut();
   resolve(Response.json({ accessToken: 'old-session-token' }));
   await pendingRestore;
   await restoreSession();
 
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher).toHaveBeenCalledTimes(2);
   expect(sessionStore.getState()).toMatchObject({
     accessToken: undefined,
     restoreStatus: 'done',
