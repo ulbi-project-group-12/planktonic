@@ -25,8 +25,8 @@ function PasswordVisibilityButton({
   return (
     <button
       type="button"
+      // The name says what a press does; an aria-pressed on top would announce the state twice.
       aria-label={`${visible ? 'Скрыть' : 'Показать'} ${label}`}
-      aria-pressed={visible}
       className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-fg-muted transition-colors hover:bg-sunken hover:text-fg-primary focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:outline-none"
       onMouseDown={(event) => {
         event.preventDefault();
@@ -62,11 +62,18 @@ export function RegisterForm() {
     register,
     handleSubmit,
     setError,
+    getValues,
     formState: { errors },
   } = useForm<RegisterRequest>({
     resolver: zodResolver(RegisterRequestSchema),
     defaultValues: { name: '', email: '', password: '', confirmPassword: '' },
   });
+
+  // What the schema would send for the field right now: name and email are trimmed by it.
+  const currentValue = (field: RegisterField) => {
+    const value = getValues(field);
+    return field === 'name' || field === 'email' ? value.trim() : value;
+  };
 
   const submitValid = handleSubmit(
     async (values) => {
@@ -77,24 +84,28 @@ export function RegisterForm() {
         router.push(routes.login());
       } catch (error) {
         if (hasApiStatus(error, 409)) {
-          setError(
-            'email',
-            { type: 'server', message: EMAIL_TAKEN_MESSAGE },
-            { shouldFocus: true },
-          );
+          // The fields stay editable during the request: "taken" is about the address that was
+          // sent, so it is not shown next to one the user has typed since.
+          if (currentValue('email') === values.email) {
+            setError(
+              'email',
+              { type: 'server', message: EMAIL_TAKEN_MESSAGE },
+              { shouldFocus: true },
+            );
+          }
           return;
         }
         if (isApiError(error)) {
           let recognised = false;
+          let focused = false;
           for (const issue of getApiIssues(error)) {
             const field = FIELDS.find((name) => name === issue.path);
             if (!field) continue;
-            setError(
-              field,
-              { type: 'server', message: issue.message },
-              { shouldFocus: !recognised },
-            );
             recognised = true;
+            // Same as the 409: an issue about a value the user has already changed is not shown.
+            if (currentValue(field) !== values[field]) continue;
+            setError(field, { type: 'server', message: issue.message }, { shouldFocus: !focused });
+            focused = true;
           }
           // The api answered, so the connection is fine: do not send the user to check it.
           if (!recognised) setSubmitError('Сервер ответил ошибкой. Попробуйте ещё раз чуть позже.');
@@ -146,13 +157,14 @@ export function RegisterForm() {
       </Field>
       <Field
         label="Пароль"
-        hint="Заглавная буква, цифра и спецсимвол"
+        // The length error says the same thing, so the hint steps aside for an error.
+        hint={errors.password ? undefined : `Не короче ${String(PASSWORD_MIN_LENGTH)} символов`}
         error={errorText('password', errors.password)}
       >
         <Input
           type={passwordVisible ? 'text' : 'password'}
           autoComplete="new-password"
-          placeholder={`Минимум ${String(PASSWORD_MIN_LENGTH)} символов`}
+          placeholder="••••••••"
           aria-required
           className="pl-3 pr-1.5"
           action={
