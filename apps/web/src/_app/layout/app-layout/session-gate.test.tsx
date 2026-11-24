@@ -70,6 +70,48 @@ describe('SessionGate', () => {
     expect(asked).toBe(false);
   });
 
+  it('restores the session through refresh after a reload and lets the visitor in', async () => {
+    let authorization: string | null = null;
+    server.use(
+      http.post('/api/auth/refresh', () =>
+        HttpResponse.json({ accessToken: 'restored-access-token' }),
+      ),
+      http.get('/api/auth/me', ({ request }) => {
+        authorization = request.headers.get('authorization');
+        return HttpResponse.json(profile);
+      }),
+    );
+
+    renderGate();
+
+    expect(await screen.findByText('Закрытая страница')).toBeInTheDocument();
+    expect(authorization).toBe('Bearer restored-access-token');
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('sends the guest to login when the session cannot be restored', async () => {
+    let asked = false;
+    server.use(
+      http.post('/api/auth/refresh', () =>
+        HttpResponse.json({ statusCode: 401, message: 'Unauthorized' }, { status: 401 }),
+      ),
+      http.get('/api/auth/me', () => {
+        asked = true;
+        return HttpResponse.json(profile);
+      }),
+    );
+
+    renderGate();
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledExactlyOnceWith(
+        '/login?next=%2Fworkspaces%2Fmy-team%3Ftab%3Dmembers',
+      );
+    });
+    expect(asked).toBe(false);
+    expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
+  });
+
   it('keeps the hash of the address in the return address', async () => {
     window.history.replaceState(null, '', '/workspaces/my-team?thread=t1#m2');
 

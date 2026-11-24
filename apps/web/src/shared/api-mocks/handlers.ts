@@ -1,8 +1,7 @@
-import { WorkspaceSlug } from '@app/contracts';
+import { LoginRequestSchema, WorkspaceSlug } from '@app/contracts';
 import { HttpResponse, http } from 'msw';
 import { z } from 'zod';
 import {
-  getAuthLoginMockHandler,
   getAuthMeMockHandler,
   getAuthRegisterMockHandler,
   getHealthLiveMockHandler,
@@ -31,6 +30,36 @@ const currentUser = {
   name: 'Ada',
   email: 'ada@example.com',
 };
+
+const ACCESS_TOKEN = 'msw-access-token';
+
+/**
+ * Refresh lives here until UL-141 lands the real contract and the OpenAPI schema gains the
+ * endpoint — then Orval regenerates the handlers and this block goes. A login through this
+ * handler set opens a mock "session" that refresh honours: the stand-in for the refresh cookie.
+ */
+function createSessionHandlers() {
+  let sessionAlive = false;
+
+  return [
+    http.post('*/api/auth/login', async ({ request }) => {
+      const parsed = LoginRequestSchema.safeParse(await request.json());
+      if (!parsed.success) {
+        return HttpResponse.json(
+          { statusCode: 400, message: 'Validation failed', error: 'Bad Request' },
+          { status: 400 },
+        );
+      }
+      sessionAlive = true;
+      return HttpResponse.json({ accessToken: ACCESS_TOKEN });
+    }),
+    http.post('*/api/auth/refresh', () =>
+      sessionAlive
+        ? HttpResponse.json({ accessToken: ACCESS_TOKEN })
+        : HttpResponse.json({ statusCode: 401, message: 'Unauthorized' }, { status: 401 }),
+    ),
+  ];
+}
 
 /** POST /api/workspaces + GET /api/workspaces over an in-memory list (per handler set). */
 function createWorkspaceHandlers() {
@@ -91,7 +120,7 @@ function createWorkspaceHandlers() {
  */
 export function createApiHandlers() {
   return [
-    getAuthLoginMockHandler({ accessToken: 'msw-access-token' }),
+    ...createSessionHandlers(),
     getAuthMeMockHandler(currentUser),
     getAuthRegisterMockHandler({
       id: currentUser.id,

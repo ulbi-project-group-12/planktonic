@@ -80,6 +80,96 @@ it('preserves non-JSON upstream errors', async () => {
   }
 });
 
+describe('session refresh on 401', () => {
+  afterEach(() => {
+    setAccessTokenProvider(undefined);
+    vi.restoreAllMocks();
+  });
+
+  it('runs one refresh for five parallel 401s and retries each request', async () => {
+    let token: string | undefined = 'stale-token';
+    const refresh = vi.fn(() => {
+      token = 'fresh-token';
+      return Promise.resolve(true);
+    });
+    setAccessTokenProvider(() => token, undefined, refresh);
+    const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+      const authorization = new Headers(init?.headers).get('Authorization');
+      return Promise.resolve(
+        authorization === 'Bearer fresh-token'
+          ? Response.json({ ok: true })
+          : Response.json({ message: 'Expired' }, { status: 401 }),
+      );
+    });
+
+    const results = await Promise.all([
+      apiFetch('/api/auth/me'),
+      apiFetch('/api/workspaces'),
+      apiFetch('/api/health'),
+      apiFetch('/api/health/ready'),
+      apiFetch('/api/channels/example/messages'),
+    ]);
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    // Five expired tries, five retries with the fresh token.
+    expect(fetcher).toHaveBeenCalledTimes(10);
+    for (const result of results) expect(result).toEqual({ ok: true });
+    expect(token).toBe('fresh-token');
+  });
+
+  it('ends the session through onRejected when refresh fails', async () => {
+    let token: string | undefined = 'stale-token';
+    const onRejected = vi.fn((rejected: string) => {
+      if (rejected === token) token = undefined;
+    });
+    const refresh = vi.fn(() => Promise.resolve(false));
+    setAccessTokenProvider(() => token, onRejected, refresh);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ message: 'Unauthorized' }, { status: 401 }),
+    );
+
+    await expect(apiFetch('/api/auth/me')).rejects.toMatchObject({ status: 401 });
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(onRejected).toHaveBeenCalledWith('stale-token');
+    expect(token).toBeUndefined();
+  });
+
+  it('reports the new token to onRejected when the retried request is rejected too', async () => {
+    let token: string | undefined = 'stale-token';
+    const onRejected = vi.fn();
+    setAccessTokenProvider(
+      () => token,
+      onRejected,
+      () => {
+        token = 'fresh-token';
+        return Promise.resolve(true);
+      },
+    );
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ message: 'Unauthorized' }, { status: 401 }),
+    );
+
+    await expect(apiFetch('/api/auth/me')).rejects.toMatchObject({ status: 401 });
+
+    expect(onRejected).toHaveBeenCalledWith('fresh-token');
+  });
+
+  it('does not refresh a 401 answered to a request without the provider token', async () => {
+    const refresh = vi.fn(() => Promise.resolve(true));
+    setAccessTokenProvider(() => 'demo-token', undefined, refresh);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ message: 'Unauthorized' }, { status: 401 }),
+    );
+
+    await expect(
+      apiFetch('/api/auth/me', { headers: { Authorization: 'Bearer caller' } }),
+    ).rejects.toMatchObject({ status: 401 });
+
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
 describe('generated registration mutation', () => {
   const data: AuthRegisterBody = {
     name: 'Ada',
