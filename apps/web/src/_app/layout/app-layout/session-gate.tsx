@@ -4,14 +4,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { useStore } from 'zustand';
-import { hasApiStatus, restoreSession, sessionStore, useAuthMe } from '@/shared/api';
+import { restoreSession, sessionStore, useAuthMe } from '@/shared/api';
 import { routes } from '@/shared/config';
 import { Alert, Spinner } from '@/shared/ui';
 
 /**
  * Guards the pages behind the login (UL-140). The access token lives only in this tab's memory,
  * so the server and a proxy cannot see it: the check has to run in a client component. A guest,
- * or a visitor whose token the api no longer accepts, goes to the login screen with the address
+ * or a visitor whose refresh credentials were rejected, goes to the login screen with the address
  * to come back to. The shell inside shows who is signed in (the header's user menu). A page reload
  * loses the in-memory token, so the gate restores the session with a silent refresh (UL-217).
  */
@@ -24,8 +24,7 @@ export function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
   const me = useAuthMe({
     query: { enabled: accessToken !== undefined && restoreStatus !== 'pending' },
   });
-  const rejected = hasApiStatus(me.error, 401);
-  const guest = accessToken === undefined || rejected;
+  const guest = accessToken === undefined;
   const redirectedRef = useRef(false);
 
   useEffect(() => {
@@ -48,6 +47,19 @@ export function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
         : routes.login(`${pathname}${window.location.search}${window.location.hash}`),
     );
   }, [guest, pathname, queryClient, restoreStatus, router]);
+
+  if (restoreStatus === 'error') {
+    return (
+      <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center p-8">
+        <Alert
+          palette="danger"
+          title="Не удалось восстановить сессию"
+          description="Проверьте подключение к сети и попробуйте ещё раз."
+          action={{ label: 'Повторить', onClick: () => void restoreSession() }}
+        />
+      </main>
+    );
+  }
 
   if (restoreStatus === 'pending' || guest || me.isPending) {
     return (
