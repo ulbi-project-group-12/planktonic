@@ -109,6 +109,14 @@ export function WorkspaceSwitcher({ onWorkspaceSelect }: { onWorkspaceSelect?: (
               if (event.key.length === 1 || event.key === 'Home' || event.key === 'End') {
                 event.stopPropagation();
               }
+              // The field is not a menu item, so the menu does not know where to go from it.
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                event.currentTarget
+                  .closest('[role="menu"]')
+                  ?.querySelector<HTMLElement>('[role="menuitem"]')
+                  ?.focus();
+              }
             }}
             icon={<Search className="size-3.5" />}
             aria-label="Поиск пространств"

@@ -83,6 +83,19 @@ describe('WorkspaceSwitcher', () => {
     );
   });
 
+  it('moves from the search field to the first result with ArrowDown', async () => {
+    const user = userEvent.setup();
+    await postWorkspace('Alpha Arrow', uniqueSlug('alpha'));
+
+    renderWithApi(<WorkspaceSwitcher />);
+    await user.click(await screen.findByRole('button', { name: /Выберите пространство/ }));
+    await user.click(screen.getByRole('textbox', { name: /Поиск пространств/ }));
+    await screen.findAllByRole('menuitem', { name: /Alpha Arrow/ });
+
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getAllByRole('menuitem')[0]).toHaveFocus();
+  });
+
   it('switches to another workspace', async () => {
     const user = userEvent.setup();
     const alphaSlug = uniqueSlug('alpha');
