@@ -1,8 +1,8 @@
 'use client';
 
 import { Check, Monitor, Moon, Sun } from 'lucide-react';
-import { useTheme, type Theme } from '@/shared/lib';
 import { Button, Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from '@/shared/ui';
+import { type Theme, useTheme } from '../model/use-theme';
 
 const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Светлая', icon: Sun },
