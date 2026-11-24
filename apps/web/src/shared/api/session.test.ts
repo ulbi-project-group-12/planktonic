@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { authMe } from './generated/api';
 import { apiFetch, setAccessTokenProvider, setRefreshHandler } from './http-client';
 import { refreshAccessToken, restoreSession, sessionStore, signIn, signOut } from './session';
+import { bumpSessionGeneration } from './session-generation';
 
 const credentials = { email: 'ada@example.com', password: 'example-passphrase' };
 
@@ -96,6 +97,7 @@ it('keeps a newer session when a request sent with an older token gets 401 and r
   const late = apiFetch('/api/workspaces');
   // A concurrent sign-in replaced the token before the late answer arrived.
   setAccessTokenProvider(() => 'new-token');
+  bumpSessionGeneration();
   sessionStore.setState({ accessToken: 'new-token', restoreStatus: 'done' });
   answerOld(Response.json({ message: 'Unauthorized' }, { status: 401 }));
   await expect(late).rejects.toMatchObject({ status: 401 });
@@ -178,4 +180,34 @@ it('does not overwrite a newer session with a stale refresh answer', async () =>
   await late;
 
   expect(sessionStore.getState().accessToken).toBe('new-token');
+});
+
+it('keeps a newer refresh promise when an older refresh finishes', async () => {
+  let answerOld: (response: Response) => void = () => undefined;
+  let answerNew: (response: Response) => void = () => undefined;
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        answerOld = resolve;
+      }),
+    )
+    .mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        answerNew = resolve;
+      }),
+    );
+
+  await signIn(credentials);
+  const oldRefresh = refreshAccessToken();
+  bumpSessionGeneration();
+  const newRefresh = refreshAccessToken();
+
+  answerOld(Response.json({ accessToken: 'old-refreshed-token' }));
+  await oldRefresh;
+
+  answerNew(Response.json({ accessToken: 'new-refreshed-token' }));
+  await newRefresh;
+
+  expect(sessionStore.getState().accessToken).toBe('new-refreshed-token');
 });

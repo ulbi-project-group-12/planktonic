@@ -1,3 +1,5 @@
+import { getSessionGeneration } from './session-generation';
+
 export class ApiError extends Error {
   readonly status: number;
   readonly body: unknown;
@@ -65,6 +67,7 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
     const headers = normalizeHeaders(options.headers);
     const accessToken = accessTokenProvider?.();
     const sentToken = accessToken && !headers.has('Authorization') ? accessToken : undefined;
+    const sentGeneration = getSessionGeneration();
     if (sentToken) headers.set('Authorization', `Bearer ${sentToken}`);
     const response = await fetch(url, { ...options, headers, credentials: 'same-origin' });
 
@@ -77,7 +80,7 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
     ) {
       // The session has changed while this request was in flight. Do not refresh or clear the
       // current session; just fail this stale request.
-      if (accessTokenProvider?.() !== sentToken) {
+      if (getSessionGeneration() !== sentGeneration) {
         const text = await response.text().catch(() => undefined);
         throw new ApiError(response.status, text);
       }

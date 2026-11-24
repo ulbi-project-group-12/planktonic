@@ -8,6 +8,7 @@ import {
 import { server } from '@/shared/api-mocks-node';
 import type { AuthRegisterBody } from './generated/models';
 import { refreshAccessToken, sessionStore } from './session';
+import { bumpSessionGeneration } from './session-generation';
 import { ApiError, apiFetch, setAccessTokenProvider, setRefreshHandler } from './http-client';
 import { createQueryClient } from './query-client';
 
@@ -153,6 +154,22 @@ describe('refresh on 401', () => {
     await expect(apiFetch('/api/resource')).rejects.toMatchObject({ status: 401 });
 
     expect(rejected).toBe('old-token');
+  });
+
+  it('does not refresh when the session generation changed while the request was in flight', async () => {
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+    setAccessTokenProvider(() => 'old-token');
+    setRefreshHandler(vi.fn().mockResolvedValue(true));
+
+    const request = apiFetch('/api/resource');
+    bumpSessionGeneration();
+    setAccessTokenProvider(() => 'new-token');
+    sessionStore.setState({ accessToken: 'new-token', restoreStatus: 'done' });
+
+    await expect(request).rejects.toMatchObject({ status: 401 });
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
   it('does not refresh requests sent without a token', async () => {
