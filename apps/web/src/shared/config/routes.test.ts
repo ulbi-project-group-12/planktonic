@@ -55,6 +55,12 @@ describe('routes', () => {
     expect(routes.afterLogin('/workspaces/my-team?tab=1')).toBe('/workspaces/my-team?tab=1');
   });
 
+  it('keeps the query and the hash of the return address', () => {
+    expect(routes.afterLogin('/workspaces/my-team/channels/c1?thread=t1#m2')).toBe(
+      '/workspaces/my-team/channels/c1?thread=t1#m2',
+    );
+  });
+
   it.each([
     undefined,
     null,
@@ -62,6 +68,9 @@ describe('routes', () => {
     'https://evil.example',
     '//evil.example',
     '/\\evil.example',
+    '/\t/evil.example',
+    '/\n/evil.example',
+    '/\r\\evil.example',
     'workspaces',
     '/login?next=%2Flogin',
   ])('falls back to the workspace list after login for %j', (next) => {

@@ -1,5 +1,23 @@
 const ws = (slug: string) => `/workspaces/${slug}`;
 const project = (slug: string, key: string) => `${ws(slug)}/projects/${key}`;
+// Any origin works: it only has to differ from every real one.
+const IN_APP_ORIGIN = 'http://in-app.invalid';
+
+/**
+ * `value` as an address of this app, or `undefined`. Parsed the way the browser will parse it, so
+ * `//host`, `/\\host` and a tab or line break hidden after the first slash are all recognised
+ * as another site.
+ */
+function inAppPath(value: string | null | undefined): string | undefined {
+  if (!value?.startsWith('/')) return undefined;
+  try {
+    const url = new URL(value, IN_APP_ORIGIN);
+    return url.origin === IN_APP_ORIGIN ? `${url.pathname}${url.search}${url.hash}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const withQuery = (path: string, query: Record<string, string | undefined>) => {
   const params = new URLSearchParams();
   for (const [name, value] of Object.entries(query)) {
@@ -26,8 +44,10 @@ export const routes = {
    * address of this app, the workspace list otherwise. An absolute or protocol-relative URL is
    * never followed, so a crafted link cannot send a signed-in user to another site.
    */
-  afterLogin: (next?: string | null) =>
-    next && /^\/(?![/\\])/.test(next) && !next.startsWith('/login') ? next : '/workspaces',
+  afterLogin: (next?: string | null) => {
+    const path = inAppPath(next);
+    return path && !path.startsWith('/login') ? path : '/workspaces';
+  },
   register: () => '/register',
   forgotPassword: () => '/forgot-password',
   resetPassword: (token?: string) => withQuery('/reset-password', { token }),
