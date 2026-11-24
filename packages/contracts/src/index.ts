@@ -1,7 +1,21 @@
 export { TICKET_KEY_PATTERN, TicketKey } from './ticket-key.js';
 export { ChannelId } from './channel.js';
 export { PROJECT_KEY_PATTERN, ProjectKey } from './project.js';
-export { RESERVED_WORKSPACE_SLUGS, WORKSPACE_SLUG_PATTERN, WorkspaceSlug } from './workspace.js';
+export {
+  type CreateWorkspaceRequest,
+  CreateWorkspaceRequestSchema,
+  type ListWorkspacesResponse,
+  ListWorkspacesResponseSchema,
+  RESERVED_WORKSPACE_SLUGS,
+  WORKSPACE_SLUG_PATTERN,
+  type WorkspaceResponse,
+  WorkspaceResponseSchema,
+  WorkspaceSlug,
+  type WorkspaceSlugConflictResponse,
+  WorkspaceSlugConflictResponseSchema,
+  type WorkspaceSlugParams,
+  WorkspaceSlugParamsSchema,
+} from './workspace.js';
 export {
   ChannelMessagesParams,
   ClientMsgId,
