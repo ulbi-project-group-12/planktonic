@@ -71,7 +71,7 @@ describe('AppHeader', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 
-  it('forgets the access token, clears the query cache and navigates to login on logout', async () => {
+  it('forgets the access token and clears the query cache on logout', async () => {
     const user = userEvent.setup();
     sessionStore.setState({ accessToken: 'token' });
     const { queryClient } = renderWithApi(<AppHeader onOpenMobileSidebar={vi.fn()} />);
@@ -80,7 +80,6 @@ describe('AppHeader', () => {
     await user.click(await screen.findByText('Ada'));
     await user.click(screen.getByRole('menuitem', { name: /Выйти/ }));
 
-    expect(push).toHaveBeenCalledWith('/login');
     expect(queryClient.getQueryData(['test'])).toBeUndefined();
     expect(sessionStore.getState().accessToken).toBeUndefined();
   });

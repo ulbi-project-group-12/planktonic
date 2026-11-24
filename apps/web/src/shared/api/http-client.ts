@@ -14,6 +14,7 @@ export type ApiRequestOptions = RequestInit;
 
 let accessTokenProvider: (() => string | undefined) | undefined;
 let rejectedTokenHandler: ((token: string) => void) | undefined;
+let refreshHandler: (() => Promise<boolean>) | undefined;
 
 /**
  * Registers the single source of the access token (kept in application memory by the auth
@@ -27,6 +28,16 @@ export function setAccessTokenProvider(
 ): void {
   accessTokenProvider = provider;
   rejectedTokenHandler = provider ? onRejected : undefined;
+}
+
+/**
+ * Registers the callback used to restore an expired access token. The handler is invoked when
+ * an api request that carried a token returns `401`. It must return `true` when a new token is
+ * available and `false` when the session cannot be restored, in which case the rejected token
+ * handler is called so the session ends. Pass `undefined` to remove it.
+ */
+export function setRefreshHandler(handler: (() => Promise<boolean>) | undefined): void {
+  refreshHandler = handler;
 }
 
 // Orval supplies the documented error body as a type argument. HTTP bodies are
@@ -50,26 +61,47 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
   // Not a TypeError: that is what fetch throws for a network failure, and those are retried.
   if (!url.startsWith('/api/')) throw new Error('Expected a relative /api/ URL');
 
-  const headers = normalizeHeaders(options.headers);
-  const accessToken = accessTokenProvider?.();
-  const sentToken = accessToken && !headers.has('Authorization') ? accessToken : undefined;
-  if (sentToken) headers.set('Authorization', `Bearer ${sentToken}`);
-  const response = await fetch(url, { ...options, headers });
-  // Before the body is read: the status is enough, and reading the body can still fail.
-  if (response.status === 401 && sentToken) rejectedTokenHandler?.(sentToken);
-  const text = await response.text();
+  async function send(isRetry: boolean): Promise<T> {
+    const headers = normalizeHeaders(options.headers);
+    const accessToken = accessTokenProvider?.();
+    const sentToken = accessToken && !headers.has('Authorization') ? accessToken : undefined;
+    if (sentToken) headers.set('Authorization', `Bearer ${sentToken}`);
+    const response = await fetch(url, { ...options, headers, credentials: 'same-origin' });
 
-  if (!response.ok) {
-    let body: unknown = text || undefined;
-    if (text) {
-      try {
-        body = JSON.parse(text) as unknown;
-      } catch {
-        // Preserve non-JSON errors from proxies and other upstream services.
+    if (
+      response.status === 401 &&
+      sentToken &&
+      !isRetry &&
+      url !== '/api/auth/refresh' &&
+      refreshHandler
+    ) {
+      const refreshed = await refreshHandler();
+      if (refreshed) {
+        return send(true);
       }
+      rejectedTokenHandler?.(sentToken);
+      const text = await response.text().catch(() => undefined);
+      throw new ApiError(response.status, text);
     }
-    throw new ApiError(response.status, body);
+
+    // Before the body is read: the status is enough, and reading the body can still fail.
+    if (response.status === 401 && sentToken) rejectedTokenHandler?.(sentToken);
+    const text = await response.text();
+
+    if (!response.ok) {
+      let body: unknown = text;
+      if (text) {
+        try {
+          body = JSON.parse(text) as unknown;
+        } catch {
+          // Preserve non-JSON errors from proxies and other upstream services.
+        }
+      }
+      throw new ApiError(response.status, body);
+    }
+
+    return (text ? JSON.parse(text) : undefined) as T;
   }
 
-  return (text ? JSON.parse(text) : undefined) as T;
+  return send(false);
 }

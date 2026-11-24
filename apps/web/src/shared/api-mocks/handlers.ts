@@ -92,6 +92,9 @@ function createWorkspaceHandlers() {
 export function createApiHandlers() {
   return [
     getAuthLoginMockHandler({ accessToken: 'msw-access-token' }),
+    http.post('*/api/auth/refresh', () =>
+      HttpResponse.json({ accessToken: 'msw-refreshed-token' }),
+    ),
     getAuthMeMockHandler(currentUser),
     getAuthRegisterMockHandler({
       id: currentUser.id,

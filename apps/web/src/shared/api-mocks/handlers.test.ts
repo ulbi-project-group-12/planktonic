@@ -93,6 +93,12 @@ it('answers 400 with field issues for a slug the contract rejects', async () => 
   }
 });
 
+it('returns a refreshed access token', async () => {
+  const response = await fetch('http://api.example.invalid/api/auth/refresh', { method: 'POST' });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ accessToken: 'msw-refreshed-token' });
+});
+
 it('returns the current user', async () => {
   const response = await fetch('http://api.example.invalid/api/auth/me');
   expect(response.status).toBe(200);

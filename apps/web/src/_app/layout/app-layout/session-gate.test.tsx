@@ -2,7 +2,14 @@ import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { apiFetch, sessionStore, setAccessTokenProvider, signOut } from '@/shared/api';
+import {
+  apiFetch,
+  ensureSessionHandlers,
+  sessionStore,
+  setAccessTokenProvider,
+  setRefreshHandler,
+  signOut,
+} from '@/shared/api';
 import { server } from '@/shared/api-mocks-node';
 import { renderWithApi } from '@/shared/lib/testing';
 import { SessionGate } from './session-gate';
@@ -28,6 +35,8 @@ function signInAs(accessToken: string) {
       sessionStore.setState({ accessToken: undefined });
     },
   );
+  // Set restoreStatus first so a render that sees the old token state never starts restore.
+  sessionStore.setState({ restoreStatus: 'done' });
   sessionStore.setState({ accessToken });
 }
 
@@ -39,20 +48,69 @@ function renderGate() {
   );
 }
 
+function refreshRejected() {
+  return http.post('/api/auth/refresh', () =>
+    HttpResponse.json({ statusCode: 401, message: 'Unauthorized' }, { status: 401 }),
+  );
+}
+
 describe('SessionGate', () => {
   beforeEach(() => {
     replace.mockClear();
+    ensureSessionHandlers();
+    sessionStore.setState({ accessToken: undefined, signedOut: false, restoreStatus: 'done' });
     window.history.replaceState(null, '', '/workspaces/my-team?tab=members');
   });
 
   afterEach(() => {
-    sessionStore.setState({ accessToken: undefined, signedOut: false });
+    sessionStore.setState({ accessToken: undefined, signedOut: false, restoreStatus: 'done' });
     setAccessTokenProvider(undefined);
+    setRefreshHandler(undefined);
+  });
+
+  it('restores the session on load when no token is in memory', async () => {
+    sessionStore.setState({ restoreStatus: 'idle' });
+    let authorization: string | null = null;
+    server.use(
+      http.post('/api/auth/refresh', () => HttpResponse.json({ accessToken: 'restored-token' })),
+      http.get('/api/auth/me', ({ request }) => {
+        authorization = request.headers.get('authorization');
+        return HttpResponse.json(profile);
+      }),
+    );
+
+    renderGate();
+
+    expect(screen.getByLabelText('Загрузка')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Закрытая страница')).toBeInTheDocument();
+    });
+    expect(authorization).toBe('Bearer restored-token');
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('sends a guest to the login screen when refresh is rejected', async () => {
+    server.use(
+      refreshRejected(),
+      http.get('/api/auth/me', () => {
+        throw new Error('me should not be called');
+      }),
+    );
+
+    renderGate();
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledExactlyOnceWith(
+        '/login?next=%2Fworkspaces%2Fmy-team%3Ftab%3Dmembers',
+      );
+    });
+    expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
   });
 
   it('sends a guest to the login screen with the address to return to', async () => {
     let asked = false;
     server.use(
+      refreshRejected(),
       http.get('/api/auth/me', () => {
         asked = true;
         return HttpResponse.json(profile);
@@ -71,12 +129,13 @@ describe('SessionGate', () => {
   });
 
   it('keeps the hash of the address in the return address', async () => {
+    server.use(refreshRejected());
     window.history.replaceState(null, '', '/workspaces/my-team?thread=t1#m2');
 
     renderGate();
 
     await waitFor(() => {
-      expect(replace).toHaveBeenCalledExactlyOnceWith(
+      expect(replace).toHaveBeenLastCalledWith(
         '/login?next=%2Fworkspaces%2Fmy-team%3Fthread%3Dt1%23m2',
       );
     });
@@ -101,6 +160,7 @@ describe('SessionGate', () => {
 
   it('forgets a token the api rejects and sends the visitor to login', async () => {
     server.use(
+      refreshRejected(),
       http.get('/api/auth/me', () =>
         HttpResponse.json({ statusCode: 401, message: 'Unauthorized' }, { status: 401 }),
       ),
@@ -113,7 +173,7 @@ describe('SessionGate', () => {
       expect(replace).toHaveBeenCalledWith('/login?next=%2Fworkspaces%2Fmy-team%3Ftab%3Dmembers');
     });
     expect(sessionStore.getState().accessToken).toBeUndefined();
-    expect(queryClient.getQueryCache().getAll()).toEqual([]);
+    expect(queryClient.getQueryData(['/api/auth/me'])).toBeUndefined();
     expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
   });
 
@@ -123,6 +183,7 @@ describe('SessionGate', () => {
       http.get('/api/workspaces', () =>
         HttpResponse.json({ statusCode: 401, message: 'Unauthorized' }, { status: 401 }),
       ),
+      refreshRejected(),
     );
     signInAs('expired-access-token');
     renderGate();
@@ -151,7 +212,7 @@ describe('SessionGate', () => {
     await waitFor(() => {
       expect(replace).toHaveBeenCalledExactlyOnceWith('/login');
     });
-    expect(queryClient.getQueryCache().getAll()).toEqual([]);
+    expect(queryClient.getQueryData(['/api/auth/me'])).toBeUndefined();
     expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
     // The next guest visit is an ordinary one again.
     expect(sessionStore.getState().signedOut).toBe(false);
@@ -171,6 +232,7 @@ describe('SessionGate', () => {
     );
     signInAs('test-access-token');
 
+    expect(sessionStore.getState().accessToken).toBe('test-access-token');
     renderGate();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить профиль');
