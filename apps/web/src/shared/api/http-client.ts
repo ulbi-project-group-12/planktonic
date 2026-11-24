@@ -55,8 +55,9 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
   const sentToken = accessToken && !headers.has('Authorization') ? accessToken : undefined;
   if (sentToken) headers.set('Authorization', `Bearer ${sentToken}`);
   const response = await fetch(url, { ...options, headers });
-  const text = await response.text();
+  // Before the body is read: the status is enough, and reading the body can still fail.
   if (response.status === 401 && sentToken) rejectedTokenHandler?.(sentToken);
+  const text = await response.text();
 
   if (!response.ok) {
     let body: unknown = text || undefined;

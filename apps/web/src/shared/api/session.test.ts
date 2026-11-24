@@ -59,6 +59,25 @@ it('ends the session when any request with the token gets 401', async () => {
   expect(sessionStore.getState().accessToken).toBeUndefined();
 });
 
+it('ends the session on 401 even when the response body cannot be read', async () => {
+  const broken = new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.error(new TypeError('connection lost'));
+      },
+    }),
+    { status: 401 },
+  );
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'test-access-token' }))
+    .mockResolvedValueOnce(broken);
+
+  await signIn(credentials);
+  await expect(apiFetch('/api/workspaces')).rejects.toBeInstanceOf(TypeError);
+
+  expect(sessionStore.getState().accessToken).toBeUndefined();
+});
+
 it('keeps a newer session when a request sent with an older token gets 401', async () => {
   let answerOld: (response: Response) => void = () => undefined;
   vi.spyOn(globalThis, 'fetch')
