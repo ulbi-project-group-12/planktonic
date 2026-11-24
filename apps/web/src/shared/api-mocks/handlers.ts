@@ -1,4 +1,4 @@
-import { WorkspaceSlug } from '@app/contracts';
+import { type AuthSession, WorkspaceSlug } from '@app/contracts';
 import { HttpResponse, http } from 'msw';
 import { z } from 'zod';
 import {
@@ -87,18 +87,9 @@ function createWorkspaceHandlers() {
 /**
  * Auth sessions live here until UL-157 lands the real contracts and the OpenAPI schema gains
  * GET/DELETE /api/auth/sessions — then Orval regenerates the handlers and this block goes.
- * The screen is UL-223; the record mirrors the Session table of UL-141 (browser and OS from
- * User-Agent, created at, last used at).
+ * The screen is UL-223; the record is the draft `AuthSession` contract, which mirrors the
+ * Session table of UL-141 (browser and OS from User-Agent, created at, last used at).
  */
-interface MockAuthSession {
-  id: string;
-  browser: string;
-  os: string;
-  signedInAt: string;
-  lastActiveAt: string;
-  isCurrent: boolean;
-}
-
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
@@ -107,7 +98,7 @@ const iso = (ms: number) => new Date(ms).toISOString();
 /** GET /api/auth/sessions + DELETE one/all-but-current over an in-memory list. */
 function createAuthSessionHandlers() {
   const now = Date.now();
-  const sessions: MockAuthSession[] = [
+  const sessions: AuthSession[] = [
     {
       id: '019a8f00-0000-7000-8000-0000000000c1',
       browser: 'Chrome 130',
