@@ -82,6 +82,24 @@ it('ends the session when any request with the token gets 401 and refresh is rej
   expect(sessionStore.getState().accessToken).toBeUndefined();
 });
 
+it('keeps the token after a refresh network error and refreshes on the next request', async () => {
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockResolvedValueOnce(new Response(null, { status: 401 }))
+    .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    .mockResolvedValueOnce(new Response(null, { status: 401 }))
+    .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }))
+    .mockResolvedValueOnce(Response.json({ ok: true }));
+
+  await signIn(credentials);
+
+  await expect(apiFetch('/api/workspaces')).rejects.toMatchObject({ status: 401 });
+  expect(sessionStore.getState().accessToken).toBe('old-token');
+
+  await expect(apiFetch('/api/workspaces')).resolves.toEqual({ ok: true });
+  expect(sessionStore.getState().accessToken).toBe('new-token');
+});
+
 it('ends the session on 401 even when the response body cannot be read and refresh is rejected', async () => {
   const broken = new Response(
     new ReadableStream({
@@ -210,15 +228,37 @@ it('discards a refresh started during sign-out and stays signed out until sign-i
   await signingOut;
 
   refresh.resolve(Response.json({ accessToken: 'stale-token' }));
-  await expect(refreshing).resolves.toBe(false);
+  await expect(refreshing).resolves.toBe('unavailable');
   // SessionGate consumes the flag used for navigation.
   sessionStore.setState({ signedOut: false });
-  await expect(refreshAccessToken()).resolves.toBe(false);
+  await expect(refreshAccessToken()).resolves.toBe('unavailable');
   expect(fetcher).toHaveBeenCalledTimes(3);
   expect(sessionStore.getState().accessToken).toBeUndefined();
 
   await signIn(credentials);
   expect(sessionStore.getState().accessToken).toBe('new-token');
+});
+
+it('keeps a new sign-in when an older logout completes', async () => {
+  const logout = Promise.withResolvers<Response>();
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockReturnValueOnce(logout.promise)
+    .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }));
+
+  await signIn(credentials);
+  const signingOut = signOut();
+  expect(localStorage.getItem('__planktonic_signed_out')).toBe('1');
+  await signIn(credentials);
+  logout.resolve(Response.json({}));
+  await signingOut;
+
+  expect(localStorage.getItem('__planktonic_signed_out')).toBeNull();
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: 'new-token',
+    restoreStatus: 'done',
+    signedOut: false,
+  });
 });
 
 it('aborts an unanswered logout and clears the local session', async () => {
@@ -252,8 +292,8 @@ it('refreshAccessToken shares one inflight promise across parallel callers', asy
 
   const [first, second] = await Promise.all([refreshAccessToken(), refreshAccessToken()]);
 
-  expect(first).toBe(true);
-  expect(second).toBe(true);
+  expect(first).toBe('refreshed');
+  expect(second).toBe('refreshed');
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(sessionStore.getState().accessToken).toBe('refreshed-token');
 });

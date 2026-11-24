@@ -90,6 +90,31 @@ describe('SessionGate', () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it('offers to retry a failed restore without redirecting to login', async () => {
+    sessionStore.setState({ restoreStatus: 'idle' });
+    let attempts = 0;
+    server.use(
+      http.post('/api/auth/refresh', () => {
+        attempts += 1;
+        if (attempts === 1) return new HttpResponse(null, { status: 503 });
+        return HttpResponse.json({ accessToken: 'restored-token' });
+      }),
+      http.get('/api/auth/me', () => HttpResponse.json(profile)),
+    );
+
+    renderGate();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось восстановить сессию');
+    expect(replace).not.toHaveBeenCalled();
+    expect(attempts).toBe(1);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+
+    expect(await screen.findByText('Закрытая страница')).toBeInTheDocument();
+    expect(attempts).toBe(2);
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it('sends a guest to the login screen when refresh is rejected', async () => {
     sessionStore.setState({ restoreStatus: 'idle' });
     let refreshCount = 0;
@@ -223,6 +248,20 @@ describe('SessionGate', () => {
     expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
     // The next guest visit is an ordinary one again.
     expect(sessionStore.getState().signedOut).toBe(false);
+  });
+
+  it('keeps the session when the profile returns 401 and refresh is unavailable', async () => {
+    server.use(
+      http.get('/api/auth/me', () => new HttpResponse(null, { status: 401 })),
+      http.post('/api/auth/refresh', () => new HttpResponse(null, { status: 503 })),
+    );
+    signInAs('expired-access-token');
+
+    renderGate();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить профиль');
+    expect(replace).not.toHaveBeenCalled();
+    expect(sessionStore.getState().accessToken).toBe('expired-access-token');
   });
 
   it('keeps the session and offers a retry when the profile request fails', async () => {

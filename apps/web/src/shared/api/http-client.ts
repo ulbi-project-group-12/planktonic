@@ -13,16 +13,19 @@ export class ApiError extends Error {
 }
 
 export type ApiRequestOptions = RequestInit;
+export type RefreshResult = 'refreshed' | 'rejected' | 'unavailable';
+
+const REFRESH_URL = '/api/auth/refresh';
 
 let accessTokenProvider: (() => string | undefined) | undefined;
 let rejectedTokenHandler: ((token: string) => void) | undefined;
-let refreshHandler: (() => Promise<boolean>) | undefined;
+let refreshHandler: (() => Promise<RefreshResult>) | undefined;
 
 /**
  * Registers the single source of the access token (kept in application memory by the auth
  * code). Every request asks it and sends `Authorization: Bearer <token>` when it returns one.
- * Pass `undefined` to remove it. `onRejected` hears about unrecovered `401` responses to requests
- * that carried the provider's token in the current session, so the session can end in one place.
+ * Pass `undefined` to remove it. `onRejected` hears when refresh confirms that the current
+ * session's credentials are no longer accepted.
  */
 export function setAccessTokenProvider(
   provider: (() => string | undefined) | undefined,
@@ -34,11 +37,10 @@ export function setAccessTokenProvider(
 
 /**
  * Registers the callback used to restore an expired access token. The handler is invoked when
- * an eligible request returns `401` and no newer token is available. It returns `true` when a new token is
- * available and `false` when the session cannot be restored, in which case the rejected token
- * handler is called so the session ends. Pass `undefined` to remove it.
+ * an eligible request returns `401` and no newer token is available. Only a refresh response
+ * with status `401` counts as `rejected`. Pass `undefined` to remove the callback.
  */
-export function setRefreshHandler(handler: (() => Promise<boolean>) | undefined): void {
+export function setRefreshHandler(handler: (() => Promise<RefreshResult>) | undefined): void {
   refreshHandler = handler;
 }
 
@@ -76,30 +78,31 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
     if (sentToken) headers.set('Authorization', `Bearer ${sentToken}`);
     const response = await fetch(url, { ...options, headers, credentials: 'same-origin' });
 
-    if (response.status === 401 && sentToken) {
+    if (response.status === 401 && sentToken && url !== REFRESH_URL) {
       if (getSessionGeneration() !== sentGeneration) {
         throw await unauthorizedError(response);
       }
 
-      if (!isRetry && url !== '/api/auth/refresh') {
+      if (!isRetry) {
         const currentToken = accessTokenProvider?.();
         if (currentToken && currentToken !== sentToken) return send(true);
 
         if (refreshHandler) {
-          const refreshed = await refreshHandler();
+          const result = await refreshHandler();
           if (getSessionGeneration() !== sentGeneration) {
             throw await unauthorizedError(response);
           }
-          if (refreshed) return send(true);
-          rejectedTokenHandler?.(sentToken);
+          if (result === 'refreshed') return send(true);
+          if (result === 'rejected') rejectedTokenHandler?.(sentToken);
           throw await unauthorizedError(response);
         }
       }
-
-      // Before the body is read: the status is enough, and reading the body can still fail.
-      rejectedTokenHandler?.(sentToken);
     }
-    const text = await response.text();
+    const text = await response.text().catch((error: unknown) => {
+      // For refresh, the 401 status confirms rejection even if the connection drops mid-body.
+      if (url === REFRESH_URL && response.status === 401) return '';
+      throw error;
+    });
 
     if (!response.ok) {
       let body: unknown = text;

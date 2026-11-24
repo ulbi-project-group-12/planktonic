@@ -146,7 +146,7 @@ describe('refresh on 401', () => {
     setRefreshHandler(refreshAccessToken);
 
     const request = apiFetch('/api/resource');
-    await expect(refreshAccessToken()).resolves.toBe(true);
+    await expect(refreshAccessToken()).resolves.toBe('refreshed');
     resolve(new Response(null, { status: 401 }));
 
     await expect(request).resolves.toEqual({ ok: true });
@@ -173,14 +173,24 @@ describe('refresh on 401', () => {
         rejected = token;
       },
     );
-    setRefreshHandler(async () => {
-      await apiFetch('/api/auth/refresh', { method: 'POST' });
-      return false;
-    });
+    setRefreshHandler(refreshAccessToken);
 
     await expect(apiFetch('/api/resource')).rejects.toMatchObject({ status: 401 });
 
     expect(rejected).toBe('old-token');
+  });
+
+  it('keeps the refreshed session if the retried request still returns 401', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }));
+
+    await signIn(credentials);
+
+    await expect(apiFetch('/api/resource')).rejects.toMatchObject({ status: 401 });
+    expect(sessionStore.getState().accessToken).toBe('new-token');
   });
 
   it.each(['sign-in', 'sign-out'])('rejects a late 401 after %s', async (change) => {
@@ -232,7 +242,7 @@ describe('refresh on 401', () => {
     const fetcher = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
-    setRefreshHandler(vi.fn().mockResolvedValue(true));
+    setRefreshHandler(vi.fn().mockResolvedValue('refreshed'));
 
     await expect(apiFetch('/api/resource')).rejects.toMatchObject({ status: 401 });
 
@@ -244,7 +254,7 @@ describe('refresh on 401', () => {
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
     setAccessTokenProvider(() => 'old-token');
-    setRefreshHandler(vi.fn().mockResolvedValue(true));
+    setRefreshHandler(vi.fn().mockResolvedValue('refreshed'));
 
     await expect(apiFetch('/api/auth/refresh', { method: 'POST' })).rejects.toMatchObject({
       status: 401,
