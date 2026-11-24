@@ -143,6 +143,39 @@ describe('LoginForm', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('does not show a late 401 next to credentials edited during the request', async () => {
+    let release: () => void = () => {};
+    let markEntered: () => void = () => {};
+    const entered = new Promise<void>((resolve) => {
+      markEntered = resolve;
+    });
+    server.use(
+      http.post('*/api/auth/login', async () => {
+        markEntered();
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return HttpResponse.json(
+          { statusCode: 401, message: 'Invalid email or password' },
+          { status: 401 },
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<LoginForm />);
+
+    await fill(user);
+    await user.click(submit());
+    await entered;
+    await user.type(screen.getByLabelText(/Пароль/), '1');
+    release();
+
+    await waitFor(() => {
+      expect(submit()).toBeEnabled();
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('never falls back to a native GET submit that would put the password in the URL', () => {
     const { container } = renderWithApi(<LoginForm />);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type FieldError } from 'react-hook-form';
@@ -29,15 +29,20 @@ export function LoginForm() {
     defaultValues: { email: '', password: '' },
   });
 
+  // Counts edits of the credentials: the fields stay editable during the request, and "invalid
+  // email or password" is about the values that were sent, not about ones typed since.
+  const editsRef = useRef(0);
+
   const onSubmit = handleSubmit(
     async (values) => {
       setSubmitError(undefined);
+      const editsAtSubmit = editsRef.current;
       try {
         await signIn.mutateAsync(values);
         router.push(routes.workspaces());
       } catch (error) {
         if (hasApiStatus(error, 401)) {
-          setSubmitError(INVALID_CREDENTIALS_MESSAGE);
+          if (editsRef.current === editsAtSubmit) setSubmitError(INVALID_CREDENTIALS_MESSAGE);
           return;
         }
         if (isApiError(error)) {
@@ -65,6 +70,7 @@ export function LoginForm() {
 
   // The banner describes the values that were sent: once they change, it is out of date.
   const clearSubmitError = () => {
+    editsRef.current += 1;
     setSubmitError(undefined);
   };
 
