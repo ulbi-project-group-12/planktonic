@@ -45,9 +45,10 @@ export function useTheme() {
     [applyTheme],
   );
 
+  // Restoring is not a user choice: sync state and DOM, leave the storage untouched.
   useEffect(() => {
-    applyTheme(readStoredTheme());
-  }, [applyTheme]);
+    syncTheme(readStoredTheme());
+  }, [syncTheme]);
 
   useEffect(() => {
     if (themeState !== 'system') return;
@@ -65,7 +66,8 @@ export function useTheme() {
 
   useEffect(() => {
     const handler = (event: StorageEvent) => {
-      if (event.key !== THEME_STORAGE_KEY) return;
+      // `key` is null when another tab calls localStorage.clear().
+      if (event.key !== null && event.key !== THEME_STORAGE_KEY) return;
       // Read the actual stored value instead of relying on event.newValue,
       // and synchronize without writing back to storage.
       syncTheme(readStoredTheme());

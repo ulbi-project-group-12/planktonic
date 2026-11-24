@@ -78,6 +78,14 @@ describe('useTheme', () => {
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('system');
   });
 
+  it('does not write to the storage when restoring on mount', async () => {
+    const { result } = renderHook(() => useTheme());
+    await waitFor(() => {
+      expect(result.current.theme).toBe('system');
+    });
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
+  });
+
   it('transitions between light, dark and system', async () => {
     const { result } = renderHook(() => useTheme());
     await waitFor(() => {
@@ -180,6 +188,37 @@ describe('useTheme', () => {
     await waitFor(() => {
       expect(result.current.theme).toBe('system');
     });
+  });
+
+  it('falls back to system when another tab clears the storage', async () => {
+    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    const { result } = renderHook(() => useTheme());
+    await waitFor(() => {
+      expect(result.current.theme).toBe('dark');
+    });
+
+    localStorage.clear();
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: null }));
+    });
+    await waitFor(() => {
+      expect(result.current.theme).toBe('system');
+    });
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+  });
+
+  it('ignores storage events for other keys', async () => {
+    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    const { result } = renderHook(() => useTheme());
+    await waitFor(() => {
+      expect(result.current.theme).toBe('dark');
+    });
+
+    localStorage.setItem(THEME_STORAGE_KEY, 'light');
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'other', newValue: 'x' }));
+    });
+    expect(result.current.theme).toBe('dark');
   });
 
   it('removes subscriptions on unmount', async () => {
