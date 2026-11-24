@@ -23,7 +23,7 @@ export function DevicesSettingsPage() {
       </div>
 
       {sessions.isPending ? (
-        <div className="flex flex-col gap-3" aria-label="Загрузка списка сессий">
+        <div className="flex flex-col gap-3" role="status" aria-label="Загрузка списка сессий">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />

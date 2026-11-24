@@ -15,10 +15,15 @@ function pluralize(count: number, forms: { one: string; few: string; many: strin
   return category === 'one' || category === 'few' ? forms[category] : forms.many;
 }
 
-/** "5 минут назад" style strings; the year is only shown when it differs from `now`'s. */
+/** The calendar year of `date` in `timeZone`: around New Year it differs between zones. */
+function yearIn(date: Date, timeZone: string | undefined): string {
+  return new Intl.DateTimeFormat('en-US', { year: 'numeric', timeZone }).format(date);
+}
+
+/** "20 ноября в 14:32"; the year is only shown when it differs from `now`'s. */
 function absolute(iso: string, timeZone: string | undefined, now: Date): string {
   const date = new Date(iso);
-  const withYear = date.getFullYear() !== now.getFullYear();
+  const withYear = yearIn(date, timeZone) !== yearIn(now, timeZone);
   return new Intl.DateTimeFormat('ru-RU', {
     day: 'numeric',
     month: 'long',
@@ -29,7 +34,7 @@ function absolute(iso: string, timeZone: string | undefined, now: Date): string 
   }).format(date);
 }
 
-/** When the session was opened: an absolute "when", e.g. "20 ноября, 14:32". */
+/** When the session was opened: an absolute "when", e.g. "20 ноября в 14:32". */
 export function formatSignedInAt(iso: string, now: Date, timeZone?: string): string {
   return absolute(iso, timeZone, now);
 }

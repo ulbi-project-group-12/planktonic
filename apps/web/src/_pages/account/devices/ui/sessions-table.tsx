@@ -9,14 +9,17 @@ import { formatLastActiveAt, formatSignedInAt } from '../model/session-time';
 
 type RevokeTarget = AuthSession | 'others';
 
+/** "Chrome 130 · Windows 11"; the server sends null for what it could not read from User-Agent. */
 function deviceLabel(session: AuthSession): string {
-  return `${session.browser} · ${session.os}`;
+  const parts = [session.browser, session.os].filter(Boolean);
+  return parts.length > 0 ? parts.join(' · ') : 'Неизвестное устройство';
 }
 
 interface SessionsTableProps {
   sessions: AuthSession[];
   now: Date;
-  onError: (message: string) => void;
+  /** The message of a failed action; `undefined` when the next attempt starts. */
+  onError: (message: string | undefined) => void;
 }
 
 export function SessionsTable({ sessions, now, onError }: SessionsTableProps) {
@@ -25,9 +28,15 @@ export function SessionsTable({ sessions, now, onError }: SessionsTableProps) {
   const [revokeTarget, setRevokeTarget] = useState<RevokeTarget | null>(null);
 
   const otherCount = sessions.filter((session) => !session.isCurrent).length;
+  // One action at a time: every "end" button is locked until the list has been reloaded, so a
+  // second click cannot send the same DELETE again or race the first one.
+  const isRevoking = terminateSession.isPending || terminateOthers.isPending;
+  const isRevokingSession = (session: AuthSession) =>
+    terminateSession.isPending && terminateSession.variables === session.id;
 
   const confirmRevoke = () => {
-    if (revokeTarget === null) return;
+    if (revokeTarget === null || isRevoking) return;
+    onError(undefined);
     const request =
       revokeTarget === 'others'
         ? terminateOthers.mutateAsync()
@@ -46,6 +55,8 @@ export function SessionsTable({ sessions, now, onError }: SessionsTableProps) {
     {
       id: 'device',
       header: 'Устройство',
+      // The longest text of the row: takes more of the free width than the two dates.
+      width: 'minmax(160px, 1.5fr)',
       accessor: (session) => deviceLabel(session),
       cell: (session) => (
         <span className="flex min-w-0 items-center gap-2">
@@ -53,11 +64,6 @@ export function SessionsTable({ sessions, now, onError }: SessionsTableProps) {
           <span className="truncate" title={deviceLabel(session)}>
             {deviceLabel(session)}
           </span>
-          {session.isCurrent ? (
-            <Chip palette="brand" fill="subtle" className="shrink-0">
-              Это устройство
-            </Chip>
-          ) : null}
         </span>
       ),
     },
@@ -67,11 +73,7 @@ export function SessionsTable({ sessions, now, onError }: SessionsTableProps) {
       accessor: (session) => session.signedInAt,
       sortable: true,
       sortType: 'date',
-      cell: (session) => (
-        <span title={formatSignedInAt(session.signedInAt, now)}>
-          {formatSignedInAt(session.signedInAt, now)}
-        </span>
-      ),
+      cell: (session) => formatSignedInAt(session.signedInAt, now),
     },
     {
       id: 'lastActiveAt',
@@ -91,11 +93,19 @@ export function SessionsTable({ sessions, now, onError }: SessionsTableProps) {
       width: 132,
       align: 'right',
       cell: (session) =>
-        session.isCurrent ? null : (
+        // The mark takes the place of the button: next to the name it left the name three letters.
+        session.isCurrent ? (
+          <Chip palette="brand" fill="subtle">
+            Это устройство
+          </Chip>
+        ) : (
           <Button
             variant="subtle"
             palette="danger"
             size="s"
+            loading={isRevokingSession(session)}
+            disabled={isRevoking}
+            aria-label={`Завершить сессию: ${deviceLabel(session)}`}
             onClick={() => {
               setRevokeTarget(session);
             }}
@@ -116,6 +126,8 @@ export function SessionsTable({ sessions, now, onError }: SessionsTableProps) {
           <Button
             variant="subtle"
             palette="danger"
+            loading={terminateOthers.isPending}
+            disabled={isRevoking}
             onClick={() => {
               setRevokeTarget('others');
             }}
