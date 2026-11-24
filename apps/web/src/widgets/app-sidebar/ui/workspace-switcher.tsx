@@ -102,6 +102,14 @@ export function WorkspaceSwitcher({ onWorkspaceSelect }: { onWorkspaceSelect?: (
             onChange={(event) => {
               setQuery(event.target.value);
             }}
+            onKeyDown={(event) => {
+              // The menu reads printable keys, Home and End as its own type-ahead and navigation
+              // and moves focus to an item. Keep them in the field; arrows, Tab and Escape still
+              // reach the menu.
+              if (event.key.length === 1 || event.key === 'Home' || event.key === 'End') {
+                event.stopPropagation();
+              }
+            }}
             icon={<Search className="size-3.5" />}
             aria-label="Поиск пространств"
           />

@@ -70,6 +70,10 @@ describe('WorkspaceSwitcher', () => {
     const search = screen.getByRole('textbox', { name: /Поиск пространств/ });
     await user.type(search, 'beta');
 
+    // The menu must not treat the letters as its own type-ahead and move focus to an item.
+    expect(search).toHaveValue('beta');
+    expect(search).toHaveFocus();
+
     await waitFor(
       () => {
         expect(getMenuItem(/Beta Search/)).toBeInTheDocument();
