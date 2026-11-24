@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ProjectLayout } from './project-layout';
+
+const notFoundMock = vi.hoisted(() =>
+  vi.fn(() => {
+    throw new Error('NEXT_NOT_FOUND');
+  }),
+);
+
+vi.mock('next/navigation', () => ({ notFound: notFoundMock }));
 
 async function render(projectKey: string) {
   return ProjectLayout({
@@ -9,10 +17,11 @@ async function render(projectKey: string) {
 }
 
 describe('ProjectLayout', () => {
-  it.each(['WEB', 'web', 'create', 'W', '1WEB'])(
-    'renders children for project key %s',
-    async (key) => {
-      await expect(render(key)).resolves.toBe('content');
-    },
-  );
+  it('renders children for a valid key', async () => {
+    await expect(render('WEB')).resolves.toBe('content');
+  });
+
+  it.each(['web', 'create', 'W', '1WEB'])('calls notFound for %s', async (key) => {
+    await expect(render(key)).rejects.toThrow('NEXT_NOT_FOUND');
+  });
 });
