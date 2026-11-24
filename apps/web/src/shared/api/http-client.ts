@@ -110,8 +110,9 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
       }
     }
     const text = await response.text().catch((error: unknown) => {
-      // For refresh, the 401 status confirms rejection even if the connection drops mid-body.
-      if (url === REFRESH_URL && response.status === 401) return '';
+      // For refresh the status alone decides what happens next (401, 404 and 405 end the session,
+      // the rest is temporary), even if the connection drops mid-body.
+      if (url === REFRESH_URL && !response.ok) return '';
       throw error;
     });
 

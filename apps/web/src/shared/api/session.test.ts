@@ -204,6 +204,22 @@ it.each([404, 405])(
   },
 );
 
+it('restoreSession leaves a guest on 404 even when the response body cannot be read', async () => {
+  const broken = new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.error(new TypeError('connection lost'));
+      },
+    }),
+    { status: 404 },
+  );
+  vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(broken);
+
+  await restoreSession();
+
+  expect(sessionStore.getState().restoreStatus).toBe('done');
+});
+
 it('restoreSession keeps the retry state on a temporary failure', async () => {
   vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 503 }));
 
