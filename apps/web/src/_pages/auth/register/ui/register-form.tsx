@@ -166,6 +166,7 @@ export function RegisterForm() {
           autoComplete="new-password"
           placeholder="••••••••"
           aria-required
+          suppressHydrationWarning
           className="pl-3 pr-1.5"
           action={
             <PasswordVisibilityButton
@@ -185,6 +186,7 @@ export function RegisterForm() {
           autoComplete="new-password"
           placeholder="••••••••"
           aria-required
+          suppressHydrationWarning
           className="pl-3 pr-1.5"
           action={
             <PasswordVisibilityButton
