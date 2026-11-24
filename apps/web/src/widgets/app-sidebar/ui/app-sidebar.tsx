@@ -18,7 +18,8 @@ const navItemClass = cn(
   'hover:bg-sunken hover:text-fg-primary',
   'focus-visible:ring-3 focus-visible:ring-brand-primary/40',
   'aria-[current=page]:bg-brand-subtle aria-[current=page]:text-brand-text',
-  'disabled:pointer-events-none disabled:opacity-50',
+  // Disabled items are spans with aria-disabled, so the `disabled:` variant never matched them.
+  'aria-disabled:pointer-events-none aria-disabled:opacity-50',
 );
 
 interface NavItemProps {
@@ -107,15 +108,18 @@ export function AppSidebar({
     function handlePointerUp() {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
     }
 
     window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp, { once: true });
+    window.addEventListener('pointerup', handlePointerUp);
+    // A cancelled gesture (touch scroll, lost capture) never sends pointerup.
+    window.addEventListener('pointercancel', handlePointerUp);
   }
 
   return (
     <aside
-      aria-label="App sidebar"
+      aria-label="Боковая панель"
       className={cn('relative flex shrink-0 flex-col border-r border-line p-3', className)}
       style={{ width }}
     >
@@ -123,7 +127,7 @@ export function AppSidebar({
         <WorkspaceSwitcher onWorkspaceSelect={onWorkspaceSelect} />
       </div>
 
-      <nav aria-label="Workspace navigation" className="flex flex-col gap-1">
+      <nav aria-label="Навигация по пространству" className="flex flex-col gap-1">
         <NavItem href={routes.workspaces()} active={pathname === routes.workspaces()}>
           <Layers className="size-4" />
           Все пространства
@@ -179,8 +183,11 @@ export function AppSidebar({
 
       <div
         role="separator"
-        aria-label="Resize sidebar"
+        aria-label="Ширина боковой панели"
         aria-orientation="vertical"
+        aria-valuenow={width}
+        aria-valuemin={MIN_WIDTH}
+        aria-valuemax={MAX_WIDTH}
         onPointerDown={handleResizeStart}
         onKeyDown={handleResizeKeyDown}
         className={cn(

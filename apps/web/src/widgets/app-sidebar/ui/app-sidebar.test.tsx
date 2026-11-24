@@ -17,8 +17,10 @@ describe('AppSidebar', () => {
   it('renders the workspace switcher and navigation', () => {
     pathname = '/workspaces';
     renderWithApi(<AppSidebar />);
-    expect(screen.getByRole('complementary', { name: 'App sidebar' })).toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: 'Workspace navigation' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Боковая панель' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Навигация по пространству' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Все пространства/ })).toHaveAttribute(
       'aria-current',
       'page',
@@ -47,7 +49,7 @@ describe('AppSidebar', () => {
     const onWidthChange = vi.fn();
     renderWithApi(<AppSidebar width={264} onWidthChange={onWidthChange} />);
 
-    const handle = screen.getByRole('separator', { name: 'Resize sidebar' });
+    const handle = screen.getByRole('separator', { name: 'Ширина боковой панели' });
     fireEvent.pointerDown(handle, { clientX: 264, pointerId: 1 });
 
     window.dispatchEvent(new PointerEvent('pointermove', { clientX: 500 }));
@@ -59,11 +61,26 @@ describe('AppSidebar', () => {
     fireEvent.pointerUp(window);
   });
 
+  it('exposes the width to assistive technology and stops resizing when the gesture is cancelled', () => {
+    const onWidthChange = vi.fn();
+    renderWithApi(<AppSidebar width={264} onWidthChange={onWidthChange} />);
+
+    const handle = screen.getByRole('separator', { name: 'Ширина боковой панели' });
+    expect(handle).toHaveAttribute('aria-valuenow', '264');
+    expect(handle).toHaveAttribute('aria-valuemin', '200');
+    expect(handle).toHaveAttribute('aria-valuemax', '400');
+
+    fireEvent.pointerDown(handle, { clientX: 264, pointerId: 1 });
+    window.dispatchEvent(new PointerEvent('pointercancel'));
+    window.dispatchEvent(new PointerEvent('pointermove', { clientX: 300 }));
+    expect(onWidthChange).not.toHaveBeenCalled();
+  });
+
   it('calls onWidthChange with arrow keys within min and max bounds', () => {
     const onWidthChange = vi.fn();
     const { rerender } = renderWithApi(<AppSidebar width={264} onWidthChange={onWidthChange} />);
 
-    const handle = screen.getByRole('separator', { name: 'Resize sidebar' });
+    const handle = screen.getByRole('separator', { name: 'Ширина боковой панели' });
     fireEvent.keyDown(handle, { key: 'ArrowRight' });
     expect(onWidthChange).toHaveBeenLastCalledWith(280);
 

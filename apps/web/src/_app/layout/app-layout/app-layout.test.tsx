@@ -23,7 +23,7 @@ describe('AppLayout', () => {
     );
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: 'App sidebar' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Боковая панель' })).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveTextContent('content');
   });
 
@@ -36,7 +36,7 @@ describe('AppLayout', () => {
     );
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
-    expect(screen.queryByRole('complementary', { name: 'App sidebar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Боковая панель' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Открыть меню' })).not.toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveTextContent('content');
   });
@@ -54,7 +54,7 @@ describe('AppLayout', () => {
     );
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
-    expect(screen.queryByRole('complementary', { name: 'App sidebar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: 'Боковая панель' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Открыть меню' })).not.toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveTextContent('content');
   });

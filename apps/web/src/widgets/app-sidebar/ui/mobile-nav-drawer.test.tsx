@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({
 describe('MobileNavDrawer', () => {
   it('renders the sidebar when open', () => {
     renderWithApi(<MobileNavDrawer open onOpenChange={vi.fn()} />);
-    expect(screen.getByRole('complementary', { name: 'App sidebar' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Боковая панель' })).toBeInTheDocument();
   });
 
   it('calls onOpenChange with false when the close button is clicked', async () => {
@@ -61,7 +61,7 @@ describe('MobileNavDrawer', () => {
     await waitFor(() => expect(closeButton).toHaveFocus());
 
     await user.tab();
-    expect(screen.getByRole('complementary', { name: 'App sidebar' })).toContainElement(
+    expect(screen.getByRole('complementary', { name: 'Боковая панель' })).toContainElement(
       document.activeElement as HTMLElement,
     );
   });
