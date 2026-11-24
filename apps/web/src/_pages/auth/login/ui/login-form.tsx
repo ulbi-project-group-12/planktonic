@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type FieldError } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
@@ -16,6 +16,8 @@ const FIELDS: readonly LoginField[] = ['email', 'password'];
 
 export function LoginForm() {
   const router = useRouter();
+  // The session gate sends a guest here with the address to come back to.
+  const next = useSearchParams().get('next');
   const signIn = useSignIn();
   const [submitError, setSubmitError] = useState<string>();
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -39,7 +41,7 @@ export function LoginForm() {
       const editsAtSubmit = editsRef.current;
       try {
         await signIn.mutateAsync(values);
-        router.push(routes.workspaces());
+        router.push(routes.afterLogin(next));
       } catch (error) {
         if (hasApiStatus(error, 401)) {
           if (editsRef.current === editsAtSubmit) setSubmitError(INVALID_CREDENTIALS_MESSAGE);

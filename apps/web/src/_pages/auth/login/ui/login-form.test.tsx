@@ -10,8 +10,11 @@ import { LoginForm } from './login-form';
 
 const push = vi.fn();
 
+let search = '';
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
+  useSearchParams: () => new URLSearchParams(search),
 }));
 
 const PASSWORD = 'correct-horse-battery';
@@ -31,6 +34,7 @@ const submit = () => screen.getByRole('button', { name: 'Войти' });
 describe('LoginForm', () => {
   beforeEach(() => {
     push.mockClear();
+    search = '';
     sessionStore.setState({ accessToken: undefined });
     setAccessTokenProvider(undefined);
   });
@@ -54,6 +58,26 @@ describe('LoginForm', () => {
     });
     expect(posted).toEqual({ email: 'ada@example.com', password: PASSWORD });
     expect(sessionStore.getState().accessToken).toBe('test-access-token');
+  });
+
+  it.each([
+    ['/workspaces/my-team?tab=members', '/workspaces/my-team?tab=members'],
+    ['https://evil.example/', '/workspaces'],
+    ['//evil.example', '/workspaces'],
+  ])('after sign-in opens the return address %s as %s', async (next, expected) => {
+    search = new URLSearchParams({ next }).toString();
+    server.use(
+      http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'test-access-token' })),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<LoginForm />);
+
+    await fill(user);
+    await user.click(submit());
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledExactlyOnceWith(expected);
+    });
   });
 
   it('toggles password visibility without clearing the value', async () => {

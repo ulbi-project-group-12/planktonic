@@ -2,11 +2,11 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'next/navigation';
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { useStore } from 'zustand';
 import { hasApiStatus, sessionStore, signOut, useAuthMe } from '@/shared/api';
 import { routes } from '@/shared/config';
-import { Alert, Spinner, Typography } from '@/shared/ui';
+import { Alert, Button, Spinner, Typography } from '@/shared/ui';
 
 /**
  * Guards the pages behind the login (UL-140). The access token lives only in this tab's memory,
@@ -22,13 +22,17 @@ export function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
   const me = useAuthMe({ query: { enabled: accessToken !== undefined } });
   const rejected = hasApiStatus(me.error, 401);
   const guest = accessToken === undefined || rejected;
+  // Set by the sign-out button: leaving on purpose needs no address to come back to.
+  const leavingRef = useRef(false);
 
   useEffect(() => {
     if (!guest) return;
     signOut();
     // Cached answers belong to the account that just lost access.
     queryClient.clear();
-    router.replace(routes.login(`${pathname}${window.location.search}`));
+    router.replace(
+      leavingRef.current ? routes.login() : routes.login(`${pathname}${window.location.search}`),
+    );
   }, [guest, pathname, queryClient, router]);
 
   if (guest || me.isPending) {
@@ -54,10 +58,21 @@ export function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
 
   return (
     <>
-      <header className="flex justify-end px-6 py-3">
+      <header className="flex items-center justify-end gap-3 px-6 py-3">
         <Typography as="span" size="body" data-testid="current-user-name">
           {me.data.name}
         </Typography>
+        <Button
+          type="button"
+          variant="secondary"
+          size="s"
+          onClick={() => {
+            leavingRef.current = true;
+            signOut();
+          }}
+        >
+          Выйти
+        </Button>
       </header>
       {children}
     </>

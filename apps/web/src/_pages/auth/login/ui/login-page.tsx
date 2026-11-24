@@ -1,4 +1,5 @@
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
+import { Suspense } from 'react';
 import { routes } from '@/shared/config';
 import { Button } from '@/shared/ui/button';
 import { Link } from '@/shared/ui/link';
@@ -28,7 +29,10 @@ export function LoginPage() {
             Мессенджер, задачи и GitHub — в одном месте
           </Typography>
         </div>
-        <LoginForm />
+        {/* The form reads `?next=`: without a boundary the whole page would opt out of prerendering. */}
+        <Suspense>
+          <LoginForm />
+        </Suspense>
         <div aria-hidden className="flex w-full items-center gap-3">
           <div className="h-px flex-1 bg-line" />
           <span className="text-body-xs leading-6 text-fg-muted">или</span>

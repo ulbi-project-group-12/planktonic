@@ -100,6 +100,21 @@ describe('SessionGate', () => {
     expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
   });
 
+  it('signs out to the login screen without a return address', async () => {
+    server.use(http.get('/api/auth/me', () => HttpResponse.json(profile)));
+    signInAs('test-access-token');
+    const { queryClient } = renderGate();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Выйти' }));
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledExactlyOnceWith('/login');
+    });
+    expect(sessionStore.getState().accessToken).toBeUndefined();
+    expect(queryClient.getQueryCache().getAll()).toEqual([]);
+    expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
+  });
+
   it('keeps the session and offers a retry when the profile request fails', async () => {
     let fail = true;
     server.use(
