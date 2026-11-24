@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { User } from 'lucide-react';
 import { cn } from '@/shared/lib';
 
 const avatarSizes = ['s', 'm', 'l', 'xl'] as const;
@@ -13,6 +14,13 @@ const sizeClasses: Record<AvatarSize, string> = {
   m: 'size-8 text-caption',
   l: 'size-10 text-body-s',
   xl: 'size-12 text-body',
+};
+
+const iconSizes: Record<AvatarSize, string> = {
+  s: 'size-3',
+  m: 'size-4',
+  l: 'size-5',
+  xl: 'size-6',
 };
 
 /** Sizes in px — for next/image. */
@@ -95,6 +103,15 @@ function Avatar({ name, src, size = 'm', presence, className }: AvatarProps) {
           unoptimized
           className={cn('rounded-full object-cover', sizeClasses[size])}
         />
+      ) : name.trim() === '' ? (
+        <span
+          className={cn(
+            'flex items-center justify-center rounded-full bg-sunken text-fg-muted select-none',
+            sizeClasses[size],
+          )}
+        >
+          <User className={iconSizes[size]} />
+        </span>
       ) : (
         <span
           className={cn(

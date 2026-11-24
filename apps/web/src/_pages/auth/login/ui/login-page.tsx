@@ -8,7 +8,7 @@ import { LoginForm } from './login-form';
 
 export function LoginPage() {
   return (
-    <main className="flex min-h-svh items-center justify-center bg-app p-4">
+    <main className="flex min-h-[calc(100svh-4rem)] items-center justify-center bg-app p-4">
       <div className="flex w-full max-w-[400px] flex-col gap-5 rounded-2xl border border-line bg-surface p-8">
         <div className="flex items-center justify-center gap-3">
           <span

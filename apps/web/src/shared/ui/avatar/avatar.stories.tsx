@@ -56,7 +56,7 @@ function AvatarSpec() {
               <Avatar name="Александр Кузнецов" size={size} />
             </SizeItem>
           ))}
-          <SizeItem caption="без имени — «?»">
+          <SizeItem caption="без имени">
             <Avatar name="" size="l" />
           </SizeItem>
         </div>

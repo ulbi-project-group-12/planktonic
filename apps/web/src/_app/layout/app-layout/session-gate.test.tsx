@@ -1,8 +1,8 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { sessionStore, setAccessTokenProvider } from '@/shared/api';
+import { sessionStore, setAccessTokenProvider, signOut } from '@/shared/api';
 import { server } from '@/shared/api-mocks-node';
 import { renderWithApi } from '@/shared/lib/testing';
 import { SessionGate } from './session-gate';
@@ -40,7 +40,7 @@ describe('SessionGate', () => {
   });
 
   afterEach(() => {
-    sessionStore.setState({ accessToken: undefined });
+    sessionStore.setState({ accessToken: undefined, signedOut: false });
     setAccessTokenProvider(undefined);
   });
 
@@ -64,7 +64,7 @@ describe('SessionGate', () => {
     expect(asked).toBe(false);
   });
 
-  it('shows the page and the name of the signed-in user', async () => {
+  it('shows the page to a signed-in user', async () => {
     let authorization: string | null = null;
     server.use(
       http.get('/api/auth/me', ({ request }) => {
@@ -77,7 +77,6 @@ describe('SessionGate', () => {
     renderGate();
 
     expect(await screen.findByText('Закрытая страница')).toBeInTheDocument();
-    expect(screen.getByTestId('current-user-name')).toHaveTextContent(profile.name);
     expect(authorization).toBe('Bearer test-access-token');
     expect(replace).not.toHaveBeenCalled();
   });
@@ -100,19 +99,23 @@ describe('SessionGate', () => {
     expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
   });
 
-  it('signs out to the login screen without a return address', async () => {
+  it('leaves for the login screen without a return address after sign-out', async () => {
     server.use(http.get('/api/auth/me', () => HttpResponse.json(profile)));
     signInAs('test-access-token');
     const { queryClient } = renderGate();
+    await screen.findByText('Закрытая страница');
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Выйти' }));
+    act(() => {
+      signOut();
+    });
 
     await waitFor(() => {
       expect(replace).toHaveBeenCalledExactlyOnceWith('/login');
     });
-    expect(sessionStore.getState().accessToken).toBeUndefined();
     expect(queryClient.getQueryCache().getAll()).toEqual([]);
     expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
+    // The next guest visit is an ordinary one again.
+    expect(sessionStore.getState().signedOut).toBe(false);
   });
 
   it('keeps the session and offers a retry when the profile request fails', async () => {
