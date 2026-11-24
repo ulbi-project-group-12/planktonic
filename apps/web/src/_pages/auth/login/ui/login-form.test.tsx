@@ -188,8 +188,15 @@ describe('LoginForm', () => {
 
   it('disables the submit while the request is in flight', async () => {
     let release: () => void = () => {};
+    // The button is disabled before the request reaches the handler, so `release` may still be
+    // the no-op: wait until the handler has run.
+    let markEntered: () => void = () => {};
+    const entered = new Promise<void>((resolve) => {
+      markEntered = resolve;
+    });
     server.use(
       http.post('*/api/auth/login', async () => {
+        markEntered();
         await new Promise<void>((resolve) => {
           release = resolve;
         });
@@ -205,6 +212,7 @@ describe('LoginForm', () => {
     await waitFor(() => {
       expect(submit()).toBeDisabled();
     });
+    await entered;
     release();
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith('/workspaces');
