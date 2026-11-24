@@ -7,8 +7,7 @@ import {
 } from './generated/api';
 import { server } from '@/shared/api-mocks-node';
 import type { AuthRegisterBody } from './generated/models';
-import { refreshAccessToken, sessionStore } from './session';
-import { bumpSessionGeneration } from './session-generation';
+import { refreshAccessToken, sessionStore, signIn, signOut } from './session';
 import { ApiError, apiFetch, setAccessTokenProvider, setRefreshHandler } from './http-client';
 import { createQueryClient } from './query-client';
 
@@ -97,6 +96,8 @@ it('preserves non-JSON upstream errors', async () => {
 });
 
 describe('refresh on 401', () => {
+  const credentials = { email: 'demo@example.com', password: 'demo-password' };
+
   it('runs one refresh for five parallel 401 requests and retries them with the new token', async () => {
     let refreshCount = 0;
     const attempts = new Map<string, number>();
@@ -133,6 +134,32 @@ describe('refresh on 401', () => {
     expect(retryAuthorizations.every((h) => h === 'Bearer new-token')).toBe(true);
   });
 
+  it('retries a late 401 with the already refreshed token without refreshing again', async () => {
+    const { promise, resolve } = Promise.withResolvers<Response>();
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockReturnValueOnce(promise)
+      .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }))
+      .mockResolvedValueOnce(Response.json({ ok: true }));
+    sessionStore.setState({ accessToken: 'old-token' });
+    setAccessTokenProvider(() => sessionStore.getState().accessToken);
+    setRefreshHandler(refreshAccessToken);
+
+    const request = apiFetch('/api/resource');
+    await expect(refreshAccessToken()).resolves.toBe(true);
+    resolve(new Response(null, { status: 401 }));
+
+    await expect(request).resolves.toEqual({ ok: true });
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      '/api/resource',
+      '/api/auth/refresh',
+      '/api/resource',
+    ]);
+    expect(new Headers(fetcher.mock.calls[2]?.[1]?.headers).get('Authorization')).toBe(
+      'Bearer new-token',
+    );
+  });
+
   it('clears the session when refresh is rejected', async () => {
     const fetcher = vi.spyOn(globalThis, 'fetch');
     fetcher
@@ -156,20 +183,49 @@ describe('refresh on 401', () => {
     expect(rejected).toBe('old-token');
   });
 
-  it('does not refresh when the session generation changed while the request was in flight', async () => {
+  it.each(['sign-in', 'sign-out'])('rejects a late 401 after %s', async (change) => {
+    const { promise, resolve } = Promise.withResolvers<Response>();
     const fetcher = vi
       .spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
-    setAccessTokenProvider(() => 'old-token');
-    setRefreshHandler(vi.fn().mockResolvedValue(true));
+      .mockResolvedValueOnce(Response.json({ accessToken: 'same-token' }))
+      .mockReturnValueOnce(promise)
+      .mockResolvedValueOnce(Response.json({ accessToken: 'same-token' }));
 
+    await signIn(credentials);
     const request = apiFetch('/api/resource');
-    bumpSessionGeneration();
-    setAccessTokenProvider(() => 'new-token');
-    sessionStore.setState({ accessToken: 'new-token', restoreStatus: 'done' });
+    if (change === 'sign-in') await signIn(credentials);
+    else await signOut();
+    resolve(new Response(null, { status: 401 }));
 
     await expect(request).rejects.toMatchObject({ status: 401 });
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(sessionStore.getState().accessToken).toBe(
+      change === 'sign-in' ? 'same-token' : undefined,
+    );
+  });
+
+  it('keeps the new session when an older request was waiting for refresh', async () => {
+    const refreshStarted = Promise.withResolvers<undefined>();
+    const refresh = Promise.withResolvers<Response>();
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ accessToken: 'same-token' }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockImplementationOnce(() => {
+        refreshStarted.resolve(undefined);
+        return refresh.promise;
+      })
+      .mockResolvedValueOnce(Response.json({ accessToken: 'same-token' }));
+
+    await signIn(credentials);
+    const request = apiFetch('/api/resource');
+    await refreshStarted.promise;
+    await signIn(credentials);
+    refresh.resolve(Response.json({ accessToken: 'stale-token' }));
+
+    await expect(request).rejects.toMatchObject({ status: 401 });
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    expect(sessionStore.getState().accessToken).toBe('same-token');
   });
 
   it('does not refresh requests sent without a token', async () => {

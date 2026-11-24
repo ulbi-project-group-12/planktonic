@@ -21,8 +21,8 @@ let refreshHandler: (() => Promise<boolean>) | undefined;
 /**
  * Registers the single source of the access token (kept in application memory by the auth
  * code). Every request asks it and sends `Authorization: Bearer <token>` when it returns one.
- * Pass `undefined` to remove it. `onRejected` hears about every `401` answered to a request that
- * carried the provider's token, whichever screen sent it, so the session can end in one place.
+ * Pass `undefined` to remove it. `onRejected` hears about unrecovered `401` responses to requests
+ * that carried the provider's token in the current session, so the session can end in one place.
  */
 export function setAccessTokenProvider(
   provider: (() => string | undefined) | undefined,
@@ -34,7 +34,7 @@ export function setAccessTokenProvider(
 
 /**
  * Registers the callback used to restore an expired access token. The handler is invoked when
- * an api request that carried a token returns `401`. It must return `true` when a new token is
+ * an eligible request returns `401` and no newer token is available. It returns `true` when a new token is
  * available and `false` when the session cannot be restored, in which case the rejected token
  * handler is called so the session ends. Pass `undefined` to remove it.
  */
@@ -59,6 +59,11 @@ function normalizeHeaders(input: HeadersInit | undefined): Headers {
   return headers;
 }
 
+async function unauthorizedError(response: Response): Promise<ApiError> {
+  const text = await response.text().catch(() => undefined);
+  return new ApiError(response.status, text);
+}
+
 export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}): Promise<T> {
   // Not a TypeError: that is what fetch throws for a network failure, and those are retried.
   if (!url.startsWith('/api/')) throw new Error('Expected a relative /api/ URL');
@@ -71,30 +76,29 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
     if (sentToken) headers.set('Authorization', `Bearer ${sentToken}`);
     const response = await fetch(url, { ...options, headers, credentials: 'same-origin' });
 
-    if (
-      response.status === 401 &&
-      sentToken &&
-      !isRetry &&
-      url !== '/api/auth/refresh' &&
-      refreshHandler
-    ) {
-      // The session has changed while this request was in flight. Do not refresh or clear the
-      // current session; just fail this stale request.
+    if (response.status === 401 && sentToken) {
       if (getSessionGeneration() !== sentGeneration) {
-        const text = await response.text().catch(() => undefined);
-        throw new ApiError(response.status, text);
+        throw await unauthorizedError(response);
       }
-      const refreshed = await refreshHandler();
-      if (refreshed) {
-        return send(true);
-      }
-      rejectedTokenHandler?.(sentToken);
-      const text = await response.text().catch(() => undefined);
-      throw new ApiError(response.status, text);
-    }
 
-    // Before the body is read: the status is enough, and reading the body can still fail.
-    if (response.status === 401 && sentToken) rejectedTokenHandler?.(sentToken);
+      if (!isRetry && url !== '/api/auth/refresh') {
+        const currentToken = accessTokenProvider?.();
+        if (currentToken && currentToken !== sentToken) return send(true);
+
+        if (refreshHandler) {
+          const refreshed = await refreshHandler();
+          if (getSessionGeneration() !== sentGeneration) {
+            throw await unauthorizedError(response);
+          }
+          if (refreshed) return send(true);
+          rejectedTokenHandler?.(sentToken);
+          throw await unauthorizedError(response);
+        }
+      }
+
+      // Before the body is read: the status is enough, and reading the body can still fail.
+      rejectedTokenHandler?.(sentToken);
+    }
     const text = await response.text();
 
     if (!response.ok) {
