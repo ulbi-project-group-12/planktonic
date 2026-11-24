@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { sessionStore, setAccessTokenProvider } from '@/shared/api';
+import { getWorkspaceListQueryKey, sessionStore, setAccessTokenProvider } from '@/shared/api';
 import { server } from '@/shared/api-mocks-node';
 import { renderWithApi } from '@/shared/lib/testing';
 import { LoginPage } from './login-page';
@@ -87,6 +87,27 @@ describe('LoginForm', () => {
     await waitFor(() => {
       expect(push).toHaveBeenCalledExactlyOnceWith(expected);
     });
+  });
+
+  it('does not reuse the workspace list cached for the previous account', async () => {
+    server.use(
+      http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'test-access-token' })),
+      http.get('*/api/workspaces', () => HttpResponse.json([])),
+    );
+    const user = userEvent.setup();
+    const { queryClient } = renderWithApi(<LoginForm />);
+    // Loaded a moment ago by another account in the same tab, so still fresh for the client.
+    queryClient.setQueryData(getWorkspaceListQueryKey(), [
+      { id: '019a8f00-0000-7000-8000-000000000004', name: 'Their team', slug: 'their-team' },
+    ]);
+
+    await fill(user);
+    await user.click(submit());
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith('/workspaces/create');
+    });
+    expect(queryClient.getQueryData(getWorkspaceListQueryKey())).toEqual([]);
   });
 
   it('goes to the workspace list when the list cannot be loaded', async () => {

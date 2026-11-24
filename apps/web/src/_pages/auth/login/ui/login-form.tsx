@@ -43,6 +43,9 @@ export function LoginForm() {
       const editsAtSubmit = editsRef.current;
       try {
         await signIn.mutateAsync(values);
+        // Answers cached for whoever used this tab before belong to another account: without
+        // this, a workspace list younger than the client's staleTime would be shown as ours.
+        queryClient.removeQueries();
         const destination = routes.afterLogin(next);
         if (destination !== routes.workspaces()) {
           router.push(destination);
