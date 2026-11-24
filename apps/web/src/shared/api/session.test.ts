@@ -7,7 +7,7 @@ import { bumpSessionGeneration } from './session-generation';
 const credentials = { email: 'ada@example.com', password: 'example-passphrase' };
 
 afterEach(() => {
-  sessionStore.setState({ accessToken: undefined, restoreStatus: 'idle' });
+  sessionStore.setState({ accessToken: undefined, restoreStatus: 'idle', signedOut: false });
   setAccessTokenProvider(undefined);
   setRefreshHandler(undefined);
   vi.restoreAllMocks();
@@ -146,6 +146,24 @@ it('restoreSession does not make a second request', async () => {
   await restoreSession();
 
   expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('ignores a pending restore after sign-out and does not start another restore', async () => {
+  const { promise, resolve } = Promise.withResolvers<Response>();
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(promise);
+
+  const pendingRestore = restoreSession();
+  signOut();
+  resolve(Response.json({ accessToken: 'old-session-token' }));
+  await pendingRestore;
+  await restoreSession();
+
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
 });
 
 it('refreshAccessToken shares one inflight promise across parallel callers', async () => {
