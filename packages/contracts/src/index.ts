@@ -7,6 +7,7 @@ export {
   type ListWorkspacesResponse,
   ListWorkspacesResponseSchema,
   RESERVED_WORKSPACE_SLUGS,
+  WORKSPACE_NAME_MAX_LENGTH,
   WORKSPACE_SLUG_PATTERN,
   type WorkspaceResponse,
   WorkspaceResponseSchema,

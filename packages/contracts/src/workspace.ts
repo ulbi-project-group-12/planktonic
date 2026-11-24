@@ -17,8 +17,17 @@ export const WorkspaceSlug = z
 
 export type WorkspaceSlug = z.infer<typeof WorkspaceSlug>;
 
+/** Longest workspace name, in characters (after trimming). */
+export const WORKSPACE_NAME_MAX_LENGTH = 80;
+
 export const CreateWorkspaceRequestSchema = z.object({
-  name: z.string().trim().min(1).max(80),
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(WORKSPACE_NAME_MAX_LENGTH)
+    // PostgreSQL text cannot store U+0000: without this check the insert fails with a 500.
+    .refine((name) => !name.includes('\u0000'), 'Name must not contain a null character'),
   slug: WorkspaceSlug,
 });
 
