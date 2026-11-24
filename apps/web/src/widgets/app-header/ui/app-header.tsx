@@ -118,10 +118,8 @@ export function AppHeader({ onOpenMobileSidebar }: AppHeaderProps) {
             </DropdownItem>
             <DropdownItem
               danger
-              onClick={() => {
-                // No logout endpoint yet (UL-141): forget the access token and the cached data.
-                // SessionGate will redirect to /login once the token is gone.
-                signOut();
+              onClick={async () => {
+                await signOut();
                 queryClient.clear();
               }}
             >

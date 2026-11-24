@@ -42,6 +42,7 @@ export {
   LoginResponseSchema,
 } from './auth/login.js';
 export { type MeResponse, MeResponseSchema } from './auth/me.js';
+export { type LogoutResponse, LogoutResponseSchema } from './auth/logout.js';
 export {
   EMAIL_MAX_LENGTH,
   PASSWORD_MAX_LENGTH,

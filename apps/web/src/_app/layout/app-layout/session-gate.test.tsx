@@ -211,8 +211,8 @@ describe('SessionGate', () => {
     const { queryClient } = renderGate();
     await screen.findByText('Закрытая страница');
 
-    act(() => {
-      signOut();
+    await act(async () => {
+      await signOut();
     });
 
     await waitFor(() => {

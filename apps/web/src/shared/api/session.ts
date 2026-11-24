@@ -1,6 +1,6 @@
 'use client';
 
-import { type LoginRequest, LoginResponseSchema } from '@app/contracts';
+import { type LoginRequest, LoginResponseSchema, LogoutResponseSchema } from '@app/contracts';
 import { createStore } from 'zustand/vanilla';
 import { authLogin } from './generated/api';
 import { apiFetch, setAccessTokenProvider, setRefreshHandler } from './http-client';
@@ -83,8 +83,17 @@ export async function signIn(credentials: LoginRequest): Promise<void> {
   sessionStore.setState({ accessToken, signedOut: false, restoreStatus: 'done' });
 }
 
-/** Forgets the access token. The caller drops cached API data and leaves the closed pages. */
-export function signOut(): void {
+/**
+ * Revokes the server refresh credentials and forgets the access token. The caller drops cached
+ * API data and leaves the closed pages. Local state is cleared even if the revocation request
+ * fails, so the user is not trapped on a broken network.
+ */
+export async function signOut(): Promise<void> {
   bumpSessionGeneration();
+  try {
+    LogoutResponseSchema.parse(await apiFetch('/api/auth/logout', { method: 'POST' }));
+  } catch {
+    // Best-effort: the server cookie may already be expired or the network may be down.
+  }
   sessionStore.setState({ accessToken: undefined, signedOut: true, restoreStatus: 'done' });
 }

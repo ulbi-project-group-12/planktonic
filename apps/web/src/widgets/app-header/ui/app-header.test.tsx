@@ -80,8 +80,10 @@ describe('AppHeader', () => {
     await user.click(await screen.findByText('Ada'));
     await user.click(screen.getByRole('menuitem', { name: /Выйти/ }));
 
-    expect(queryClient.getQueryData(['test'])).toBeUndefined();
-    expect(sessionStore.getState().accessToken).toBeUndefined();
+    await waitFor(() => {
+      expect(queryClient.getQueryData(['test'])).toBeUndefined();
+      expect(sessionStore.getState().accessToken).toBeUndefined();
+    });
   });
 
   it('closes the user dropdown with Escape', async () => {

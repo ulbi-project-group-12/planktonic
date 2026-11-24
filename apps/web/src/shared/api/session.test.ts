@@ -40,14 +40,15 @@ it('stops sending the token after sign-out', async () => {
   const fetcher = vi
     .spyOn(globalThis, 'fetch')
     .mockResolvedValueOnce(Response.json({ accessToken: 'test-access-token' }))
+    .mockResolvedValueOnce(Response.json({}))
     .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
 
   await signIn(credentials);
-  signOut();
+  await signOut();
   await expect(authMe()).rejects.toMatchObject({ status: 401 });
 
   expect(sessionStore.getState().accessToken).toBeUndefined();
-  expect(new Headers(fetcher.mock.calls[1]?.[1]?.headers).has('Authorization')).toBe(false);
+  expect(new Headers(fetcher.mock.calls[2]?.[1]?.headers).has('Authorization')).toBe(false);
 });
 
 it('ends the session when any request with the token gets 401 and refresh is rejected', async () => {
