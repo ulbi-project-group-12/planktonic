@@ -3,7 +3,7 @@ import { apiFetch } from '@/shared/api';
 import type { WorkspaceSummary } from '../model/types';
 
 export function getWorkspacesQueryKey(q?: string) {
-  return ['workspaces', 'list', { q }] as const;
+  return ['workspaces', 'list', { q: q === '' ? undefined : q }] as const;
 }
 
 async function fetchWorkspaces(q?: string): Promise<WorkspaceSummary[]> {
