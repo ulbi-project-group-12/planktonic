@@ -32,6 +32,15 @@ describe('Input', () => {
     expect(ref.current).toBe(screen.getByLabelText('Адрес'));
   });
 
+  it('keeps the focus on an action control when it is clicked', async () => {
+    render(<Input aria-label="Пароль" action={<button type="button">Показать</button>} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Показать' }));
+
+    expect(screen.getByRole('button', { name: 'Показать' })).toHaveFocus();
+    expect(screen.getByLabelText('Пароль')).not.toHaveFocus();
+  });
+
   it('shows an error message and error status', () => {
     render(<Input label="Slug" defaultValue="hq" status="error" message="Slug уже занят" />);
     expect(screen.getByText('Slug уже занят')).toBeInTheDocument();

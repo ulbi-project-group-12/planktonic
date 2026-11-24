@@ -22,6 +22,8 @@ interface InputProps extends Omit<ComponentProps<'input'>, 'prefix'> {
   prefix?: ReactNode;
   /** Units on the right inside the field (e.g. "days"). */
   suffix?: ReactNode;
+  /** Interactive control on the right inside the field (e.g. password visibility). */
+  action?: ReactNode;
 }
 
 /**
@@ -40,6 +42,7 @@ function Input({
   icon,
   prefix,
   suffix,
+  action,
   id,
   disabled,
   'aria-describedby': describedBy,
@@ -72,6 +75,9 @@ function Input({
           // Clicking any part of the outline (padding, icons, prefix) focuses the field. The field
           // is looked up in the DOM, not through a ref of our own: a `ref` from the caller
           // (react-hook-form's register) arrives in props and would replace it.
+          // A click on the action control is its own: it must not take the focus to the field.
+          if (event.target instanceof Element && event.target.closest('[data-slot="input-action"]'))
+            return;
           const field = event.currentTarget.querySelector('input');
           if (event.target !== field) field?.focus();
         }}
@@ -111,6 +117,11 @@ function Input({
           <CircleCheck className="size-4 shrink-0 text-success" />
         ) : suffix ? (
           <span className="shrink-0 text-body-s leading-5 text-fg-muted">{suffix}</span>
+        ) : null}
+        {action ? (
+          <span data-slot="input-action" className="flex shrink-0 items-center">
+            {action}
+          </span>
         ) : null}
       </div>
       {text ? (
