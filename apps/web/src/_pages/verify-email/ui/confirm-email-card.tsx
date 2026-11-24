@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { hasApiStatus, isApiError, useAuthMe } from '@/shared/api';
+import { useStore } from 'zustand';
+import { hasApiStatus, isApiError, sessionStore, useAuthMe } from '@/shared/api';
 import { routes } from '@/shared/config';
 import { Alert, Button, Link, Spinner, Typography } from '@/shared/ui';
 import {
@@ -20,12 +21,15 @@ import { VerifyEmailCard } from './verify-email-card';
 /**
  * The "confirm your email" screen: the address from the profile, a resend button that locks for
  * the pause the api reports (success carries `resendAfterSec`, a 429 carries `retryAfterSec`),
- * and a spam hint, so there is little reason to press again. A guest gets a link to sign in:
- * resending needs a session anyway.
+ * and a spam hint, so there is little reason to press again. A guest (no access token, or one the
+ * api no longer accepts) is asked to sign in and comes back here: resending needs a session.
  */
 export function ConfirmEmailCard() {
   const router = useRouter();
-  const me = useAuthMe();
+  // The profile is asked only with a session, as in the login gate: without an access token the
+  // answer is known to be a 401, and the default mock would answer with a profile anyway.
+  const accessToken = useStore(sessionStore, (state) => state.accessToken);
+  const me = useAuthMe({ query: { enabled: accessToken !== undefined } });
   const resend = useResendVerification();
   const [waitSec, setWaitSec] = useState(0);
   const [submitError, setSubmitError] = useState<string>();
@@ -68,22 +72,22 @@ export function ConfirmEmailCard() {
     }
   };
 
-  const guest = hasApiStatus(me.error, 401);
+  const guest = accessToken === undefined || hasApiStatus(me.error, 401);
 
   return (
     <VerifyEmailCard
       title="Подтвердите email"
       subtitle={
-        me.isSuccess ? (
+        guest ? (
+          'Войдите, чтобы отправить письмо ещё раз'
+        ) : me.isSuccess ? (
           <>
             Мы отправили письмо на <span className="font-bold">{me.data.email}</span>
           </>
-        ) : guest ? (
-          'Мы отправили письмо на ваш адрес'
         ) : undefined
       }
       footer={
-        me.isSuccess || guest ? (
+        me.isSuccess && !guest ? (
           <>
             Уже подтвердили?{' '}
             <Link href={routes.login()} className="font-bold">
@@ -93,11 +97,23 @@ export function ConfirmEmailCard() {
         ) : undefined
       }
     >
-      {me.isPending ? (
+      {guest ? (
+        <Button
+          type="button"
+          size="l"
+          fullWidth
+          onClick={() => {
+            // Back to this screen after signing in: the resend button is here.
+            router.push(routes.login(routes.verifyEmail()));
+          }}
+        >
+          Войти
+        </Button>
+      ) : me.isPending ? (
         <div className="flex justify-center py-4">
           <Spinner />
         </div>
-      ) : me.isError && !guest ? (
+      ) : me.isError ? (
         <Alert
           palette="danger"
           title="Не удалось загрузить профиль"
@@ -109,17 +125,6 @@ export function ConfirmEmailCard() {
             },
           }}
         />
-      ) : guest ? (
-        <Button
-          type="button"
-          size="l"
-          fullWidth
-          onClick={() => {
-            router.push(routes.login());
-          }}
-        >
-          Войти
-        </Button>
       ) : (
         <>
           {submitError ? (

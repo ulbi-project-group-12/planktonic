@@ -1,7 +1,8 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { sessionStore, setAccessTokenProvider } from '@/shared/api';
 import { server } from '@/shared/api-mocks-node';
 import { renderWithApi } from '@/shared/lib/testing';
 import { ConfirmEmailCard } from './confirm-email-card';
@@ -14,7 +15,19 @@ vi.mock('next/navigation', () => ({
 
 const resendButton = () => screen.getByRole('button', { name: 'Отправить ещё раз' });
 
+// The wiring signIn sets up: the screen reads the session to tell a guest from a signed-in user.
+function signInAs(accessToken: string) {
+  setAccessTokenProvider(
+    () => sessionStore.getState().accessToken,
+    () => {
+      sessionStore.setState({ accessToken: undefined });
+    },
+  );
+  sessionStore.setState({ accessToken });
+}
+
 async function renderSignedIn() {
+  signInAs('test-access-token');
   renderWithApi(<ConfirmEmailCard />);
   // The resend UI appears once the profile answers with the address.
   await screen.findByText('ada@example.com');
@@ -23,6 +36,11 @@ async function renderSignedIn() {
 describe('ConfirmEmailCard', () => {
   beforeEach(() => {
     push.mockClear();
+  });
+
+  afterEach(() => {
+    sessionStore.setState({ accessToken: undefined, signedOut: false });
+    setAccessTokenProvider(undefined);
   });
 
   it('shows the email the account is registered with', async () => {
@@ -148,18 +166,36 @@ describe('ConfirmEmailCard', () => {
     );
   });
 
-  it('asks a guest to sign in instead of offering a resend', async () => {
+  it('asks a visitor without a session to sign in and does not ask the api who they are', async () => {
+    let asked = false;
+    server.use(
+      http.get('*/api/auth/me', () => {
+        asked = true;
+        return HttpResponse.json({ id: 'u', name: 'Ada', email: 'ada@example.com' });
+      }),
+    );
+    renderWithApi(<ConfirmEmailCard />);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Войти' }));
+
+    // Signing in leads back to this screen, where the resend button is.
+    expect(push).toHaveBeenCalledWith('/login?next=%2Fverify-email');
+    expect(screen.queryByRole('button', { name: 'Отправить ещё раз' })).not.toBeInTheDocument();
+    expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
+    expect(asked).toBe(false);
+  });
+
+  it('asks to sign in again when the api no longer accepts the session', async () => {
     server.use(
       http.get('*/api/auth/me', () =>
         HttpResponse.json({ statusCode: 401, message: 'Unauthorized' }, { status: 401 }),
       ),
     );
+    signInAs('expired-access-token');
     renderWithApi(<ConfirmEmailCard />);
 
-    const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Войти' }));
-
-    expect(push).toHaveBeenCalledWith('/login');
+    expect(await screen.findByRole('button', { name: 'Войти' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Отправить ещё раз' })).not.toBeInTheDocument();
   });
 
@@ -169,6 +205,7 @@ describe('ConfirmEmailCard', () => {
         HttpResponse.json({ statusCode: 500, message: 'Internal server error' }, { status: 500 }),
       ),
     );
+    signInAs('test-access-token');
     renderWithApi(<ConfirmEmailCard />);
 
     const banner = await screen.findByRole('alert');
