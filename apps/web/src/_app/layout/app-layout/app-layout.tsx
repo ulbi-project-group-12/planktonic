@@ -2,14 +2,15 @@
 
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
+import { routes } from '@/shared/config';
 import { AppHeader } from '@/widgets/app-header';
 import { AppSidebar, MobileNavDrawer } from '@/widgets/app-sidebar';
 
 type LayoutVariant = 'full' | 'headonly';
 
 function getLayoutVariant(pathname: string): LayoutVariant {
-  if (pathname === '/workspaces') return 'headonly';
-  if (pathname === '/workspaces/create') return 'headonly';
+  if (pathname === routes.workspaces()) return 'headonly';
+  if (pathname === routes.workspaceCreate()) return 'headonly';
   if (/^\/workspaces\/[^/]+\/settings$/.test(pathname)) return 'headonly';
   if (/^\/workspaces\/[^/]+\/projects\/create$/.test(pathname)) return 'headonly';
   return 'full';
@@ -20,6 +21,14 @@ export function AppLayout({ children }: Readonly<{ children: ReactNode }>) {
   const variant = getLayoutVariant(pathname);
   const [sidebarWidth, setSidebarWidth] = useState(264);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  // Any navigation closes the drawer. Without this the flag survives a visit to a page without
+  // the sidebar (the drawer is not mounted there) and the drawer reopens on the next page with one.
+  const [lastPathname, setLastPathname] = useState(pathname);
+  if (lastPathname !== pathname) {
+    setLastPathname(pathname);
+    setIsMobileNavOpen(false);
+  }
 
   const showSidebar = variant === 'full';
 
@@ -45,7 +54,8 @@ export function AppLayout({ children }: Readonly<{ children: ReactNode }>) {
             <MobileNavDrawer open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen} />
           </>
         ) : null}
-        <main className="min-w-0 flex-1">{children}</main>
+        {/* Every page renders its own <main>, so the wrapper must not be a second one. */}
+        <div className="min-w-0 flex-1">{children}</div>
       </div>
     </div>
   );
