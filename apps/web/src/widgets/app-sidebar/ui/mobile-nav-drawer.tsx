@@ -25,7 +25,7 @@ export function MobileNavDrawer({ open, onOpenChange }: MobileNavDrawerProps) {
         <DialogPrimitive.Content
           data-slot="mobile-nav-drawer"
           className={cn(
-            'fixed inset-y-0 left-0 z-50 w-72 bg-surface outline-none',
+            'fixed inset-y-0 left-0 z-50 w-72 bg-surface pr-10 outline-none',
             'data-[state=open]:animate-in data-[state=open]:slide-in-from-left-16',
             'data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left-16',
           )}
@@ -43,7 +43,7 @@ export function MobileNavDrawer({ open, onOpenChange }: MobileNavDrawerProps) {
           </DialogPrimitive.Close>
           <div className="h-full overflow-auto">
             <AppSidebar
-              className="border-r-0"
+              className="border-r-0 !w-full"
               onWorkspaceSelect={() => {
                 onOpenChange(false);
               }}
