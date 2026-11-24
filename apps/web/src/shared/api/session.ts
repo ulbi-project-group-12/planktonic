@@ -17,22 +17,29 @@ export const sessionStore = createStore<SessionState>()(() => ({
   restoreStatus: 'idle',
 }));
 
+let currentGeneration = 0;
 let refreshPromise: Promise<boolean> | undefined;
+let refreshPromiseGeneration: number | undefined;
 
 export async function refreshAccessToken(): Promise<boolean> {
-  if (refreshPromise) return refreshPromise;
+  const generation = currentGeneration;
+  if (refreshPromise && refreshPromiseGeneration === generation) return refreshPromise;
 
+  refreshPromiseGeneration = generation;
   refreshPromise = (async () => {
     try {
       const { accessToken } = LoginResponseSchema.parse(
         await apiFetch('/api/auth/refresh', { method: 'POST' }),
       );
+      // signIn/signOut happened while the refresh was in flight: do not touch the new session.
+      if (currentGeneration !== generation) return false;
       sessionStore.setState({ accessToken });
       return true;
     } catch {
       return false;
     } finally {
       refreshPromise = undefined;
+      refreshPromiseGeneration = undefined;
     }
   })();
 
@@ -43,8 +50,11 @@ export async function restoreSession(): Promise<void> {
   const { restoreStatus } = sessionStore.getState();
   if (restoreStatus !== 'idle') return;
 
+  const generation = currentGeneration;
   sessionStore.setState({ restoreStatus: 'pending' });
   const ok = await refreshAccessToken();
+  // A newer session already has its own token; do not clear it because restore failed.
+  if (currentGeneration !== generation) return;
   sessionStore.setState({ restoreStatus: 'done', ...(ok ? {} : { accessToken: undefined }) });
 }
 
@@ -65,10 +75,12 @@ export function ensureSessionHandlers(): void {
 export async function signIn(credentials: LoginRequest): Promise<void> {
   const { accessToken } = LoginResponseSchema.parse(await authLogin(credentials));
   ensureSessionHandlers();
+  currentGeneration += 1;
   sessionStore.setState({ accessToken, signedOut: false, restoreStatus: 'done' });
 }
 
 /** Forgets the access token. The caller drops cached API data and leaves the closed pages. */
 export function signOut(): void {
+  currentGeneration += 1;
   sessionStore.setState({ accessToken: undefined, signedOut: true, restoreStatus: 'done' });
 }

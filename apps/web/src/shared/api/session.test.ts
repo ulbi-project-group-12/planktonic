@@ -157,3 +157,25 @@ it('refreshAccessToken shares one inflight promise across parallel callers', asy
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(sessionStore.getState().accessToken).toBe('refreshed-token');
 });
+
+it('does not overwrite a newer session with a stale refresh answer', async () => {
+  let answerRefresh: (response: Response) => void = () => undefined;
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        answerRefresh = resolve;
+      }),
+    )
+    .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }));
+
+  await signIn(credentials);
+  sessionStore.setState({ restoreStatus: 'idle' });
+  const late = restoreSession();
+  // A new sign-in replaces the session while the stale refresh is in flight.
+  await signIn({ email: 'new@example.com', password: 'new-password' });
+  answerRefresh(Response.json({ accessToken: 'stale-refreshed-token' }));
+  await late;
+
+  expect(sessionStore.getState().accessToken).toBe('new-token');
+});

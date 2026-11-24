@@ -75,6 +75,12 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
       url !== '/api/auth/refresh' &&
       refreshHandler
     ) {
+      // The session has changed while this request was in flight. Do not refresh or clear the
+      // current session; just fail this stale request.
+      if (accessTokenProvider?.() !== sentToken) {
+        const text = await response.text().catch(() => undefined);
+        throw new ApiError(response.status, text);
+      }
       const refreshed = await refreshHandler();
       if (refreshed) {
         return send(true);

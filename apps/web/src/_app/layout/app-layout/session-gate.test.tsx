@@ -90,8 +90,13 @@ describe('SessionGate', () => {
   });
 
   it('sends a guest to the login screen when refresh is rejected', async () => {
+    sessionStore.setState({ restoreStatus: 'idle' });
+    let refreshCount = 0;
     server.use(
-      refreshRejected(),
+      http.post('/api/auth/refresh', () => {
+        refreshCount += 1;
+        return HttpResponse.json({ statusCode: 401, message: 'Unauthorized' }, { status: 401 });
+      }),
       http.get('/api/auth/me', () => {
         throw new Error('me should not be called');
       }),
@@ -104,6 +109,7 @@ describe('SessionGate', () => {
         '/login?next=%2Fworkspaces%2Fmy-team%3Ftab%3Dmembers',
       );
     });
+    expect(refreshCount).toBe(1);
     expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
   });
 
