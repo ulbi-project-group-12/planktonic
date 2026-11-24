@@ -39,12 +39,17 @@ describe('LoginForm', () => {
     setAccessTokenProvider(undefined);
   });
 
-  it('signs in and goes to the workspaces screen', async () => {
+  it('opens creation when the authenticated workspace list is empty', async () => {
     let posted: unknown;
+    let authorization: string | null = null;
     server.use(
       http.post('*/api/auth/login', async ({ request }) => {
         posted = await request.json();
         return HttpResponse.json({ accessToken: 'test-access-token' });
+      }),
+      http.get('*/api/workspaces', ({ request }) => {
+        authorization = request.headers.get('Authorization');
+        return HttpResponse.json([]);
       }),
     );
     const user = userEvent.setup();
@@ -54,8 +59,9 @@ describe('LoginForm', () => {
     await user.click(submit());
 
     await waitFor(() => {
-      expect(push).toHaveBeenCalledWith('/workspaces');
+      expect(push).toHaveBeenCalledWith('/workspaces/create');
     });
+    expect(authorization).toBe('Bearer test-access-token');
     expect(posted).toEqual({ email: 'ada@example.com', password: PASSWORD });
     expect(sessionStore.getState().accessToken).toBe('test-access-token');
   });
@@ -68,6 +74,9 @@ describe('LoginForm', () => {
     search = new URLSearchParams({ next }).toString();
     server.use(
       http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'test-access-token' })),
+      http.get('*/api/workspaces', () =>
+        HttpResponse.json([{ id: 'ws-1', name: 'My team', slug: 'my-team' }]),
+      ),
     );
     const user = userEvent.setup();
     renderWithApi(<LoginForm />);
@@ -299,7 +308,7 @@ describe('LoginForm', () => {
     await entered;
     release();
     await waitFor(() => {
-      expect(push).toHaveBeenCalledWith('/workspaces');
+      expect(push).toHaveBeenCalledWith('/workspaces/create');
     });
   });
 });

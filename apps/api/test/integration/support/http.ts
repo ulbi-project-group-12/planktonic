@@ -7,10 +7,10 @@ import type { Env } from '../../../src/core/config/env.js';
 import type { PrismaClient } from '../../../src/generated/prisma/client.js';
 import { DEFAULT_AUTHOR_ID } from '../../../src/modules/messages/default-author.js';
 
-/** Authenticate as the active fixture user seeded by resetData. */
-function authorization(app: INestApplication): string {
+/** Authenticate as an active fixture user, defaulting to the one seeded by resetData. */
+export function authorization(app: INestApplication, userId = DEFAULT_AUTHOR_ID): string {
   const secret = app.get(ConfigService<Env, true>).get('JWT_ACCESS_SECRET', { infer: true });
-  const token = app.get(JwtService).sign({ sub: DEFAULT_AUTHOR_ID }, { secret, expiresIn: '15m' });
+  const token = app.get(JwtService).sign({ sub: userId }, { secret, expiresIn: '15m' });
   return `Bearer ${token}`;
 }
 

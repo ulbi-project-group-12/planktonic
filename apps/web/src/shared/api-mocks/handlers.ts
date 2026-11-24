@@ -1,6 +1,5 @@
-import { WorkspaceSlug } from '@app/contracts';
+import { CreateWorkspaceRequestSchema } from '@app/contracts';
 import { HttpResponse, http } from 'msw';
-import { z } from 'zod';
 import {
   getAuthLoginMockHandler,
   getAuthMeMockHandler,
@@ -10,15 +9,6 @@ import {
   getMessagesCreateMockHandler,
   getMessagesListMockHandler,
 } from '../api/generated/api.msw';
-
-/**
- * Workspace requests and responses live here until UL-143 lands the real contracts and the
- * OpenAPI schema gains the endpoints — then Orval regenerates the handlers and this block goes.
- */
-const CreateWorkspaceRequest = z.object({
-  name: z.string().trim().min(1).max(80),
-  slug: WorkspaceSlug,
-});
 
 interface MockWorkspace {
   id: string;
@@ -32,25 +22,22 @@ const currentUser = {
   email: 'ada@example.com',
 };
 
-/** POST /api/workspaces + GET /api/workspaces over an in-memory list (per handler set). */
+/** Workspace routes share an in-memory list per handler set. */
 function createWorkspaceHandlers() {
   const workspaces = new Map<string, MockWorkspace>();
 
   return [
-    http.get('*/api/workspaces', ({ request }) => {
-      const url = new URL(request.url);
-      const q = url.searchParams.get('q')?.trim().toLowerCase() ?? '';
-      const list = [...workspaces.values()];
-      if (!q) return HttpResponse.json(list);
+    http.get('*/api/workspaces', () => HttpResponse.json([...workspaces.values()])),
+    http.get<{ slug: string }>('*/api/workspaces/:slug', ({ params }) => {
+      const workspace = workspaces.get(params.slug);
+      if (workspace) return HttpResponse.json(workspace);
       return HttpResponse.json(
-        list.filter(
-          (workspace) =>
-            workspace.name.toLowerCase().includes(q) || workspace.slug.toLowerCase().includes(q),
-        ),
+        { statusCode: 404, message: 'Workspace not found', error: 'Not Found' },
+        { status: 404 },
       );
     }),
     http.post('*/api/workspaces', async ({ request }) => {
-      const parsed = CreateWorkspaceRequest.safeParse(await request.json());
+      const parsed = CreateWorkspaceRequestSchema.safeParse(await request.json());
       if (!parsed.success) {
         return HttpResponse.json(
           {

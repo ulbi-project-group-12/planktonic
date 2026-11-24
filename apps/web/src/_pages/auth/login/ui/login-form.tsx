@@ -1,12 +1,13 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type FieldError } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { LoginRequestSchema, type LoginRequest } from '@app/contracts';
-import { getApiIssues, hasApiStatus, isApiError } from '@/shared/api';
+import { getApiIssues, getWorkspaceListQueryOptions, hasApiStatus, isApiError } from '@/shared/api';
 import { routes } from '@/shared/config';
 import { Alert, Button, Field, Input, Link } from '@/shared/ui';
 import { useSignIn } from '../api/sign-in';
@@ -16,6 +17,7 @@ const FIELDS: readonly LoginField[] = ['email', 'password'];
 
 export function LoginForm() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   // The session gate sends a guest here with the address to come back to.
   const next = useSearchParams().get('next');
   const signIn = useSignIn();
@@ -25,7 +27,7 @@ export function LoginForm() {
     register,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<LoginRequest>({
     resolver: zodResolver(LoginRequestSchema),
     defaultValues: { email: '', password: '' },
@@ -41,7 +43,15 @@ export function LoginForm() {
       const editsAtSubmit = editsRef.current;
       try {
         await signIn.mutateAsync(values);
-        router.push(routes.afterLogin(next));
+        const destination = routes.afterLogin(next);
+        if (destination !== routes.workspaces()) {
+          router.push(destination);
+          return;
+        }
+        const workspaces = await queryClient
+          .query(getWorkspaceListQueryOptions())
+          .catch(() => undefined);
+        router.push(workspaces?.length === 0 ? routes.workspaceCreate() : destination);
       } catch (error) {
         if (hasApiStatus(error, 401)) {
           if (editsRef.current === editsAtSubmit) setSubmitError(INVALID_CREDENTIALS_MESSAGE);
@@ -144,7 +154,7 @@ export function LoginForm() {
       <Button
         type="submit"
         size="l"
-        loading={signIn.isPending}
+        loading={isSubmitting}
         fullWidth
         className="text-[15px] leading-6"
       >
