@@ -38,16 +38,13 @@ function setSignedOutFlag(): void {
   }
 }
 
-function consumeSignedOutFlag(): boolean {
+function hasSignedOutFlag(): boolean {
   try {
-    if (localStorage.getItem(SIGNED_OUT_FLAG_KEY) === '1') {
-      localStorage.removeItem(SIGNED_OUT_FLAG_KEY);
-      return true;
-    }
+    return localStorage.getItem(SIGNED_OUT_FLAG_KEY) === '1';
   } catch {
     // Ignore storage failures.
+    return false;
   }
-  return false;
 }
 
 export function clearSignedOutFlag(): void {
@@ -95,8 +92,8 @@ export async function restoreSession(): Promise<void> {
   if (restoreStatus !== 'idle' && restoreStatus !== 'error') return;
 
   // The user explicitly signed out in this browser, but the server revocation may have failed.
-  // Do not silently restore the session from the still-present refresh cookie.
-  if (consumeSignedOutFlag()) {
+  // Do not silently restore the session from the refresh cookie until the user signs in again.
+  if (hasSignedOutFlag()) {
     sessionStore.setState({ restoreStatus: 'done', signedOut: true });
     return;
   }

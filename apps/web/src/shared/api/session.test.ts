@@ -61,8 +61,9 @@ it('stops sending the token after sign-out', async () => {
   expect(new Headers(fetcher.mock.calls[2]?.[1]?.headers).has('Authorization')).toBe(false);
 });
 
-it('does not restore the session after sign-out even if the server logout failed', async () => {
-  vi.spyOn(globalThis, 'fetch')
+it('does not refresh on either of two reloads after a failed logout', async () => {
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
     .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
     .mockRejectedValueOnce(new TypeError('Network error'))
     .mockResolvedValueOnce(Response.json({ accessToken: 'restored-token' }));
@@ -70,12 +71,18 @@ it('does not restore the session after sign-out even if the server logout failed
   await signIn(credentials);
   await signOut();
 
-  // Simulate a page reload: the in-memory store resets, but the browser flag remains.
-  sessionStore.setState({ accessToken: undefined, restoreStatus: 'idle' });
-  await restoreSession();
+  // Each reload resets the in-memory store and preserves localStorage.
+  for (let reload = 0; reload < 2; reload++) {
+    sessionStore.setState({ accessToken: undefined, restoreStatus: 'idle', signedOut: undefined });
+    await restoreSession();
 
-  expect(sessionStore.getState().accessToken).toBeUndefined();
-  expect(sessionStore.getState().restoreStatus).toBe('done');
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(sessionStore.getState()).toMatchObject({
+      accessToken: undefined,
+      restoreStatus: 'done',
+      signedOut: true,
+    });
+  }
 });
 
 it('ends the session when any request with the token gets 401 and refresh is rejected', async () => {
