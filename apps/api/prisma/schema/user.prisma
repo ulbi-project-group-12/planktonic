@@ -8,7 +8,8 @@ model User {
   tz            String    @default("Europe/Moscow")
   deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(3)
 
-  messages Message[]
+  messages             Message[]
+  workspaceMemberships WorkspaceMember[]
 
   @@map("users")
 }

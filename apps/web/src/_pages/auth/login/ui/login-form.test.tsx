@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { sessionStore, setAccessTokenProvider } from '@/shared/api';
+import { getWorkspaceListQueryKey, sessionStore, setAccessTokenProvider } from '@/shared/api';
 import { server } from '@/shared/api-mocks-node';
 import { renderWithApi } from '@/shared/lib/testing';
 import { LoginPage } from './login-page';
@@ -39,12 +39,17 @@ describe('LoginForm', () => {
     setAccessTokenProvider(undefined);
   });
 
-  it('signs in and goes to the workspaces screen', async () => {
+  it('opens creation when the authenticated workspace list is empty', async () => {
     let posted: unknown;
+    let authorization: string | null = null;
     server.use(
       http.post('*/api/auth/login', async ({ request }) => {
         posted = await request.json();
         return HttpResponse.json({ accessToken: 'test-access-token' });
+      }),
+      http.get('*/api/workspaces', ({ request }) => {
+        authorization = request.headers.get('Authorization');
+        return HttpResponse.json([]);
       }),
     );
     const user = userEvent.setup();
@@ -54,8 +59,9 @@ describe('LoginForm', () => {
     await user.click(submit());
 
     await waitFor(() => {
-      expect(push).toHaveBeenCalledWith('/workspaces');
+      expect(push).toHaveBeenCalledWith('/workspaces/create');
     });
+    expect(authorization).toBe('Bearer test-access-token');
     expect(posted).toEqual({ email: 'ada@example.com', password: PASSWORD });
     expect(sessionStore.getState().accessToken).toBe('test-access-token');
   });
@@ -68,6 +74,9 @@ describe('LoginForm', () => {
     search = new URLSearchParams({ next }).toString();
     server.use(
       http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'test-access-token' })),
+      http.get('*/api/workspaces', () =>
+        HttpResponse.json([{ id: 'ws-1', name: 'My team', slug: 'my-team' }]),
+      ),
     );
     const user = userEvent.setup();
     renderWithApi(<LoginForm />);
@@ -77,6 +86,43 @@ describe('LoginForm', () => {
 
     await waitFor(() => {
       expect(push).toHaveBeenCalledExactlyOnceWith(expected);
+    });
+  });
+
+  it('does not reuse the workspace list cached for the previous account', async () => {
+    server.use(
+      http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'test-access-token' })),
+      http.get('*/api/workspaces', () => HttpResponse.json([])),
+    );
+    const user = userEvent.setup();
+    const { queryClient } = renderWithApi(<LoginForm />);
+    // Loaded a moment ago by another account in the same tab, so still fresh for the client.
+    queryClient.setQueryData(getWorkspaceListQueryKey(), [
+      { id: '019a8f00-0000-7000-8000-000000000004', name: 'Their team', slug: 'their-team' },
+    ]);
+
+    await fill(user);
+    await user.click(submit());
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith('/workspaces/create');
+    });
+    expect(queryClient.getQueryData(getWorkspaceListQueryKey())).toEqual([]);
+  });
+
+  it('goes to the workspace list when the list cannot be loaded', async () => {
+    server.use(
+      http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'test-access-token' })),
+      http.get('*/api/workspaces', () => new HttpResponse(null, { status: 500 })),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<LoginForm />);
+
+    await fill(user);
+    await user.click(submit());
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith('/workspaces');
     });
   });
 
@@ -299,7 +345,7 @@ describe('LoginForm', () => {
     await entered;
     release();
     await waitFor(() => {
-      expect(push).toHaveBeenCalledWith('/workspaces');
+      expect(push).toHaveBeenCalledWith('/workspaces/create');
     });
   });
 });

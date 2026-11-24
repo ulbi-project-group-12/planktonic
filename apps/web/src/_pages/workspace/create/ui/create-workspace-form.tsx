@@ -2,13 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type UseFormGetValues, type UseFormSetError } from 'react-hook-form';
 import { PRODUCT_SLUG } from '@app/config/product';
-import { getApiIssues, hasApiStatus, isApiError } from '@/shared/api';
+import {
+  getApiIssues,
+  getWorkspaceListQueryKey,
+  hasApiStatus,
+  isApiError,
+  useWorkspaceCreate,
+} from '@/shared/api';
 import { routes } from '@/shared/config';
 import { Alert, Button, Field, Input } from '@/shared/ui';
-import { useCreateWorkspace } from '../api/create-workspace';
 import { workspaceFormSchema, type WorkspaceFormValues } from '../model/form-schema';
 import { slugify } from '../model/slugify';
 
@@ -20,7 +26,12 @@ import { slugify } from '../model/slugify';
  */
 export function CreateWorkspaceForm() {
   const router = useRouter();
-  const createWorkspace = useCreateWorkspace();
+  const queryClient = useQueryClient();
+  const createWorkspace = useWorkspaceCreate({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getWorkspaceListQueryKey() }),
+    },
+  });
   const [submitError, setSubmitError] = useState<string>();
   const {
     register,
@@ -60,7 +71,7 @@ export function CreateWorkspaceForm() {
     async (values) => {
       setSubmitError(undefined);
       try {
-        const workspace = await createWorkspace.mutateAsync(values);
+        const workspace = await createWorkspace.mutateAsync({ data: values });
         if (!leftRef.current) router.push(routes.workspace(workspace.slug));
       } catch (error) {
         if (leftRef.current) return;

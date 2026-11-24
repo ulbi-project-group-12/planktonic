@@ -53,9 +53,7 @@ it('generates message sequence numbers the contract accepts', async () => {
   expect(page.messages.every((message) => MessageSeq.safeParse(message.seq).success)).toBe(true);
 });
 
-// Workspaces are mocked by hand until UL-143 adds the endpoints to the OpenAPI schema. The list
-// lives in memory for the whole test file (server.resetHandlers() does not empty it), so each
-// test below uses its own slug.
+// Workspace operations share an in-memory list, so each test uses its own slug.
 function postWorkspace(body: unknown): Promise<Response> {
   return fetch('http://api.example.invalid/api/workspaces', {
     method: 'POST',
@@ -72,6 +70,10 @@ it('creates a workspace and returns it in the list', async () => {
 
   const list = await fetch('http://api.example.invalid/api/workspaces');
   expect(await list.json()).toContainEqual(workspace);
+
+  const bySlug = await fetch('http://api.example.invalid/api/workspaces/team-one');
+  expect(bySlug.status).toBe(200);
+  expect(await bySlug.json()).toEqual(workspace);
 });
 
 it('answers 409 with a slug issue when the slug is taken', async () => {
@@ -107,20 +109,6 @@ it('returns the current user', async () => {
     name: 'Ada',
     email: 'ada@example.com',
   });
-});
-
-it('filters workspaces by name or slug', async () => {
-  await postWorkspace({ name: 'Alpha Team', slug: 'alpha-team' });
-  await postWorkspace({ name: 'Beta Crew', slug: 'beta-crew' });
-
-  const byName = await fetch('http://api.example.invalid/api/workspaces?q=alpha');
-  expect(await byName.json()).toEqual([expect.objectContaining({ name: 'Alpha Team' })]);
-
-  const bySlug = await fetch('http://api.example.invalid/api/workspaces?q=crew');
-  expect(await bySlug.json()).toEqual([expect.objectContaining({ name: 'Beta Crew' })]);
-
-  const empty = await fetch('http://api.example.invalid/api/workspaces?q=unknown');
-  expect(await empty.json()).toEqual([]);
 });
 
 // Email verification is mocked by hand until UL-158 adds the endpoints to the OpenAPI schema.
