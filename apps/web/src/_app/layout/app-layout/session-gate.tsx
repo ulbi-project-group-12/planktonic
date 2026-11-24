@@ -32,7 +32,9 @@ export function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
     // Cached answers belong to the account that just lost access.
     queryClient.clear();
     router.replace(
-      signedOut ? routes.login() : routes.login(`${pathname}${window.location.search}`),
+      signedOut
+        ? routes.login()
+        : routes.login(`${pathname}${window.location.search}${window.location.hash}`),
     );
   }, [guest, pathname, queryClient, router]);
 

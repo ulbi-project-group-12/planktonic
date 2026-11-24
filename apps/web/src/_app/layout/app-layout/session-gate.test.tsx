@@ -70,6 +70,18 @@ describe('SessionGate', () => {
     expect(asked).toBe(false);
   });
 
+  it('keeps the hash of the address in the return address', async () => {
+    window.history.replaceState(null, '', '/workspaces/my-team?thread=t1#m2');
+
+    renderGate();
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledExactlyOnceWith(
+        '/login?next=%2Fworkspaces%2Fmy-team%3Fthread%3Dt1%23m2',
+      );
+    });
+  });
+
   it('shows the page to a signed-in user', async () => {
     let authorization: string | null = null;
     server.use(
