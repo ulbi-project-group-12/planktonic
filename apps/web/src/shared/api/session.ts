@@ -20,8 +20,12 @@ export const sessionStore = createStore<SessionState>()(() => ({
 
 let refreshPromise: Promise<boolean> | undefined;
 let refreshPromiseGeneration: number | undefined;
+const LOGOUT_TIMEOUT_MS = 5_000;
 
 export async function refreshAccessToken(): Promise<boolean> {
+  const { accessToken, restoreStatus } = sessionStore.getState();
+  if (restoreStatus === 'done' && accessToken === undefined) return false;
+
   const generation = getSessionGeneration();
   if (refreshPromise && refreshPromiseGeneration === generation) return refreshPromise;
 
@@ -90,10 +94,24 @@ export async function signIn(credentials: LoginRequest): Promise<void> {
  */
 export async function signOut(): Promise<void> {
   bumpSessionGeneration();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, LOGOUT_TIMEOUT_MS);
   try {
-    LogoutResponseSchema.parse(await apiFetch('/api/auth/logout', { method: 'POST' }));
+    // Logout uses the refresh cookie. A 401 here must not trigger a token refresh.
+    const response = await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'same-origin',
+      signal: controller.signal,
+    });
+    if (response.ok) LogoutResponseSchema.parse(await response.json());
   } catch {
     // Best-effort: the server cookie may already be expired or the network may be down.
+  } finally {
+    clearTimeout(timeout);
+    // Discard refreshes that started while logout was in flight.
+    bumpSessionGeneration();
+    sessionStore.setState({ accessToken: undefined, signedOut: true, restoreStatus: 'done' });
   }
-  sessionStore.setState({ accessToken: undefined, signedOut: true, restoreStatus: 'done' });
 }

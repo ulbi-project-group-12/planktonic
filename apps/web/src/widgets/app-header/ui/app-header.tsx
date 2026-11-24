@@ -118,8 +118,8 @@ export function AppHeader({ onOpenMobileSidebar }: AppHeaderProps) {
             </DropdownItem>
             <DropdownItem
               danger
-              onClick={async () => {
-                await signOut();
+              onClick={() => {
+                void signOut();
                 queryClient.clear();
               }}
             >

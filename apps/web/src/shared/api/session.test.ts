@@ -10,6 +10,7 @@ afterEach(() => {
   sessionStore.setState({ accessToken: undefined, restoreStatus: 'idle', signedOut: false });
   setAccessTokenProvider(undefined);
   setRefreshHandler(undefined);
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -162,6 +163,63 @@ it('ignores a pending restore after sign-out and does not start another restore'
   await restoreSession();
 
   expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(fetcher).toHaveBeenNthCalledWith(
+    2,
+    '/api/auth/logout',
+    expect.objectContaining({ method: 'POST', credentials: 'same-origin' }),
+  );
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
+});
+
+it('discards a refresh started during sign-out and stays signed out until sign-in', async () => {
+  const logout = Promise.withResolvers<Response>();
+  const refresh = Promise.withResolvers<Response>();
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockReturnValueOnce(logout.promise)
+    .mockReturnValueOnce(refresh.promise)
+    .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }));
+
+  await signIn(credentials);
+  const signingOut = signOut();
+  const refreshing = refreshAccessToken();
+  logout.resolve(Response.json({}));
+  await signingOut;
+
+  refresh.resolve(Response.json({ accessToken: 'stale-token' }));
+  await expect(refreshing).resolves.toBe(false);
+  // SessionGate consumes the flag used for navigation.
+  sessionStore.setState({ signedOut: false });
+  await expect(refreshAccessToken()).resolves.toBe(false);
+  expect(fetcher).toHaveBeenCalledTimes(3);
+  expect(sessionStore.getState().accessToken).toBeUndefined();
+
+  await signIn(credentials);
+  expect(sessionStore.getState().accessToken).toBe('new-token');
+});
+
+it('aborts an unanswered logout and clears the local session', async () => {
+  vi.useFakeTimers();
+  sessionStore.setState({ accessToken: 'old-token', restoreStatus: 'done' });
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(
+    (_url, options) =>
+      new Promise<Response>((_resolve, reject) => {
+        options?.signal?.addEventListener('abort', () => {
+          reject(new DOMException('', 'AbortError'));
+        });
+      }),
+  );
+
+  const signingOut = signOut();
+  await vi.advanceTimersByTimeAsync(5_000);
+  await signingOut;
+
+  expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
   expect(sessionStore.getState()).toMatchObject({
     accessToken: undefined,
     restoreStatus: 'done',
