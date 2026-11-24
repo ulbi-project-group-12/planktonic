@@ -122,6 +122,12 @@ describe('LoginForm', () => {
     expect(sessionStore.getState().accessToken).toBeUndefined();
   });
 
+  it('never falls back to a native GET submit that would put the password in the URL', () => {
+    const { container } = renderWithApi(<LoginForm />);
+
+    expect(container.querySelector('form')).toHaveAttribute('method', 'post');
+  });
+
   it('puts field issues of a 400 next to their fields', async () => {
     server.use(
       http.post('*/api/auth/login', () =>

@@ -69,7 +69,9 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex w-full flex-col gap-5">
+    // method="post": a submit before hydration (or with scripts off) is a native one, and the
+    // default GET would put the email and the password into the address bar and server logs.
+    <form method="post" onSubmit={onSubmit} noValidate className="flex w-full flex-col gap-5">
       {submitError ? (
         <Alert palette="danger" title="Не удалось войти" description={submitError} />
       ) : null}
