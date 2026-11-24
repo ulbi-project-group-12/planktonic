@@ -1,12 +1,18 @@
-import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
-import { Typography } from '@/shared/ui/typography';
+import { Suspense } from 'react';
+import { Spinner } from '@/shared/ui';
+import { VerifyEmailContent } from './verify-email-content';
 
 export function VerifyEmailPage() {
+  // The content reads `?token=`: without a boundary the whole page would opt out of prerendering.
   return (
-    <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center gap-4 p-8">
-      <Typography as="h1" size="h3">
-        Скоро здесь будет подтверждение почты {PRODUCT_DISPLAY_NAME}
-      </Typography>
-    </main>
+    <Suspense
+      fallback={
+        <main className="flex min-h-svh items-center justify-center">
+          <Spinner size="l" />
+        </main>
+      }
+    >
+      <VerifyEmailContent />
+    </Suspense>
   );
 }
