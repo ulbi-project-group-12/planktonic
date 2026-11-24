@@ -61,7 +61,7 @@ describe('AppLayout behind the login', () => {
     renderLayout();
 
     await waitFor(() => {
-      expect(replace).toHaveBeenLastCalledWith('/login?next=%2Fworkspaces');
+      expect(replace).toHaveBeenCalledExactlyOnceWith('/login?next=%2Fworkspaces');
     });
     expect(screen.queryByRole('banner')).not.toBeInTheDocument();
     expect(screen.queryByText('content')).not.toBeInTheDocument();

@@ -28,6 +28,11 @@ export const sessionStore = createStore<SessionState>()(() => ({
 let refreshPromise: Promise<RefreshResult> | undefined;
 let refreshPromiseGeneration: number | undefined;
 const LOGOUT_TIMEOUT_MS = 5_000;
+// Refresh answers that mean "there is no session to continue". 401: the refresh credentials are
+// missing, expired or revoked. 404 and 405: this api has no refresh endpoint at all (it arrives
+// with UL-141), so nothing can be restored and waiting or retrying would only keep the visitor
+// away from the login screen. Anything else (network failure, 5xx) is temporary.
+const NO_SESSION_STATUSES: ReadonlySet<number> = new Set([401, 404, 405]);
 export const SIGNED_OUT_FLAG_KEY = `__${PRODUCT_SLUG}_signed_out`;
 
 function setSignedOutFlag(): void {
@@ -73,7 +78,9 @@ export async function refreshAccessToken(): Promise<RefreshResult> {
       sessionStore.setState({ accessToken });
       return 'refreshed';
     } catch (error) {
-      return error instanceof ApiError && error.status === 401 ? 'rejected' : 'unavailable';
+      return error instanceof ApiError && NO_SESSION_STATUSES.has(error.status)
+        ? 'rejected'
+        : 'unavailable';
     } finally {
       // Only the refresh that is currently registered clears the shared slot; a newer
       // generation's refresh must stay visible to its own callers.
@@ -93,8 +100,10 @@ export async function restoreSession(): Promise<void> {
 
   // The user explicitly signed out in this browser, but the server revocation may have failed.
   // Do not silently restore the session from the refresh cookie until the user signs in again.
+  // `signedOut` stays as it is: only the sign-out button drops the return address, and a later
+  // visit to a deep link still comes back to it after the login.
   if (hasSignedOutFlag()) {
-    sessionStore.setState({ restoreStatus: 'done', signedOut: true });
+    sessionStore.setState({ restoreStatus: 'done' });
     return;
   }
 

@@ -140,6 +140,46 @@ describe('SessionGate', () => {
     expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
   });
 
+  it('sends a guest to the login screen when the api has no refresh endpoint', async () => {
+    sessionStore.setState({ restoreStatus: 'idle' });
+    server.use(
+      http.post('/api/auth/refresh', () =>
+        HttpResponse.json({ statusCode: 404, message: 'Not Found' }, { status: 404 }),
+      ),
+    );
+
+    renderGate();
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledExactlyOnceWith(
+        '/login?next=%2Fworkspaces%2Fmy-team%3Ftab%3Dmembers',
+      );
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('keeps the return address on a visit after an earlier sign-out', async () => {
+    await signOut();
+    // A reload: the tab's memory starts over, the mark left by the sign-out stays.
+    sessionStore.setState({ accessToken: undefined, signedOut: false, restoreStatus: 'idle' });
+    let refreshed = false;
+    server.use(
+      http.post('/api/auth/refresh', () => {
+        refreshed = true;
+        return HttpResponse.json({ accessToken: 'restored-token' });
+      }),
+    );
+
+    renderGate();
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledExactlyOnceWith(
+        '/login?next=%2Fworkspaces%2Fmy-team%3Ftab%3Dmembers',
+      );
+    });
+    expect(refreshed).toBe(false);
+  });
+
   it('sends a guest to the login screen with the address to return to', async () => {
     let asked = false;
     server.use(
@@ -168,7 +208,7 @@ describe('SessionGate', () => {
     renderGate();
 
     await waitFor(() => {
-      expect(replace).toHaveBeenLastCalledWith(
+      expect(replace).toHaveBeenCalledExactlyOnceWith(
         '/login?next=%2Fworkspaces%2Fmy-team%3Fthread%3Dt1%23m2',
       );
     });

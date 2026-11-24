@@ -80,8 +80,9 @@ it('does not refresh on either of two reloads after a failed logout', async () =
     expect(sessionStore.getState()).toMatchObject({
       accessToken: undefined,
       restoreStatus: 'done',
-      signedOut: true,
     });
+    // Only the sign-out button drops the return address; a later visit keeps it.
+    expect(sessionStore.getState().signedOut).toBeUndefined();
   }
 });
 
@@ -187,6 +188,43 @@ it('restoreSession leaves a guest on 401', async () => {
 
   expect(sessionStore.getState().accessToken).toBeUndefined();
   expect(sessionStore.getState().restoreStatus).toBe('done');
+});
+
+it.each([404, 405])(
+  'restoreSession leaves a guest when the api has no refresh endpoint (%i)',
+  async (status) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      Response.json({ statusCode: status, message: 'Cannot POST /api/auth/refresh' }, { status }),
+    );
+
+    await restoreSession();
+
+    expect(sessionStore.getState().accessToken).toBeUndefined();
+    expect(sessionStore.getState().restoreStatus).toBe('done');
+  },
+);
+
+it('restoreSession keeps the retry state on a temporary failure', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 503 }));
+
+  await restoreSession();
+
+  expect(sessionStore.getState().restoreStatus).toBe('error');
+});
+
+it('ends the session on 401 when the api has no refresh endpoint', async () => {
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'test-access-token' }))
+    .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }))
+    .mockResolvedValueOnce(Response.json({ message: 'Not Found' }, { status: 404 }));
+
+  await signIn(credentials);
+  await expect(apiFetch('/api/workspaces')).rejects.toMatchObject({
+    status: 401,
+    body: { message: 'Unauthorized' },
+  });
+
+  expect(sessionStore.getState().accessToken).toBeUndefined();
 });
 
 it('restoreSession does not make a second request', async () => {
