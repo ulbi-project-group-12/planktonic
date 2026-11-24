@@ -37,8 +37,9 @@ export function setAccessTokenProvider(
 
 /**
  * Registers the callback used to restore an expired access token. The handler is invoked when
- * an eligible request returns `401` and no newer token is available. Only a refresh response
- * with status `401` counts as `rejected`. Pass `undefined` to remove the callback.
+ * an eligible request returns `401` and no newer token is available. `rejected` means the
+ * session is over and ends it; `unavailable` is a temporary failure and keeps it. Pass
+ * `undefined` to remove the callback.
  */
 export function setRefreshHandler(handler: (() => Promise<RefreshResult>) | undefined): void {
   refreshHandler = handler;
@@ -61,9 +62,19 @@ function normalizeHeaders(input: HeadersInit | undefined): Headers {
   return headers;
 }
 
+function parseErrorBody(text: string | undefined): unknown {
+  if (!text) return text;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    // Preserve non-JSON errors from proxies and other upstream services.
+    return text;
+  }
+}
+
 async function unauthorizedError(response: Response): Promise<ApiError> {
   const text = await response.text().catch(() => undefined);
-  return new ApiError(response.status, text);
+  return new ApiError(response.status, parseErrorBody(text));
 }
 
 export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}): Promise<T> {
@@ -104,17 +115,7 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
       throw error;
     });
 
-    if (!response.ok) {
-      let body: unknown = text;
-      if (text) {
-        try {
-          body = JSON.parse(text) as unknown;
-        } catch {
-          // Preserve non-JSON errors from proxies and other upstream services.
-        }
-      }
-      throw new ApiError(response.status, body);
-    }
+    if (!response.ok) throw new ApiError(response.status, parseErrorBody(text));
 
     return (text ? JSON.parse(text) : undefined) as T;
   }
