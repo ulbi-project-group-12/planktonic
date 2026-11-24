@@ -1,7 +1,14 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { authMe } from './generated/api';
 import { apiFetch, setAccessTokenProvider, setRefreshHandler } from './http-client';
-import { refreshAccessToken, restoreSession, sessionStore, signIn, signOut } from './session';
+import {
+  clearSignedOutFlag,
+  refreshAccessToken,
+  restoreSession,
+  sessionStore,
+  signIn,
+  signOut,
+} from './session';
 import { bumpSessionGeneration } from './session-generation';
 
 const credentials = { email: 'ada@example.com', password: 'example-passphrase' };
@@ -10,7 +17,7 @@ afterEach(() => {
   sessionStore.setState({ accessToken: undefined, restoreStatus: 'idle', signedOut: false });
   setAccessTokenProvider(undefined);
   setRefreshHandler(undefined);
-  localStorage.removeItem('__planktonic_signed_out');
+  clearSignedOutFlag();
   vi.useRealTimers();
   vi.restoreAllMocks();
 });

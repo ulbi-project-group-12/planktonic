@@ -1,6 +1,7 @@
 'use client';
 
 import { type LoginRequest, LoginResponseSchema, LogoutResponseSchema } from '@app/contracts';
+import { PRODUCT_SLUG } from '@app/config/product';
 import { createStore } from 'zustand/vanilla';
 import { authLogin } from './generated/api';
 import { apiFetch, setAccessTokenProvider, setRefreshHandler } from './http-client';
@@ -21,7 +22,7 @@ export const sessionStore = createStore<SessionState>()(() => ({
 let refreshPromise: Promise<boolean> | undefined;
 let refreshPromiseGeneration: number | undefined;
 const LOGOUT_TIMEOUT_MS = 5_000;
-const SIGNED_OUT_FLAG_KEY = '__planktonic_signed_out';
+const SIGNED_OUT_FLAG_KEY = `__${PRODUCT_SLUG}_signed_out`;
 
 function setSignedOutFlag(): void {
   try {
@@ -43,7 +44,7 @@ function consumeSignedOutFlag(): boolean {
   return false;
 }
 
-function clearSignedOutFlag(): void {
+export function clearSignedOutFlag(): void {
   try {
     localStorage.removeItem(SIGNED_OUT_FLAG_KEY);
   } catch {

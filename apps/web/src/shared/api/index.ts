@@ -17,6 +17,7 @@ export {
   type ApiRequestOptions,
 } from './http-client';
 export {
+  clearSignedOutFlag,
   ensureSessionHandlers,
   refreshAccessToken,
   restoreSession,

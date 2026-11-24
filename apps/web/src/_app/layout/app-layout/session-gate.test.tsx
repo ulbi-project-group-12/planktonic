@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   apiFetch,
+  clearSignedOutFlag,
   ensureSessionHandlers,
   sessionStore,
   setAccessTokenProvider,
@@ -66,7 +67,7 @@ describe('SessionGate', () => {
     sessionStore.setState({ accessToken: undefined, signedOut: false, restoreStatus: 'done' });
     setAccessTokenProvider(undefined);
     setRefreshHandler(undefined);
-    localStorage.removeItem('__planktonic_signed_out');
+    clearSignedOutFlag();
   });
 
   it('restores the session on load when no token is in memory', async () => {
