@@ -31,6 +31,13 @@ export function useTheme() {
     applyThemeToDom(next);
   }, []);
 
+  const syncTheme = useCallback((next: Theme) => {
+    const resolved = resolveTheme(next);
+    setThemeState(next);
+    setResolvedTheme(resolved);
+    applyResolvedTheme(resolved);
+  }, []);
+
   const setTheme = useCallback(
     (next: Theme) => {
       applyTheme(next);
@@ -63,13 +70,14 @@ export function useTheme() {
         event.newValue === 'light' || event.newValue === 'dark' || event.newValue === 'system'
           ? event.newValue
           : 'system';
-      applyTheme(next);
+      // Synchronize from another tab without writing back to storage.
+      syncTheme(next);
     };
     window.addEventListener('storage', handler);
     return () => {
       window.removeEventListener('storage', handler);
     };
-  }, [applyTheme]);
+  }, [syncTheme]);
 
   return { theme: themeState, resolvedTheme, setTheme, isDark: resolvedTheme === 'dark' };
 }

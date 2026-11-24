@@ -7,11 +7,12 @@ import { THEME_STORAGE_KEY } from '@/features/theme-switch';
 export function getThemeInitScript(storageKey: string = THEME_STORAGE_KEY): string {
   return (
     `(function(k){` +
-    `try{` +
-    `var t=localStorage.getItem(k);` +
+    `var t;` +
+    `try{t=localStorage.getItem(k);}catch(e){}` +
     `if(t!=='light'&&t!=='dark'){` +
-    `t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';` +
+    `try{t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}catch(e){t='light';}` +
     `}` +
+    `try{` +
     `document.documentElement.classList.toggle('dark',t==='dark');` +
     `document.documentElement.style.colorScheme=t;` +
     `}catch(e){}` +
