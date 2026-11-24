@@ -6,6 +6,7 @@ import { LogOut, Menu, Settings } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { WorkspaceSlug } from '@app/contracts';
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
+import { ThemeSwitcher } from '@/features/theme-switch';
 import { signOut, useAuthMe } from '@/shared/api';
 import { routes } from '@/shared/config';
 import {
@@ -17,7 +18,6 @@ import {
   DropdownTrigger,
   Skeleton,
 } from '@/shared/ui';
-import { ThemeSwitcher } from './theme-switcher';
 
 function isWorkspaceSlug(value: unknown): value is string {
   return typeof value === 'string' && WorkspaceSlug.safeParse(value).success;
@@ -88,7 +88,7 @@ export function AppHeader({ onOpenMobileSidebar }: AppHeaderProps) {
             <Button
               variant="secondary"
               size="m"
-              className="gap-1.5 pl-1.5 pr-0"
+              className="gap-0 pl-0 pr-0 desktop-s:gap-1.5 desktop-s:pl-1.5"
               aria-label={
                 isPending
                   ? 'Загрузка меню пользователя'

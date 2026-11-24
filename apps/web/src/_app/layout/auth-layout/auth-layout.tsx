@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
+import { ThemeSwitcher } from '@/features/theme-switch';
 import { routes } from '@/shared/config';
-import { ThemeSwitcher } from '@/widgets/app-header';
 
 export function AuthLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CreateWorkspaceRequestSchema,
   ListWorkspacesResponseSchema,
+  WORKSPACE_NAME_MAX_LENGTH,
   WorkspaceResponseSchema,
   WorkspaceSlug,
   WorkspaceSlugConflictResponseSchema,
@@ -43,11 +44,18 @@ describe('CreateWorkspaceRequestSchema', () => {
     ).toEqual({ name: workspace.name, slug: workspace.slug });
   });
 
-  it.each(['   ', 'a'.repeat(81)])('rejects invalid name %j', (name) => {
-    expect(CreateWorkspaceRequestSchema.safeParse({ name, slug: workspace.slug }).success).toBe(
-      false,
-    );
+  it('accepts a name at the maximum length', () => {
+    const name = 'a'.repeat(WORKSPACE_NAME_MAX_LENGTH);
+    expect(CreateWorkspaceRequestSchema.parse({ name, slug: workspace.slug }).name).toBe(name);
   });
+
+  it.each(['   ', 'a'.repeat(WORKSPACE_NAME_MAX_LENGTH + 1), 'My\u0000team'])(
+    'reports invalid name %j on the name field',
+    (name) => {
+      const result = CreateWorkspaceRequestSchema.safeParse({ name, slug: workspace.slug });
+      expect(result.error?.issues).toEqual([expect.objectContaining({ path: ['name'] })]);
+    },
+  );
 
   it('rejects a reserved slug', () => {
     expect(
