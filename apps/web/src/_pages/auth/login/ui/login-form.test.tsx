@@ -89,6 +89,22 @@ describe('LoginForm', () => {
     });
   });
 
+  it('goes to the workspace list when the list cannot be loaded', async () => {
+    server.use(
+      http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'test-access-token' })),
+      http.get('*/api/workspaces', () => new HttpResponse(null, { status: 500 })),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<LoginForm />);
+
+    await fill(user);
+    await user.click(submit());
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith('/workspaces');
+    });
+  });
+
   it('toggles password visibility without clearing the value', async () => {
     const user = userEvent.setup();
     renderWithApi(<LoginForm />);
