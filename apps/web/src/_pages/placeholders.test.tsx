@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { InvitePage } from './invite';
-import { VerifyEmailPage } from './verify-email';
 import { ResetPasswordPage } from './auth/reset-password';
 import { ProfileSettingsPage } from './account/profile';
 import { NotificationSettingsPage } from './account/notifications';
@@ -12,7 +11,6 @@ import { ProjectMembersPage } from './project/members';
 
 const pages = [
   ['InvitePage', InvitePage],
-  ['VerifyEmailPage', VerifyEmailPage],
   ['ResetPasswordPage', ResetPasswordPage],
   ['ProfileSettingsPage', ProfileSettingsPage],
   ['NotificationSettingsPage', NotificationSettingsPage],
