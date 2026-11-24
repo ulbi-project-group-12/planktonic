@@ -19,7 +19,8 @@ export function AuthLayout({ children }: Readonly<{ children: ReactNode }>) {
         </Link>
         <ThemeSwitcher />
       </header>
-      <div className="flex flex-1 min-h-0 overflow-auto">{children}</div>
+      {/* A block, not a flex row: a page <main> must take the full width to centre its card. */}
+      <div className="min-h-0 flex-1 overflow-auto">{children}</div>
     </div>
   );
 }
