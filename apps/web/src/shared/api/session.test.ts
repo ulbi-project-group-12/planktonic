@@ -1,13 +1,25 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { authMe } from './generated/api';
-import { apiFetch, setAccessTokenProvider } from './http-client';
-import { sessionStore, signIn, signOut } from './session';
+import { apiFetch, setAccessTokenProvider, setRefreshHandler } from './http-client';
+import {
+  clearSignedOutFlag,
+  refreshAccessToken,
+  restoreSession,
+  SIGNED_OUT_FLAG_KEY,
+  sessionStore,
+  signIn,
+  signOut,
+} from './session';
+import { bumpSessionGeneration } from './session-generation';
 
 const credentials = { email: 'ada@example.com', password: 'example-passphrase' };
 
 afterEach(() => {
-  sessionStore.setState({ accessToken: undefined });
+  sessionStore.setState({ accessToken: undefined, restoreStatus: 'idle', signedOut: false });
   setAccessTokenProvider(undefined);
+  setRefreshHandler(undefined);
+  clearSignedOutFlag();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -38,19 +50,46 @@ it('stops sending the token after sign-out', async () => {
   const fetcher = vi
     .spyOn(globalThis, 'fetch')
     .mockResolvedValueOnce(Response.json({ accessToken: 'test-access-token' }))
+    .mockResolvedValueOnce(Response.json({}))
     .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
 
   await signIn(credentials);
-  signOut();
+  await signOut();
   await expect(authMe()).rejects.toMatchObject({ status: 401 });
 
   expect(sessionStore.getState().accessToken).toBeUndefined();
-  expect(new Headers(fetcher.mock.calls[1]?.[1]?.headers).has('Authorization')).toBe(false);
+  expect(new Headers(fetcher.mock.calls[2]?.[1]?.headers).has('Authorization')).toBe(false);
 });
 
-it('ends the session when any request with the token gets 401', async () => {
+it('does not refresh on either of two reloads after a failed logout', async () => {
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockRejectedValueOnce(new TypeError('Network error'))
+    .mockResolvedValueOnce(Response.json({ accessToken: 'restored-token' }));
+
+  await signIn(credentials);
+  await signOut();
+
+  // Each reload resets the in-memory store and preserves localStorage.
+  for (let reload = 0; reload < 2; reload++) {
+    sessionStore.setState({ accessToken: undefined, restoreStatus: 'idle', signedOut: undefined });
+    await restoreSession();
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(sessionStore.getState()).toMatchObject({
+      accessToken: undefined,
+      restoreStatus: 'done',
+    });
+    // Only the sign-out button drops the return address; a later visit keeps it.
+    expect(sessionStore.getState().signedOut).toBeUndefined();
+  }
+});
+
+it('ends the session when any request with the token gets 401 and refresh is rejected', async () => {
   vi.spyOn(globalThis, 'fetch')
     .mockResolvedValueOnce(Response.json({ accessToken: 'test-access-token' }))
+    .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }))
     .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
 
   await signIn(credentials);
@@ -59,7 +98,25 @@ it('ends the session when any request with the token gets 401', async () => {
   expect(sessionStore.getState().accessToken).toBeUndefined();
 });
 
-it('ends the session on 401 even when the response body cannot be read', async () => {
+it('keeps the token after a refresh network error and refreshes on the next request', async () => {
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockResolvedValueOnce(new Response(null, { status: 401 }))
+    .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    .mockResolvedValueOnce(new Response(null, { status: 401 }))
+    .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }))
+    .mockResolvedValueOnce(Response.json({ ok: true }));
+
+  await signIn(credentials);
+
+  await expect(apiFetch('/api/workspaces')).rejects.toMatchObject({ status: 401 });
+  expect(sessionStore.getState().accessToken).toBe('old-token');
+
+  await expect(apiFetch('/api/workspaces')).resolves.toEqual({ ok: true });
+  expect(sessionStore.getState().accessToken).toBe('new-token');
+});
+
+it('ends the session on 401 even when the response body cannot be read and refresh is rejected', async () => {
   const broken = new Response(
     new ReadableStream({
       start(controller) {
@@ -70,15 +127,16 @@ it('ends the session on 401 even when the response body cannot be read', async (
   );
   vi.spyOn(globalThis, 'fetch')
     .mockResolvedValueOnce(Response.json({ accessToken: 'test-access-token' }))
-    .mockResolvedValueOnce(broken);
+    .mockResolvedValueOnce(broken)
+    .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
 
   await signIn(credentials);
-  await expect(apiFetch('/api/workspaces')).rejects.toBeInstanceOf(TypeError);
+  await expect(apiFetch('/api/workspaces')).rejects.toMatchObject({ status: 401 });
 
   expect(sessionStore.getState().accessToken).toBeUndefined();
 });
 
-it('keeps a newer session when a request sent with an older token gets 401', async () => {
+it('keeps a newer session when a request sent with an older token gets 401 and refresh is rejected', async () => {
   let answerOld: (response: Response) => void = () => undefined;
   vi.spyOn(globalThis, 'fetch')
     .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
@@ -87,11 +145,14 @@ it('keeps a newer session when a request sent with an older token gets 401', asy
         answerOld = resolve;
       }),
     )
-    .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }));
+    .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
 
   await signIn(credentials);
   const late = apiFetch('/api/workspaces');
-  await signIn(credentials);
+  // A concurrent sign-in replaced the token before the late answer arrived.
+  setAccessTokenProvider(() => 'new-token');
+  bumpSessionGeneration();
+  sessionStore.setState({ accessToken: 'new-token', restoreStatus: 'done' });
   answerOld(Response.json({ message: 'Unauthorized' }, { status: 401 }));
   await expect(late).rejects.toMatchObject({ status: 401 });
 
@@ -105,4 +166,255 @@ it('keeps the session empty when login is rejected', async () => {
 
   await expect(signIn(credentials)).rejects.toMatchObject({ status: 401 });
   expect(sessionStore.getState().accessToken).toBeUndefined();
+});
+
+it('restoreSession saves the token on 200', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+    Response.json({ accessToken: 'restored-token' }),
+  );
+
+  await restoreSession();
+
+  expect(sessionStore.getState().accessToken).toBe('restored-token');
+  expect(sessionStore.getState().restoreStatus).toBe('done');
+});
+
+it('restoreSession leaves a guest on 401', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+    Response.json({ message: 'Unauthorized' }, { status: 401 }),
+  );
+
+  await restoreSession();
+
+  expect(sessionStore.getState().accessToken).toBeUndefined();
+  expect(sessionStore.getState().restoreStatus).toBe('done');
+});
+
+it.each([404, 405])(
+  'restoreSession leaves a guest when the api has no refresh endpoint (%i)',
+  async (status) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      Response.json({ statusCode: status, message: 'Cannot POST /api/auth/refresh' }, { status }),
+    );
+
+    await restoreSession();
+
+    expect(sessionStore.getState().accessToken).toBeUndefined();
+    expect(sessionStore.getState().restoreStatus).toBe('done');
+  },
+);
+
+it('restoreSession leaves a guest on 404 even when the response body cannot be read', async () => {
+  const broken = new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.error(new TypeError('connection lost'));
+      },
+    }),
+    { status: 404 },
+  );
+  vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(broken);
+
+  await restoreSession();
+
+  expect(sessionStore.getState().restoreStatus).toBe('done');
+});
+
+it('restoreSession keeps the retry state on a temporary failure', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 503 }));
+
+  await restoreSession();
+
+  expect(sessionStore.getState().restoreStatus).toBe('error');
+});
+
+it('ends the session on 401 when the api has no refresh endpoint', async () => {
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'test-access-token' }))
+    .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }))
+    .mockResolvedValueOnce(Response.json({ message: 'Not Found' }, { status: 404 }));
+
+  await signIn(credentials);
+  await expect(apiFetch('/api/workspaces')).rejects.toMatchObject({
+    status: 401,
+    body: { message: 'Unauthorized' },
+  });
+
+  expect(sessionStore.getState().accessToken).toBeUndefined();
+});
+
+it('restoreSession does not make a second request', async () => {
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'restored-token' }));
+
+  void restoreSession();
+  await restoreSession();
+
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('ignores a pending restore after sign-out and does not start another restore', async () => {
+  const { promise, resolve } = Promise.withResolvers<Response>();
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockReturnValueOnce(promise)
+    .mockResolvedValueOnce(Response.json({}));
+
+  const pendingRestore = restoreSession();
+  await signOut();
+  resolve(Response.json({ accessToken: 'old-session-token' }));
+  await pendingRestore;
+  await restoreSession();
+
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(fetcher).toHaveBeenNthCalledWith(
+    2,
+    '/api/auth/logout',
+    expect.objectContaining({ method: 'POST', credentials: 'same-origin' }),
+  );
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
+});
+
+it('discards a refresh started during sign-out and stays signed out until sign-in', async () => {
+  const logout = Promise.withResolvers<Response>();
+  const refresh = Promise.withResolvers<Response>();
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockReturnValueOnce(logout.promise)
+    .mockReturnValueOnce(refresh.promise)
+    .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }));
+
+  await signIn(credentials);
+  const signingOut = signOut();
+  const refreshing = refreshAccessToken();
+  logout.resolve(Response.json({}));
+  await signingOut;
+
+  refresh.resolve(Response.json({ accessToken: 'stale-token' }));
+  await expect(refreshing).resolves.toBe('unavailable');
+  // SessionGate consumes the flag used for navigation.
+  sessionStore.setState({ signedOut: false });
+  await expect(refreshAccessToken()).resolves.toBe('unavailable');
+  expect(fetcher).toHaveBeenCalledTimes(3);
+  expect(sessionStore.getState().accessToken).toBeUndefined();
+
+  await signIn(credentials);
+  expect(sessionStore.getState().accessToken).toBe('new-token');
+});
+
+it('keeps a new sign-in when an older logout completes', async () => {
+  const logout = Promise.withResolvers<Response>();
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockReturnValueOnce(logout.promise)
+    .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }));
+
+  await signIn(credentials);
+  const signingOut = signOut();
+  expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).toBe('1');
+  await signIn(credentials);
+  logout.resolve(Response.json({}));
+  await signingOut;
+
+  expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).toBeNull();
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: 'new-token',
+    restoreStatus: 'done',
+    signedOut: false,
+  });
+});
+
+it('aborts an unanswered logout and clears the local session', async () => {
+  vi.useFakeTimers();
+  sessionStore.setState({ accessToken: 'old-token', restoreStatus: 'done' });
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(
+    (_url, options) =>
+      new Promise<Response>((_resolve, reject) => {
+        options?.signal?.addEventListener('abort', () => {
+          reject(new DOMException('', 'AbortError'));
+        });
+      }),
+  );
+
+  const signingOut = signOut();
+  await vi.advanceTimersByTimeAsync(5_000);
+  await signingOut;
+
+  expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
+});
+
+it('refreshAccessToken shares one inflight promise across parallel callers', async () => {
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'refreshed-token' }));
+
+  const [first, second] = await Promise.all([refreshAccessToken(), refreshAccessToken()]);
+
+  expect(first).toBe('refreshed');
+  expect(second).toBe('refreshed');
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(sessionStore.getState().accessToken).toBe('refreshed-token');
+});
+
+it('does not overwrite a newer session with a stale refresh answer', async () => {
+  let answerRefresh: (response: Response) => void = () => undefined;
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        answerRefresh = resolve;
+      }),
+    )
+    .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }));
+
+  await signIn(credentials);
+  sessionStore.setState({ restoreStatus: 'idle' });
+  const late = restoreSession();
+  // A new sign-in replaces the session while the stale refresh is in flight.
+  await signIn({ email: 'new@example.com', password: 'new-password' });
+  answerRefresh(Response.json({ accessToken: 'stale-refreshed-token' }));
+  await late;
+
+  expect(sessionStore.getState().accessToken).toBe('new-token');
+});
+
+it('keeps a newer refresh promise when an older refresh finishes', async () => {
+  let answerOld: (response: Response) => void = () => undefined;
+  let answerNew: (response: Response) => void = () => undefined;
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        answerOld = resolve;
+      }),
+    )
+    .mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        answerNew = resolve;
+      }),
+    );
+
+  await signIn(credentials);
+  const oldRefresh = refreshAccessToken();
+  bumpSessionGeneration();
+  const newRefresh = refreshAccessToken();
+
+  answerOld(Response.json({ accessToken: 'old-refreshed-token' }));
+  await oldRefresh;
+
+  answerNew(Response.json({ accessToken: 'new-refreshed-token' }));
+  await newRefresh;
+
+  expect(sessionStore.getState().accessToken).toBe('new-refreshed-token');
 });

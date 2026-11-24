@@ -88,7 +88,7 @@ export function AppHeader({ onOpenMobileSidebar }: AppHeaderProps) {
             <Button
               variant="secondary"
               size="m"
-              className="gap-0 pl-0 pr-0 desktop-s:gap-1.5 desktop-s:pl-1.5"
+              className="shrink gap-0 pl-0 pr-0 desktop-s:gap-1.5 desktop-s:pl-1.5"
               aria-label={
                 isPending
                   ? 'Загрузка меню пользователя'
@@ -103,7 +103,7 @@ export function AppHeader({ onOpenMobileSidebar }: AppHeaderProps) {
               {isPending ? (
                 <Skeleton className="hidden h-4 w-20 desktop-s:block" />
               ) : (
-                <span className="hidden desktop-s:inline">{user.data?.name}</span>
+                <span className="hidden min-w-0 truncate desktop-s:inline">{user.data?.name}</span>
               )}
             </Button>
           </DropdownTrigger>
@@ -127,10 +127,8 @@ export function AppHeader({ onOpenMobileSidebar }: AppHeaderProps) {
             <DropdownItem
               danger
               onClick={() => {
-                // No logout endpoint yet (UL-141): forget the access token and the cached data.
-                signOut();
+                void signOut();
                 queryClient.clear();
-                router.push(routes.login());
               }}
             >
               <LogOut className="size-4" />

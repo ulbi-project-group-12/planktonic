@@ -1,8 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
 import { sessionStore } from '@/shared/api';
+import { server } from '@/shared/api-mocks-node';
 import { renderWithApi } from '@/shared/lib/testing';
 import { AppHeader } from './app-header';
 
@@ -63,18 +65,26 @@ describe('AppHeader', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 
-  it('forgets the access token, clears the query cache and navigates to login on logout', async () => {
+  it('forgets the access token and clears the query cache on logout', async () => {
+    const logout = Promise.withResolvers<Response>();
+    server.use(http.post('*/api/auth/logout', () => logout.promise));
     const user = userEvent.setup();
     sessionStore.setState({ accessToken: 'token' });
     const { queryClient } = renderWithApi(<AppHeader onOpenMobileSidebar={vi.fn()} />);
     queryClient.setQueryData(['test'], 'value');
 
-    await user.click(await screen.findByText('Ada'));
-    await user.click(screen.getByRole('menuitem', { name: /Выйти/ }));
+    try {
+      await user.click(await screen.findByText('Ada'));
+      await user.click(screen.getByRole('menuitem', { name: /Выйти/ }));
 
-    expect(push).toHaveBeenCalledWith('/login');
-    expect(queryClient.getQueryData(['test'])).toBeUndefined();
-    expect(sessionStore.getState().accessToken).toBeUndefined();
+      expect(queryClient.getQueryData(['test'])).toBeUndefined();
+    } finally {
+      logout.resolve(HttpResponse.json({}));
+    }
+
+    await waitFor(() => {
+      expect(sessionStore.getState().accessToken).toBeUndefined();
+    });
   });
 
   it('closes the user dropdown with Escape', async () => {

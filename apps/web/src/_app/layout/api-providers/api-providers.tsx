@@ -2,7 +2,7 @@
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useState } from 'react';
-import { createQueryClient } from '@/shared/api';
+import { createQueryClient, ensureSessionHandlers } from '@/shared/api';
 import { Button } from '@/shared/ui';
 
 export function ApiProviders({ children }: { children: ReactNode }) {
@@ -12,6 +12,10 @@ export function ApiProviders({ children }: { children: ReactNode }) {
     process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_API_MOCKING === 'true';
   const [queryClient] = useState(() => createQueryClient());
   const [mockState, setMockState] = useState<'starting' | 'ready' | 'failed'>('starting');
+
+  useEffect(() => {
+    ensureSessionHandlers();
+  }, []);
 
   useEffect(() => {
     if (!mocking || mockState !== 'starting') return;

@@ -57,6 +57,7 @@ export {
   LoginResponseSchema,
 } from './auth/login.js';
 export { type MeResponse, MeResponseSchema } from './auth/me.js';
+export { type LogoutResponse, LogoutResponseSchema } from './auth/logout.js';
 export {
   type AuthSession,
   type AuthSessionParams,
