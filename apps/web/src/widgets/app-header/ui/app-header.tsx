@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { WorkspaceSlug } from '@app/contracts';
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
 import { ThemeSwitcher } from '@/features/theme-switch';
-import { sessionStore, useAuthMe } from '@/shared/api';
+import { signOut, useAuthMe } from '@/shared/api';
 import { routes } from '@/shared/config';
 import {
   Avatar,
@@ -120,7 +120,7 @@ export function AppHeader({ onOpenMobileSidebar }: AppHeaderProps) {
               danger
               onClick={() => {
                 // No logout endpoint yet (UL-141): forget the access token and the cached data.
-                sessionStore.setState({ accessToken: undefined });
+                signOut();
                 queryClient.clear();
                 router.push(routes.login());
               }}

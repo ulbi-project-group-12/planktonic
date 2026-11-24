@@ -13,14 +13,20 @@ export class ApiError extends Error {
 export type ApiRequestOptions = RequestInit;
 
 let accessTokenProvider: (() => string | undefined) | undefined;
+let rejectedTokenHandler: ((token: string) => void) | undefined;
 
 /**
  * Registers the single source of the access token (kept in application memory by the auth
  * code). Every request asks it and sends `Authorization: Bearer <token>` when it returns one.
- * Pass `undefined` to remove it.
+ * Pass `undefined` to remove it. `onRejected` hears about every `401` answered to a request that
+ * carried the provider's token, whichever screen sent it, so the session can end in one place.
  */
-export function setAccessTokenProvider(provider: (() => string | undefined) | undefined): void {
+export function setAccessTokenProvider(
+  provider: (() => string | undefined) | undefined,
+  onRejected?: (token: string) => void,
+): void {
   accessTokenProvider = provider;
+  rejectedTokenHandler = provider ? onRejected : undefined;
 }
 
 // Orval supplies the documented error body as a type argument. HTTP bodies are
@@ -46,10 +52,11 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
 
   const headers = normalizeHeaders(options.headers);
   const accessToken = accessTokenProvider?.();
-  if (accessToken && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${accessToken}`);
-  }
+  const sentToken = accessToken && !headers.has('Authorization') ? accessToken : undefined;
+  if (sentToken) headers.set('Authorization', `Bearer ${sentToken}`);
   const response = await fetch(url, { ...options, headers });
+  // Before the body is read: the status is enough, and reading the body can still fail.
+  if (response.status === 401 && sentToken) rejectedTokenHandler?.(sentToken);
   const text = await response.text();
 
   if (!response.ok) {
