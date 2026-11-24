@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Spinner } from '@/shared/ui';
+import { Spinner } from '@/shared/ui/spinner';
 import { VerifyEmailContent } from './verify-email-content';
 
 export function VerifyEmailPage() {
