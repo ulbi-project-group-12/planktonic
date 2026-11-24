@@ -25,6 +25,8 @@ export function ThemeSwitcher() {
         {themeOptions.map((option) => (
           <DropdownItem
             key={option.value}
+            // The check icon is visual only; this tells assistive tech which theme is active.
+            aria-current={theme === option.value ? 'true' : undefined}
             onClick={() => {
               setTheme(option.value);
             }}

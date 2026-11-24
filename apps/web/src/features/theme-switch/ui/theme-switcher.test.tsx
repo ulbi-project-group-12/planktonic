@@ -95,5 +95,7 @@ describe('ThemeSwitcher', () => {
 
     expect(darkItem.querySelectorAll('svg').length).toBe(2);
     expect(lightItem.querySelectorAll('svg').length).toBe(1);
+    expect(darkItem).toHaveAttribute('aria-current', 'true');
+    expect(lightItem).not.toHaveAttribute('aria-current');
   });
 });
