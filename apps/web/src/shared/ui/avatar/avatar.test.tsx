@@ -8,9 +8,11 @@ describe('Avatar', () => {
     expect(screen.getByText('АК')).toBeInTheDocument();
   });
 
-  it('falls back to «?» without a name', () => {
+  it('falls back to a neutral user icon without a name', () => {
     render(<Avatar name="  " />);
-    expect(screen.getByText('?')).toBeInTheDocument();
+    expect(screen.queryByText('?')).not.toBeInTheDocument();
+    const fallback = document.querySelector('[data-slot="avatar"] > span');
+    expect(fallback).toHaveClass('bg-sunken');
   });
 
   it('keeps the background color deterministic for the same name', () => {

@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Toaster } from '@/shared/ui/toast';
 import { TooltipProvider } from '@/shared/ui/tooltip';
-import '../styles/globals.css';
-import { ApiProviders } from './api-providers';
+import '../../styles/globals.css';
+import { ApiProviders } from '../api-providers';
 
 export const metadata: Metadata = {
   title: PRODUCT_DISPLAY_NAME,

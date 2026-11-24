@@ -92,3 +92,27 @@ it('answers 400 with field issues for a slug the contract rejects', async () => 
     expect(await response.json()).toMatchObject({ statusCode: 400, issues: [{ path: 'slug' }] });
   }
 });
+
+it('returns the current user', async () => {
+  const response = await fetch('http://api.example.invalid/api/auth/me');
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({
+    id: '019a8f00-0000-7000-8000-000000000004',
+    name: 'Ada',
+    email: 'ada@example.com',
+  });
+});
+
+it('filters workspaces by name or slug', async () => {
+  await postWorkspace({ name: 'Alpha Team', slug: 'alpha-team' });
+  await postWorkspace({ name: 'Beta Crew', slug: 'beta-crew' });
+
+  const byName = await fetch('http://api.example.invalid/api/workspaces?q=alpha');
+  expect(await byName.json()).toEqual([expect.objectContaining({ name: 'Alpha Team' })]);
+
+  const bySlug = await fetch('http://api.example.invalid/api/workspaces?q=crew');
+  expect(await bySlug.json()).toEqual([expect.objectContaining({ name: 'Beta Crew' })]);
+
+  const empty = await fetch('http://api.example.invalid/api/workspaces?q=unknown');
+  expect(await empty.json()).toEqual([]);
+});
