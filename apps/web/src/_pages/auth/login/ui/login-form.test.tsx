@@ -122,6 +122,27 @@ describe('LoginForm', () => {
     expect(sessionStore.getState().accessToken).toBeUndefined();
   });
 
+  it('hides the banner of the previous attempt once the credentials are edited', async () => {
+    server.use(
+      http.post('*/api/auth/login', () =>
+        HttpResponse.json(
+          { statusCode: 401, message: 'Invalid email or password' },
+          { status: 401 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<LoginForm />);
+
+    await fill(user);
+    await user.click(submit());
+    expect(await screen.findByRole('alert')).toBeVisible();
+
+    await user.type(screen.getByLabelText(/Пароль/), '1');
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('never falls back to a native GET submit that would put the password in the URL', () => {
     const { container } = renderWithApi(<LoginForm />);
 

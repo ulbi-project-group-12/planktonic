@@ -63,6 +63,11 @@ export function LoginForm() {
     },
   );
 
+  // The banner describes the values that were sent: once they change, it is out of date.
+  const clearSubmitError = () => {
+    setSubmitError(undefined);
+  };
+
   const errorText = (field: LoginField, error: FieldError | undefined) => {
     if (!error) return undefined;
     return error.type === 'server' ? error.message : validationMessage(field, error.type);
@@ -86,7 +91,7 @@ export function LoginForm() {
           aria-required
           autoFocus
           className="px-3.5"
-          {...register('email')}
+          {...register('email', { onChange: clearSubmitError })}
         />
       </Field>
       <div className="relative">
@@ -121,7 +126,7 @@ export function LoginForm() {
                 )}
               </button>
             }
-            {...register('password')}
+            {...register('password', { onChange: clearSubmitError })}
           />
         </Field>
         <Link href={routes.forgotPassword()} className="absolute top-0 right-0 font-bold leading-6">
