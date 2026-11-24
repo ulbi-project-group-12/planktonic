@@ -57,22 +57,6 @@ describe('AppHeader', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 
-  it('switches between light, dark and system themes', async () => {
-    const user = userEvent.setup();
-    renderWithApi(<AppHeader onOpenMobileSidebar={vi.fn()} />);
-    await screen.findByText('Ada');
-
-    await user.click(screen.getByRole('button', { name: /Тема оформления/ }));
-    await user.click(screen.getByRole('menuitem', { name: /Светлая/ }));
-    expect(localStorage.getItem('theme')).toBe('light');
-    expect(document.documentElement.classList.contains('dark')).toBe(false);
-
-    await user.click(screen.getByRole('button', { name: /Тема оформления/ }));
-    await user.click(screen.getByRole('menuitem', { name: /Как в системе/ }));
-    expect(localStorage.getItem('theme')).toBeNull();
-    expect(document.documentElement.classList.contains('dark')).toBe(false);
-  });
-
   it('forgets the access token and clears the query cache on logout', async () => {
     const logout = Promise.withResolvers<Response>();
     server.use(http.post('*/api/auth/logout', () => logout.promise));

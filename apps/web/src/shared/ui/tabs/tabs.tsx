@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Tabs as TabsPrimitive } from 'radix-ui';
