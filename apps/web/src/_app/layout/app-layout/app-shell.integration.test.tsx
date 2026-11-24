@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useParams } from 'next/navigation';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithApi } from '@/shared/lib/testing';
-import { AppLayout } from './app-layout';
+import { AppShell } from './app-layout';
 
 async function postWorkspace(name: string, slug: string) {
   const response = await fetch('http://api.example.invalid/api/workspaces', {
@@ -35,9 +35,9 @@ describe('AppShell workspace switch', () => {
     await postWorkspace('Workspace B', 'ws-b');
 
     const { rerender } = renderWithApi(
-      <AppLayout>
+      <AppShell>
         <WorkspaceContent />
-      </AppLayout>,
+      </AppShell>,
     );
 
     expect(await screen.findByTestId('workspace-content')).toHaveTextContent('ws-a');
@@ -49,9 +49,9 @@ describe('AppShell workspace switch', () => {
 
     currentSlug = 'ws-b';
     rerender(
-      <AppLayout>
+      <AppShell>
         <WorkspaceContent />
-      </AppLayout>,
+      </AppShell>,
     );
 
     await waitFor(() => {

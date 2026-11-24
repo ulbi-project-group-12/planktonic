@@ -1,5 +1,30 @@
 const ws = (slug: string) => `/workspaces/${slug}`;
 const project = (slug: string, key: string) => `${ws(slug)}/projects/${key}`;
+// Any origin works: it only has to differ from every real one.
+const IN_APP_ORIGIN = 'http://in-app.invalid';
+
+/** One pass of the browser's URL parser: the normalised address, or `undefined` for another site. */
+function parseInApp(value: string): string | undefined {
+  if (!value.startsWith('/')) return undefined;
+  try {
+    const url = new URL(value, IN_APP_ORIGIN);
+    return url.origin === IN_APP_ORIGIN ? `${url.pathname}${url.search}${url.hash}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * `value` as an address of this app, or `undefined`. Parsed the way the browser will parse it, so
+ * `//host`, `/\\host` and a tab or line break hidden after the first slash are all recognised
+ * as another site. The router parses the result once more, so the result must survive a second
+ * pass unchanged: `/a/..//host` normalises to `//host`, which the second pass rejects.
+ */
+function inAppPath(value: string | null | undefined): string | undefined {
+  const path = value ? parseInApp(value) : undefined;
+  return path !== undefined && parseInApp(path) === path ? path : undefined;
+}
+
 const withQuery = (path: string, query: Record<string, string | undefined>) => {
   const params = new URLSearchParams();
   for (const [name, value] of Object.entries(query)) {
@@ -19,7 +44,17 @@ export const routes = {
   verifyEmail: (token?: string) => withQuery('/verify-email', { token }),
 
   // Auth
-  login: () => '/login',
+  /** `next`: the in-app address to return to after signing in (see `afterLogin`). */
+  login: (next?: string) => withQuery('/login', { next }),
+  /**
+   * Where the login form goes after a successful sign-in: `next` from the query when it is an
+   * address of this app, the workspace list otherwise. An absolute or protocol-relative URL is
+   * never followed, so a crafted link cannot send a signed-in user to another site.
+   */
+  afterLogin: (next?: string | null) => {
+    const path = inAppPath(next);
+    return path && !path.startsWith('/login') ? path : '/workspaces';
+  },
   register: () => '/register',
   forgotPassword: () => '/forgot-password',
   resetPassword: (token?: string) => withQuery('/reset-password', { token }),

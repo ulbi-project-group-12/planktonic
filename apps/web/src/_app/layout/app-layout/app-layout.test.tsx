@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithApi } from '@/shared/lib/testing';
-import { AppLayout } from './app-layout';
+import { AppShell } from './app-layout';
 
 let pathname = '/workspaces';
 const push = vi.fn();
@@ -13,13 +13,13 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({}),
 }));
 
-describe('AppLayout', () => {
+describe('AppShell', () => {
   it('renders the full shell with header, sidebar and main content', () => {
     pathname = '/workspaces/my-team';
     renderWithApi(
-      <AppLayout>
+      <AppShell>
         <main>content</main>
-      </AppLayout>,
+      </AppShell>,
     );
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
@@ -30,9 +30,9 @@ describe('AppLayout', () => {
   it('renders the workspaces list without a workspace sidebar', () => {
     pathname = '/workspaces';
     renderWithApi(
-      <AppLayout>
+      <AppShell>
         <main>content</main>
-      </AppLayout>,
+      </AppShell>,
     );
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
@@ -48,9 +48,9 @@ describe('AppLayout', () => {
   ])('renders head-only shell on %s', (path) => {
     pathname = path;
     renderWithApi(
-      <AppLayout>
+      <AppShell>
         <main>content</main>
-      </AppLayout>,
+      </AppShell>,
     );
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
@@ -62,9 +62,9 @@ describe('AppLayout', () => {
   it('renders the page inside a single main landmark', () => {
     pathname = '/workspaces/my-team';
     renderWithApi(
-      <AppLayout>
+      <AppShell>
         <main>content</main>
-      </AppLayout>,
+      </AppShell>,
     );
 
     expect(screen.getAllByRole('main')).toHaveLength(1);
@@ -74,9 +74,9 @@ describe('AppLayout', () => {
     const user = userEvent.setup();
     // A new element on every call: React skips a re-render of the very same element.
     const page = () => (
-      <AppLayout>
+      <AppShell>
         <main>content</main>
-      </AppLayout>
+      </AppShell>
     );
     pathname = '/workspaces/my-team';
     const { rerender } = renderWithApi(page());

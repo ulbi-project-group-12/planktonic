@@ -5,6 +5,7 @@ import { useState, type ReactNode } from 'react';
 import { routes } from '@/shared/config';
 import { AppHeader } from '@/widgets/app-header';
 import { AppSidebar, MobileNavDrawer } from '@/widgets/app-sidebar';
+import { SessionGate } from './session-gate';
 
 type LayoutVariant = 'full' | 'headonly';
 
@@ -16,7 +17,8 @@ function getLayoutVariant(pathname: string): LayoutVariant {
   return 'full';
 }
 
-export function AppLayout({ children }: Readonly<{ children: ReactNode }>) {
+/** The header, the sidebar and the page. Rendered only for a signed-in visitor. */
+export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const pathname = usePathname();
   const variant = getLayoutVariant(pathname);
   const [sidebarWidth, setSidebarWidth] = useState(264);
@@ -58,5 +60,14 @@ export function AppLayout({ children }: Readonly<{ children: ReactNode }>) {
         <div className="min-w-0 flex-1">{children}</div>
       </div>
     </div>
+  );
+}
+
+/** Everything in the `(app)` group is behind the login: the shell mounts once the gate lets in. */
+export function AppLayout({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <SessionGate>
+      <AppShell>{children}</AppShell>
+    </SessionGate>
   );
 }

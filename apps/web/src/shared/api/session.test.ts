@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { authMe } from './generated/api';
-import { setAccessTokenProvider } from './http-client';
-import { sessionStore, signIn } from './session';
+import { apiFetch, setAccessTokenProvider } from './http-client';
+import { sessionStore, signIn, signOut } from './session';
 
 const credentials = { email: 'ada@example.com', password: 'example-passphrase' };
 
@@ -32,6 +32,70 @@ it('passes the token from login to the next API request', async () => {
       headers: new Headers({ Authorization: 'Bearer test-access-token' }),
     }),
   );
+});
+
+it('stops sending the token after sign-out', async () => {
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'test-access-token' }))
+    .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+
+  await signIn(credentials);
+  signOut();
+  await expect(authMe()).rejects.toMatchObject({ status: 401 });
+
+  expect(sessionStore.getState().accessToken).toBeUndefined();
+  expect(new Headers(fetcher.mock.calls[1]?.[1]?.headers).has('Authorization')).toBe(false);
+});
+
+it('ends the session when any request with the token gets 401', async () => {
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'test-access-token' }))
+    .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+
+  await signIn(credentials);
+  await expect(apiFetch('/api/workspaces')).rejects.toMatchObject({ status: 401 });
+
+  expect(sessionStore.getState().accessToken).toBeUndefined();
+});
+
+it('ends the session on 401 even when the response body cannot be read', async () => {
+  const broken = new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.error(new TypeError('connection lost'));
+      },
+    }),
+    { status: 401 },
+  );
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'test-access-token' }))
+    .mockResolvedValueOnce(broken);
+
+  await signIn(credentials);
+  await expect(apiFetch('/api/workspaces')).rejects.toBeInstanceOf(TypeError);
+
+  expect(sessionStore.getState().accessToken).toBeUndefined();
+});
+
+it('keeps a newer session when a request sent with an older token gets 401', async () => {
+  let answerOld: (response: Response) => void = () => undefined;
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        answerOld = resolve;
+      }),
+    )
+    .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }));
+
+  await signIn(credentials);
+  const late = apiFetch('/api/workspaces');
+  await signIn(credentials);
+  answerOld(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+  await expect(late).rejects.toMatchObject({ status: 401 });
+
+  expect(sessionStore.getState().accessToken).toBe('new-token');
 });
 
 it('keeps the session empty when login is rejected', async () => {
