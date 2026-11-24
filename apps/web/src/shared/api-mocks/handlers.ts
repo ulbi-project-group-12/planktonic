@@ -2,6 +2,7 @@ import { WorkspaceSlug } from '@app/contracts';
 import { HttpResponse, http } from 'msw';
 import { z } from 'zod';
 import {
+  getAuthMeMockHandler,
   getAuthRegisterMockHandler,
   getHealthLiveMockHandler,
   getHealthReadyMockHandler,
@@ -89,7 +90,7 @@ function createWorkspaceHandlers() {
  */
 export function createApiHandlers() {
   return [
-    http.get('*/api/users/me', () => HttpResponse.json(currentUser)),
+    getAuthMeMockHandler(currentUser),
     getAuthRegisterMockHandler({
       id: currentUser.id,
       name: currentUser.name,

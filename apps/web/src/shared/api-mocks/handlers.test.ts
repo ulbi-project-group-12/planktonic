@@ -94,7 +94,7 @@ it('answers 400 with field issues for a slug the contract rejects', async () => 
 });
 
 it('returns the current user', async () => {
-  const response = await fetch('http://api.example.invalid/api/users/me');
+  const response = await fetch('http://api.example.invalid/api/auth/me');
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({
     id: '019a8f00-0000-7000-8000-000000000004',

@@ -6,7 +6,7 @@ import { LogOut, Menu, Settings } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { WorkspaceSlug } from '@app/contracts';
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
-import { useCurrentUser } from '../api/use-current-user';
+import { sessionStore, useAuthMe } from '@/shared/api';
 import { routes } from '@/shared/config';
 import {
   Avatar,
@@ -47,7 +47,7 @@ interface AppHeaderProps {
 export function AppHeader({ onOpenMobileSidebar }: AppHeaderProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const user = useCurrentUser();
+  const user = useAuthMe();
 
   const isPending = user.isPending;
 
@@ -119,6 +119,8 @@ export function AppHeader({ onOpenMobileSidebar }: AppHeaderProps) {
             <DropdownItem
               danger
               onClick={() => {
+                // No logout endpoint yet (UL-141): forget the access token and the cached data.
+                sessionStore.setState({ accessToken: undefined });
                 queryClient.clear();
                 router.push(routes.login());
               }}

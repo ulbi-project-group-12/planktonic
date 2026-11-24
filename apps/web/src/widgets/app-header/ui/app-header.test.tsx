@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
+import { sessionStore } from '@/shared/api';
 import { renderWithApi } from '@/shared/lib/testing';
 import { AppHeader } from './app-header';
 
@@ -70,8 +71,9 @@ describe('AppHeader', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 
-  it('clears the query cache and navigates to login on logout stub', async () => {
+  it('forgets the access token, clears the query cache and navigates to login on logout', async () => {
     const user = userEvent.setup();
+    sessionStore.setState({ accessToken: 'token' });
     const { queryClient } = renderWithApi(<AppHeader onOpenMobileSidebar={vi.fn()} />);
     queryClient.setQueryData(['test'], 'value');
 
@@ -80,6 +82,7 @@ describe('AppHeader', () => {
 
     expect(push).toHaveBeenCalledWith('/login');
     expect(queryClient.getQueryData(['test'])).toBeUndefined();
+    expect(sessionStore.getState().accessToken).toBeUndefined();
   });
 
   it('closes the user dropdown with Escape', async () => {
