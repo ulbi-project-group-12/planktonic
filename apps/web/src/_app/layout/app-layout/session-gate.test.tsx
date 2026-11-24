@@ -66,6 +66,7 @@ describe('SessionGate', () => {
     sessionStore.setState({ accessToken: undefined, signedOut: false, restoreStatus: 'done' });
     setAccessTokenProvider(undefined);
     setRefreshHandler(undefined);
+    localStorage.removeItem('__planktonic_signed_out');
   });
 
   it('restores the session on load when no token is in memory', async () => {

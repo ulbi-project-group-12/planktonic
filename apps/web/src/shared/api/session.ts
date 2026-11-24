@@ -21,6 +21,35 @@ export const sessionStore = createStore<SessionState>()(() => ({
 let refreshPromise: Promise<boolean> | undefined;
 let refreshPromiseGeneration: number | undefined;
 const LOGOUT_TIMEOUT_MS = 5_000;
+const SIGNED_OUT_FLAG_KEY = '__planktonic_signed_out';
+
+function setSignedOutFlag(): void {
+  try {
+    localStorage.setItem(SIGNED_OUT_FLAG_KEY, '1');
+  } catch {
+    // Ignore storage failures (e.g. private mode).
+  }
+}
+
+function consumeSignedOutFlag(): boolean {
+  try {
+    if (localStorage.getItem(SIGNED_OUT_FLAG_KEY) === '1') {
+      localStorage.removeItem(SIGNED_OUT_FLAG_KEY);
+      return true;
+    }
+  } catch {
+    // Ignore storage failures.
+  }
+  return false;
+}
+
+function clearSignedOutFlag(): void {
+  try {
+    localStorage.removeItem(SIGNED_OUT_FLAG_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
 
 export async function refreshAccessToken(): Promise<boolean> {
   const { accessToken, restoreStatus } = sessionStore.getState();
@@ -58,6 +87,13 @@ export async function restoreSession(): Promise<void> {
   const { restoreStatus } = sessionStore.getState();
   if (restoreStatus !== 'idle') return;
 
+  // The user explicitly signed out in this browser, but the server revocation may have failed.
+  // Do not silently restore the session from the still-present refresh cookie.
+  if (consumeSignedOutFlag()) {
+    sessionStore.setState({ restoreStatus: 'done', signedOut: true });
+    return;
+  }
+
   const generation = getSessionGeneration();
   sessionStore.setState({ restoreStatus: 'pending' });
   const ok = await refreshAccessToken();
@@ -84,6 +120,7 @@ export async function signIn(credentials: LoginRequest): Promise<void> {
   const { accessToken } = LoginResponseSchema.parse(await authLogin(credentials));
   ensureSessionHandlers();
   bumpSessionGeneration();
+  clearSignedOutFlag();
   sessionStore.setState({ accessToken, signedOut: false, restoreStatus: 'done' });
 }
 
@@ -94,6 +131,9 @@ export async function signIn(credentials: LoginRequest): Promise<void> {
  */
 export async function signOut(): Promise<void> {
   bumpSessionGeneration();
+  // Mark the browser as explicitly signed out even before the server request, so a failed
+  // revocation cannot be recovered by simply reloading the page.
+  setSignedOutFlag();
   const controller = new AbortController();
   const timeout = setTimeout(() => {
     controller.abort();

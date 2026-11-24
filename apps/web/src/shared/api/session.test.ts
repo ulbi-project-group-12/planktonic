@@ -10,6 +10,7 @@ afterEach(() => {
   sessionStore.setState({ accessToken: undefined, restoreStatus: 'idle', signedOut: false });
   setAccessTokenProvider(undefined);
   setRefreshHandler(undefined);
+  localStorage.removeItem('__planktonic_signed_out');
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -50,6 +51,23 @@ it('stops sending the token after sign-out', async () => {
 
   expect(sessionStore.getState().accessToken).toBeUndefined();
   expect(new Headers(fetcher.mock.calls[2]?.[1]?.headers).has('Authorization')).toBe(false);
+});
+
+it('does not restore the session after sign-out even if the server logout failed', async () => {
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockRejectedValueOnce(new TypeError('Network error'))
+    .mockResolvedValueOnce(Response.json({ accessToken: 'restored-token' }));
+
+  await signIn(credentials);
+  await signOut();
+
+  // Simulate a page reload: the in-memory store resets, but the browser flag remains.
+  sessionStore.setState({ accessToken: undefined, restoreStatus: 'idle' });
+  await restoreSession();
+
+  expect(sessionStore.getState().accessToken).toBeUndefined();
+  expect(sessionStore.getState().restoreStatus).toBe('done');
 });
 
 it('ends the session when any request with the token gets 401 and refresh is rejected', async () => {
