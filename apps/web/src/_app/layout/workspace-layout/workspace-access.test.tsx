@@ -12,14 +12,17 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/workspaces/my-team/settings',
 }));
 
-/** A client that already holds the answer of an earlier, successful access check. */
+/**
+ * A client that already holds the answer of an earlier, successful access check. The answer is
+ * older than the client's `staleTime`, so mounting the component checks access again.
+ */
 function withCachedWorkspace() {
   const queryClient = createQueryClient({ retry: false });
-  queryClient.setQueryData(getWorkspaceGetBySlugQueryKey(slug), {
-    id: '019a8f00-0000-7000-8000-000000000004',
-    name: 'My team',
-    slug,
-  });
+  queryClient.setQueryData(
+    getWorkspaceGetBySlugQueryKey(slug),
+    { id: '019a8f00-0000-7000-8000-000000000004', name: 'My team', slug },
+    { updatedAt: Date.now() - 60 * 60 * 1000 },
+  );
   return queryClient;
 }
 

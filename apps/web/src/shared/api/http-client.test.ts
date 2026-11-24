@@ -1,12 +1,22 @@
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import {
   getAuthRegisterMutationOptions,
   type useAuthRegister,
   type useHealthReady,
 } from './generated/api';
+import { server } from '@/shared/api-mocks-node';
 import type { AuthRegisterBody } from './generated/models';
-import { ApiError, apiFetch, setAccessTokenProvider } from './http-client';
+import { refreshAccessToken, sessionStore, signIn, signOut } from './session';
+import { ApiError, apiFetch, setAccessTokenProvider, setRefreshHandler } from './http-client';
 import { createQueryClient } from './query-client';
+
+afterEach(() => {
+  sessionStore.setState({ accessToken: undefined, restoreStatus: 'idle' });
+  setAccessTokenProvider(undefined);
+  setRefreshHandler(undefined);
+  vi.restoreAllMocks();
+});
 
 it('passes a relative URL, caller headers, signal and the provided bearer token to fetch', async () => {
   const fetcher = vi
@@ -22,6 +32,7 @@ it('passes a relative URL, caller headers, signal and the provided bearer token 
     expect(fetcher).toHaveBeenCalledExactlyOnceWith('/api/health', {
       headers: new Headers({ Accept: 'application/json', Authorization: 'Bearer demo-token' }),
       signal,
+      credentials: 'same-origin',
     });
   } finally {
     setAccessTokenProvider(undefined);
@@ -37,12 +48,16 @@ it('sends no Authorization header without a token and keeps a caller-supplied on
   try {
     setAccessTokenProvider(() => undefined);
     await apiFetch('/api/health');
-    expect(fetcher).toHaveBeenLastCalledWith('/api/health', { headers: new Headers() });
+    expect(fetcher).toHaveBeenLastCalledWith('/api/health', {
+      headers: new Headers(),
+      credentials: 'same-origin',
+    });
 
     setAccessTokenProvider(() => 'demo-token');
     await apiFetch('/api/health', { headers: { Authorization: 'Bearer caller' } });
     expect(fetcher).toHaveBeenLastCalledWith('/api/health', {
       headers: new Headers({ Authorization: 'Bearer caller' }),
+      credentials: 'same-origin',
     });
   } finally {
     setAccessTokenProvider(undefined);
@@ -78,6 +93,175 @@ it('preserves non-JSON upstream errors', async () => {
   } finally {
     fetcher.mockRestore();
   }
+});
+
+describe('refresh on 401', () => {
+  const credentials = { email: 'demo@example.com', password: 'demo-password' };
+
+  it('runs one refresh for five parallel 401 requests and retries them with the new token', async () => {
+    let refreshCount = 0;
+    const attempts = new Map<string, number>();
+    const retryAuthorizations: (string | null)[] = [];
+
+    server.use(
+      http.get('/api/resource/:id', ({ params, request }) => {
+        const id = params.id as string;
+        const attempt = (attempts.get(id) ?? 0) + 1;
+        attempts.set(id, attempt);
+        if (attempt === 1) {
+          return HttpResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        }
+        retryAuthorizations.push(request.headers.get('authorization'));
+        return HttpResponse.json({ ok: Number(id) });
+      }),
+      http.post('/api/auth/refresh', () => {
+        refreshCount += 1;
+        setAccessTokenProvider(() => 'new-token');
+        return HttpResponse.json({ accessToken: 'new-token' });
+      }),
+    );
+
+    setAccessTokenProvider(() => sessionStore.getState().accessToken);
+    sessionStore.setState({ accessToken: 'old-token', restoreStatus: 'done' });
+    setRefreshHandler(refreshAccessToken);
+
+    const requests = Array.from({ length: 5 }, (_, i) => apiFetch(`/api/resource/${String(i)}`));
+    const results = await Promise.all(requests);
+
+    expect(results).toEqual([{ ok: 0 }, { ok: 1 }, { ok: 2 }, { ok: 3 }, { ok: 4 }]);
+    expect(refreshCount).toBe(1);
+    expect(retryAuthorizations).toHaveLength(5);
+    expect(retryAuthorizations.every((h) => h === 'Bearer new-token')).toBe(true);
+  });
+
+  it('retries a late 401 with the already refreshed token without refreshing again', async () => {
+    const { promise, resolve } = Promise.withResolvers<Response>();
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockReturnValueOnce(promise)
+      .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }))
+      .mockResolvedValueOnce(Response.json({ ok: true }));
+    sessionStore.setState({ accessToken: 'old-token' });
+    setAccessTokenProvider(() => sessionStore.getState().accessToken);
+    setRefreshHandler(refreshAccessToken);
+
+    const request = apiFetch('/api/resource');
+    await expect(refreshAccessToken()).resolves.toBe('refreshed');
+    resolve(new Response(null, { status: 401 }));
+
+    await expect(request).resolves.toEqual({ ok: true });
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      '/api/resource',
+      '/api/auth/refresh',
+      '/api/resource',
+    ]);
+    expect(new Headers(fetcher.mock.calls[2]?.[1]?.headers).get('Authorization')).toBe(
+      'Bearer new-token',
+    );
+  });
+
+  it('clears the session when refresh is rejected', async () => {
+    const fetcher = vi.spyOn(globalThis, 'fetch');
+    fetcher
+      .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+
+    let rejected: string | undefined;
+    setAccessTokenProvider(
+      () => 'old-token',
+      (token) => {
+        rejected = token;
+      },
+    );
+    setRefreshHandler(refreshAccessToken);
+
+    await expect(apiFetch('/api/resource')).rejects.toMatchObject({ status: 401 });
+
+    expect(rejected).toBe('old-token');
+  });
+
+  it('keeps the refreshed session if the retried request still returns 401', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }));
+
+    await signIn(credentials);
+
+    await expect(apiFetch('/api/resource')).rejects.toMatchObject({ status: 401 });
+    expect(sessionStore.getState().accessToken).toBe('new-token');
+  });
+
+  it.each(['sign-in', 'sign-out'])('rejects a late 401 after %s', async (change) => {
+    const { promise, resolve } = Promise.withResolvers<Response>();
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ accessToken: 'same-token' }))
+      .mockReturnValueOnce(promise)
+      .mockResolvedValueOnce(Response.json({ accessToken: 'same-token' }));
+
+    await signIn(credentials);
+    const request = apiFetch('/api/resource');
+    if (change === 'sign-in') await signIn(credentials);
+    else await signOut();
+    resolve(new Response(null, { status: 401 }));
+
+    await expect(request).rejects.toMatchObject({ status: 401 });
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(sessionStore.getState().accessToken).toBe(
+      change === 'sign-in' ? 'same-token' : undefined,
+    );
+  });
+
+  it('keeps the new session when an older request was waiting for refresh', async () => {
+    const refreshStarted = Promise.withResolvers<undefined>();
+    const refresh = Promise.withResolvers<Response>();
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ accessToken: 'same-token' }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockImplementationOnce(() => {
+        refreshStarted.resolve(undefined);
+        return refresh.promise;
+      })
+      .mockResolvedValueOnce(Response.json({ accessToken: 'same-token' }));
+
+    await signIn(credentials);
+    const request = apiFetch('/api/resource');
+    await refreshStarted.promise;
+    await signIn(credentials);
+    refresh.resolve(Response.json({ accessToken: 'stale-token' }));
+
+    await expect(request).rejects.toMatchObject({ status: 401 });
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    expect(sessionStore.getState().accessToken).toBe('same-token');
+  });
+
+  it('does not refresh requests sent without a token', async () => {
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+    setRefreshHandler(vi.fn().mockResolvedValue('refreshed'));
+
+    await expect(apiFetch('/api/resource')).rejects.toMatchObject({ status: 401 });
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not refresh the refresh request itself', async () => {
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+    setAccessTokenProvider(() => 'old-token');
+    setRefreshHandler(vi.fn().mockResolvedValue('refreshed'));
+
+    await expect(apiFetch('/api/auth/refresh', { method: 'POST' })).rejects.toMatchObject({
+      status: 401,
+    });
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('generated registration mutation', () => {
@@ -150,6 +334,7 @@ describe('generated registration mutation', () => {
       method: 'POST',
       headers: new Headers({ 'content-type': contentType, 'x-request-id': 'caller' }),
       body: JSON.stringify(data),
+      credentials: 'same-origin',
     });
   });
 });
