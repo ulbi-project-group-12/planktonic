@@ -88,6 +88,21 @@ describe('WorkspaceAccess', () => {
     expect(screen.queryByText('Workspace content')).not.toBeInTheDocument();
   });
 
+  it('stays closed when a 500 follows the 404', async () => {
+    server.use(http.get('/api/workspaces/my-team', () => new HttpResponse(null, { status: 404 })));
+    const { queryClient } = renderWithApi(
+      <WorkspaceAccess slug={slug}>Workspace content</WorkspaceAccess>,
+      { queryClient: withCachedWorkspace() },
+    );
+    expect(await screen.findByRole('heading', { name: '404' })).toBeVisible();
+
+    server.use(http.get('/api/workspaces/my-team', () => new HttpResponse(null, { status: 500 })));
+    await queryClient.refetchQueries({ queryKey: getWorkspaceGetBySlugQueryKey(slug) });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить пространство');
+    expect(screen.queryByText('Workspace content')).not.toBeInTheDocument();
+  });
+
   it('offers sign-in with the address to come back to when the session is missing', async () => {
     server.use(http.get('/api/workspaces/my-team', () => new HttpResponse(null, { status: 401 })));
 
