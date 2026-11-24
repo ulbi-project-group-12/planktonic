@@ -43,6 +43,14 @@ describe('AppHeader', () => {
     expect(push).toHaveBeenCalledWith('/settings/profile');
   });
 
+  it('navigates to the devices settings', async () => {
+    const user = userEvent.setup();
+    renderWithApi(<AppHeader onOpenMobileSidebar={vi.fn()} />);
+    await user.click(await screen.findByText('Ada'));
+    await user.click(screen.getByRole('menuitem', { name: /Устройства/ }));
+    expect(push).toHaveBeenCalledWith('/settings/devices');
+  });
+
   it('opens the theme switcher and applies the selected theme', async () => {
     const user = userEvent.setup();
     renderWithApi(<AppHeader onOpenMobileSidebar={vi.fn()} />);

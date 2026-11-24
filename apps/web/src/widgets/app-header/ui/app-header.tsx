@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { LogOut, Menu, Settings } from 'lucide-react';
+import { LogOut, Menu, MonitorSmartphone, Settings } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { WorkspaceSlug } from '@app/contracts';
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
@@ -115,6 +115,14 @@ export function AppHeader({ onOpenMobileSidebar }: AppHeaderProps) {
             >
               <Settings className="size-4" />
               Настройки профиля
+            </DropdownItem>
+            <DropdownItem
+              onClick={() => {
+                router.push(routes.devicesSettings());
+              }}
+            >
+              <MonitorSmartphone className="size-4" />
+              Устройства
             </DropdownItem>
             <DropdownItem
               danger
