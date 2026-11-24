@@ -2,7 +2,7 @@ import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { sessionStore, setAccessTokenProvider, signOut } from '@/shared/api';
+import { apiFetch, sessionStore, setAccessTokenProvider, signOut } from '@/shared/api';
 import { server } from '@/shared/api-mocks-node';
 import { renderWithApi } from '@/shared/lib/testing';
 import { SessionGate } from './session-gate';
@@ -20,8 +20,14 @@ const profile = {
   email: 'ada@example.com',
 };
 
+// The wiring signIn sets up, with a token the test chooses.
 function signInAs(accessToken: string) {
-  setAccessTokenProvider(() => sessionStore.getState().accessToken);
+  setAccessTokenProvider(
+    () => sessionStore.getState().accessToken,
+    () => {
+      sessionStore.setState({ accessToken: undefined });
+    },
+  );
   sessionStore.setState({ accessToken });
 }
 
@@ -96,6 +102,27 @@ describe('SessionGate', () => {
     });
     expect(sessionStore.getState().accessToken).toBeUndefined();
     expect(queryClient.getQueryCache().getAll()).toEqual([]);
+    expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
+  });
+
+  it('sends the visitor to login when another request finds the token rejected', async () => {
+    server.use(
+      http.get('/api/auth/me', () => HttpResponse.json(profile)),
+      http.get('/api/workspaces', () =>
+        HttpResponse.json({ statusCode: 401, message: 'Unauthorized' }, { status: 401 }),
+      ),
+    );
+    signInAs('expired-access-token');
+    renderGate();
+    await screen.findByText('Закрытая страница');
+
+    await expect(apiFetch('/api/workspaces')).rejects.toMatchObject({ status: 401 });
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledExactlyOnceWith(
+        '/login?next=%2Fworkspaces%2Fmy-team%3Ftab%3Dmembers',
+      );
+    });
     expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
   });
 

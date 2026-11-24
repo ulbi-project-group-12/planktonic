@@ -15,7 +15,16 @@ export const sessionStore = createStore<SessionState>()(() => ({ accessToken: un
 
 export async function signIn(credentials: LoginRequest): Promise<void> {
   const { accessToken } = LoginResponseSchema.parse(await authLogin(credentials));
-  setAccessTokenProvider(() => sessionStore.getState().accessToken);
+  setAccessTokenProvider(
+    () => sessionStore.getState().accessToken,
+    // The api no longer accepts this token (expired, account deactivated): the session is over.
+    // A late answer to a request sent with an older token must not end a newer session.
+    (rejected) => {
+      if (sessionStore.getState().accessToken === rejected) {
+        sessionStore.setState({ accessToken: undefined });
+      }
+    },
+  );
   sessionStore.setState({ accessToken, signedOut: false });
 }
 
