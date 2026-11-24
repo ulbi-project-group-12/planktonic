@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { hasApiStatus, isApiError, useAuthMe } from '@/shared/api';
 import { routes } from '@/shared/config';
@@ -29,27 +29,39 @@ export function ConfirmEmailCard() {
   const resend = useResendVerification();
   const [waitSec, setWaitSec] = useState(0);
   const [submitError, setSubmitError] = useState<string>();
+  // The moment the pause ends. The seconds on screen are derived from it, not counted down: a
+  // background tab throttles or suspends timers, and a countdown would then outlast the pause.
+  const unlockAtRef = useRef(0);
+  const waiting = waitSec > 0;
 
-  // One timeout per second left: the effect and its cleanup stay trivial.
+  const startWait = (seconds: number) => {
+    unlockAtRef.current = Date.now() + seconds * 1000;
+    setWaitSec(seconds);
+  };
+
   useEffect(() => {
-    if (waitSec <= 0) return;
-    const timer = setTimeout(() => {
-      setWaitSec(waitSec - 1);
-    }, 1000);
-    return () => {
-      clearTimeout(timer);
+    if (!waiting) return;
+    const sync = () => {
+      setWaitSec(Math.max(0, Math.ceil((unlockAtRef.current - Date.now()) / 1000)));
     };
-  }, [waitSec]);
+    const timer = setInterval(sync, 1000);
+    // Coming back from the mail tab shows the real remainder at once, not on the next tick.
+    document.addEventListener('visibilitychange', sync);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', sync);
+    };
+  }, [waiting]);
 
   const onResend = async () => {
     setSubmitError(undefined);
     try {
       const { resendAfterSec } = await resend.mutateAsync();
-      setWaitSec(resendAfterSec);
+      startWait(resendAfterSec);
     } catch (error) {
       if (hasApiStatus(error, 429)) {
         // The client timer was bypassed (reload, another tab): take the server's wait.
-        setWaitSec(getRetryAfterSec(error) ?? DEFAULT_RESEND_AFTER_SEC);
+        startWait(getRetryAfterSec(error) ?? DEFAULT_RESEND_AFTER_SEC);
         return;
       }
       setSubmitError(isApiError(error) ? SERVER_ERROR_MESSAGE : NETWORK_ERROR_MESSAGE);
@@ -118,7 +130,7 @@ export function ConfirmEmailCard() {
             size="l"
             fullWidth
             loading={resend.isPending}
-            disabled={waitSec > 0}
+            disabled={waiting}
             onClick={() => {
               void onResend();
             }}
@@ -126,7 +138,7 @@ export function ConfirmEmailCard() {
             Отправить ещё раз
           </Button>
           <Typography as="p" size="body-s" color="text-secondary" className="text-center">
-            {waitSec > 0
+            {waiting
               ? `Можно отправить повторно через ${String(waitSec)} с`
               : 'Не пришло письмо? Проверьте папку «Спам».'}
           </Typography>

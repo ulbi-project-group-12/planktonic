@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -94,6 +94,28 @@ describe('ConfirmEmailCard', () => {
       { timeout: 3000 },
     );
     expect(screen.getByText(/Проверьте папку «Спам»/)).toBeVisible();
+  });
+
+  it('unlocks at once when the tab comes back after the pause has ended', async () => {
+    server.use(
+      http.post('*/api/auth/verify-email/resend', () => HttpResponse.json({ resendAfterSec: 30 })),
+    );
+    const user = userEvent.setup();
+    await renderSignedIn();
+    await user.click(resendButton());
+    expect(resendButton()).toBeDisabled();
+
+    // A background tab does not run the ticks: the clock moves on, the countdown does not.
+    const now = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 31_000);
+    try {
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      expect(resendButton()).toBeEnabled();
+      expect(screen.getByText(/Проверьте папку «Спам»/)).toBeVisible();
+    } finally {
+      now.mockRestore();
+    }
   });
 
   it('shows a banner when the api answers with an error', async () => {
