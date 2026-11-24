@@ -3,19 +3,26 @@ const project = (slug: string, key: string) => `${ws(slug)}/projects/${key}`;
 // Any origin works: it only has to differ from every real one.
 const IN_APP_ORIGIN = 'http://in-app.invalid';
 
-/**
- * `value` as an address of this app, or `undefined`. Parsed the way the browser will parse it, so
- * `//host`, `/\\host` and a tab or line break hidden after the first slash are all recognised
- * as another site.
- */
-function inAppPath(value: string | null | undefined): string | undefined {
-  if (!value?.startsWith('/')) return undefined;
+/** One pass of the browser's URL parser: the normalised address, or `undefined` for another site. */
+function parseInApp(value: string): string | undefined {
+  if (!value.startsWith('/')) return undefined;
   try {
     const url = new URL(value, IN_APP_ORIGIN);
     return url.origin === IN_APP_ORIGIN ? `${url.pathname}${url.search}${url.hash}` : undefined;
   } catch {
     return undefined;
   }
+}
+
+/**
+ * `value` as an address of this app, or `undefined`. Parsed the way the browser will parse it, so
+ * `//host`, `/\\host` and a tab or line break hidden after the first slash are all recognised
+ * as another site. The router parses the result once more, so the result must survive a second
+ * pass unchanged: `/a/..//host` normalises to `//host`, which the second pass rejects.
+ */
+function inAppPath(value: string | null | undefined): string | undefined {
+  const path = value ? parseInApp(value) : undefined;
+  return path !== undefined && parseInApp(path) === path ? path : undefined;
 }
 
 const withQuery = (path: string, query: Record<string, string | undefined>) => {

@@ -55,6 +55,17 @@ describe('routes', () => {
     expect(routes.afterLogin('/workspaces/my-team?tab=1')).toBe('/workspaces/my-team?tab=1');
   });
 
+  it.each([
+    ['/workspaces/a/../my-team', '/workspaces/my-team'],
+    ['/workspaces/my-team?next=//evil.example', '/workspaces/my-team?next=//evil.example'],
+    ['/workspaces/%2F%2Fevil.example', '/workspaces/%2F%2Fevil.example'],
+    ['/workspaces/my-team#//evil.example', '/workspaces/my-team#//evil.example'],
+  ])('keeps the in-app address %s as %s', (next, expected) => {
+    expect(routes.afterLogin(next)).toBe(expected);
+    // What the router would open stays on this origin.
+    expect(new URL(expected, 'https://app.example').origin).toBe('https://app.example');
+  });
+
   it('keeps the query and the hash of the return address', () => {
     expect(routes.afterLogin('/workspaces/my-team/channels/c1?thread=t1#m2')).toBe(
       '/workspaces/my-team/channels/c1?thread=t1#m2',
@@ -71,8 +82,23 @@ describe('routes', () => {
     '/\t/evil.example',
     '/\n/evil.example',
     '/\r\\evil.example',
+    '/a/..//evil.example',
+    '/.//evil.example',
+    '/%2e%2e//evil.example',
+    '/a/%2E%2E//evil.example',
+    '/a/..\\\\evil.example',
+    '/a/../\\evil.example',
+    '///evil.example',
+    '/\\/evil.example',
+    '/\t\\evil.example',
+    '/a/..\t//evil.example',
+    ' //evil.example',
+    'javascript:alert(1)',
+    '/\\javascript:alert(1)',
+    'http:evil.example',
     'workspaces',
     '/login?next=%2Flogin',
+    '/a/../login',
   ])('falls back to the workspace list after login for %j', (next) => {
     expect(routes.afterLogin(next)).toBe('/workspaces');
   });
