@@ -70,6 +70,7 @@ export * from './workspaceCreate400';
 export * from './workspaceCreate400IssuesItem';
 export * from './workspaceCreate400StatusCode';
 export * from './workspaceCreate401';
+export * from './workspaceCreate403';
 export * from './workspaceCreate409';
 export * from './workspaceCreate409IssuesItem';
 export * from './workspaceCreate409IssuesItemPath';

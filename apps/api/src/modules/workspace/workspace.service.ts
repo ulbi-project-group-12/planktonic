@@ -7,11 +7,15 @@ import {
   WorkspaceResponseSchema,
   type WorkspaceSlugConflictResponse,
 } from '@app/contracts';
+import { AccessService } from '../../core/access/access.service.js';
 import { WorkspaceRepository } from './workspace.repository.js';
 
 @Injectable()
 export class WorkspaceService {
-  constructor(private readonly repository: WorkspaceRepository) {}
+  constructor(
+    private readonly repository: WorkspaceRepository,
+    private readonly access: AccessService,
+  ) {}
 
   async listForUser(userId: string): Promise<ListWorkspacesResponse> {
     const workspaces = await this.repository.findAllForUser(userId);
@@ -19,8 +23,11 @@ export class WorkspaceService {
   }
 
   async getBySlugForUser(slug: string, userId: string): Promise<WorkspaceResponse> {
-    const workspace = await this.repository.findBySlugForUser(slug, userId);
-    if (!workspace) {
+    const workspace = await this.repository.findBySlug(slug);
+    if (
+      !workspace ||
+      !(await this.access.can({ id: userId }, 'workspace.read', { workspaceId: workspace.id }))
+    ) {
       throw new NotFoundException('Workspace not found');
     }
     return WorkspaceResponseSchema.parse(workspace);
