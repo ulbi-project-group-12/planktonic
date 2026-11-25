@@ -14,15 +14,17 @@ import {
   useWorkspaceCreate,
 } from '@/shared/api';
 import { routes } from '@/shared/config';
-import { Alert, Button, Field, Input } from '@/shared/ui';
+import { Alert, Button, Field, Input, Progress, Typography } from '@/shared/ui';
 import { workspaceFormSchema, type WorkspaceFormValues } from '../model/form-schema';
 import { slugify } from '../model/slugify';
+import { InviteMembersStep } from './invite-members-step';
 
 /**
- * Create-workspace form, step 1 of the flow (mockup screen.ws.create1): name and address.
+ * Create-workspace wizard (mockup screen.ws.create1 → screen.ws.create2).
+ * Step 1 collects name and address — «Продолжить» only validates and advances; the workspace
+ * is created by step 2's «Создать пространство». Field errors that the api sends back land
+ * on step 1: a 409 on the slug and field issues of a 400 return the user there.
  * The slug is suggested from the name until the user edits the address field.
- * A 409 lands on the slug field, field issues of a 400 land on their fields; a server error
- * or a network failure shows a banner and keeps the entered values.
  */
 export function CreateWorkspaceForm() {
   const router = useRouter();
@@ -33,11 +35,14 @@ export function CreateWorkspaceForm() {
     },
   });
   const [submitError, setSubmitError] = useState<string>();
+  const [step, setStep] = useState<1 | 2>(1);
+  const [draft, setDraft] = useState<WorkspaceFormValues>();
   const {
     register,
     handleSubmit,
     setValue,
     setError,
+    setFocus,
     getValues,
     watch,
     formState: { errors, isSubmitted },
@@ -61,40 +66,29 @@ export function CreateWorkspaceForm() {
     setValue('slug', suggestion, { shouldValidate: isSubmitted });
   }, [name, setValue, getValues, isSubmitted]);
 
-  // "Отмена" during a request: the workspace may still be created, but the user has already
-  // left for the list, so the answer must not pull them to another page.
-  const leftRef = useRef(false);
+  // "Отмена" or «Назад» during a create request: the workspace may still be created, but the
+  // user has already left the step, so the answer must not pull them to another page.
+  const leftRef = useRef<boolean>(false);
+  // A re-entered step 2 starts a new attempt: a late answer of the previous request is stale.
+  const attemptRef = useRef(0);
+
+  // A slug error arrives while the user sits on step 2; the address field is back on screen
+  // only after step 1 renders — focus it exactly once, when that happens.
+  const focusSlugRef = useRef(false);
+  useEffect(() => {
+    if (!focusSlugRef.current || step !== 1) return;
+    focusSlugRef.current = false;
+    setFocus('slug');
+  }, [step, setFocus]);
 
   const slugField = register('slug');
 
   const onSubmit = handleSubmit(
-    async (values) => {
-      setSubmitError(undefined);
-      try {
-        const workspace = await createWorkspace.mutateAsync({ data: values });
-        if (!leftRef.current) router.push(routes.workspace(workspace.slug));
-      } catch (error) {
-        if (leftRef.current) return;
-        if (hasApiStatus(error, 409)) {
-          // The fields stay editable during the request: "taken" is about the address that was
-          // sent, so it is not shown next to one the user has typed since.
-          if (getValues('slug') === values.slug) {
-            setError(
-              'slug',
-              { message: 'Этот адрес уже занят — придумайте другой' },
-              { shouldFocus: true },
-            );
-          }
-          return;
-        }
-        if (isApiError(error)) {
-          if (mapIssuesToFields(error, values, getValues, setError)) return;
-          // The api answered, so the connection is fine: do not send the user to check it.
-          setSubmitError('Сервер ответил ошибкой. Попробуйте ещё раз чуть позже.');
-          return;
-        }
-        setSubmitError('Проверьте подключение к сети и попробуйте ещё раз.');
-      }
+    (values) => {
+      // Entering step 2 again is a fresh attempt: the earlier «Назад» no longer counts.
+      leftRef.current = false;
+      setDraft(values);
+      setStep(2);
     },
     () => {
       // Invalid fields: the banner of the previous attempt no longer describes what is wrong.
@@ -102,46 +96,115 @@ export function CreateWorkspaceForm() {
     },
   );
 
+  async function createAndOpen() {
+    if (!draft) return;
+    const attempt = ++attemptRef.current;
+    setSubmitError(undefined);
+    try {
+      const workspace = await createWorkspace.mutateAsync({ data: draft });
+      if (attempt === attemptRef.current && !leftRef.current) {
+        router.push(routes.workspace(workspace.slug));
+      }
+    } catch (error) {
+      if (attempt !== attemptRef.current || leftRef.current) return;
+      if (hasApiStatus(error, 409)) {
+        // The fields stay editable between steps: "taken" is about the address that was
+        // sent, so it is not shown next to one the user has typed since.
+        setStep(1);
+        if (getValues('slug') === draft.slug) {
+          setError('slug', { message: 'Этот адрес уже занят — придумайте другой' });
+          focusSlugRef.current = true;
+        }
+        return;
+      }
+      if (isApiError(error)) {
+        if (mapIssuesToFields(error, draft, getValues, setError)) {
+          if (getApiIssues(error).some((issue) => issue.path === 'slug')) {
+            focusSlugRef.current = true;
+          }
+          setStep(1);
+          return;
+        }
+        // The api answered, so the connection is fine: do not send the user to check it.
+        setSubmitError('Сервер ответил ошибкой. Попробуйте ещё раз чуть позже.');
+        return;
+      }
+      setSubmitError('Проверьте подключение к сети и попробуйте ещё раз.');
+    }
+  }
+
   return (
-    <form onSubmit={onSubmit} noValidate className="flex w-full flex-col gap-5">
+    <>
+      <div className="flex flex-col gap-3">
+        <Typography size="caption" color="text-secondary">
+          {step === 1 ? 'Шаг 1 из 2 — название и адрес' : `Шаг 2 из 2 — ${draft?.name ?? ''}`}
+        </Typography>
+        <Progress
+          value={step === 1 ? 50 : 100}
+          aria-label={step === 1 ? 'Шаг 1 из 2' : 'Шаг 2 из 2'}
+        />
+        <Typography as="h1" size="h3">
+          {step === 1 ? 'Создайте пространство' : 'Пригласите участников'}
+        </Typography>
+      </div>
       {submitError ? (
         <Alert palette="danger" title="Не удалось создать пространство" description={submitError} />
       ) : null}
-      <Field label="Название" required error={errors.name?.message}>
-        <Input placeholder="Команда маркетинга" autoFocus {...register('name')} />
-      </Field>
-      <Field
-        label="Адрес"
-        required
-        hint="Адрес пространства — латиница, цифры и дефис"
-        error={errors.slug?.message}
+      {/* The step-1 form stays mounted while hidden, so field values, refs and validation
+          state survive stepping back and forth. */}
+      <form
+        onSubmit={onSubmit}
+        noValidate
+        hidden={step !== 1}
+        className="flex w-full flex-col gap-5"
       >
-        <Input
-          prefix={`${PRODUCT_SLUG}.app/`}
-          placeholder="my-team"
-          {...slugField}
-          onChange={(event) => {
-            slugEditedRef.current = true;
-            void slugField.onChange(event);
+        <Field label="Название" required error={errors.name?.message}>
+          <Input placeholder="Команда маркетинга" autoFocus {...register('name')} />
+        </Field>
+        <Field
+          label="Адрес"
+          required
+          hint="Адрес пространства — латиница, цифры и дефис"
+          error={errors.slug?.message}
+        >
+          <Input
+            prefix={`${PRODUCT_SLUG}.app/`}
+            placeholder="my-team"
+            {...slugField}
+            onChange={(event) => {
+              slugEditedRef.current = true;
+              void slugField.onChange(event);
+            }}
+          />
+        </Field>
+        <div className="flex justify-end gap-3 pt-1">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              leftRef.current = true;
+              router.push(routes.workspaces());
+            }}
+          >
+            Отмена
+          </Button>
+          <Button type="submit">Продолжить</Button>
+        </div>
+      </form>
+      {step === 2 && draft ? (
+        <InviteMembersStep
+          workspaceSlug={draft.slug}
+          creating={createWorkspace.isPending}
+          onBack={() => {
+            leftRef.current = true;
+            setStep(1);
+          }}
+          onCreate={() => {
+            void createAndOpen();
           }}
         />
-      </Field>
-      <div className="flex justify-end gap-3 pt-1">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => {
-            leftRef.current = true;
-            router.push(routes.workspaces());
-          }}
-        >
-          Отмена
-        </Button>
-        <Button type="submit" loading={createWorkspace.isPending}>
-          Продолжить
-        </Button>
-      </div>
-    </form>
+      ) : null}
+    </>
   );
 }
 

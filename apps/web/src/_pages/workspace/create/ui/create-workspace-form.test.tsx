@@ -13,12 +13,16 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
 }));
 
+const continueButton = () => screen.getByRole('button', { name: 'Продолжить' });
+const createButton = () => screen.getByRole('button', { name: 'Создать пространство' });
+const backButton = () => screen.getByRole('button', { name: 'Назад' });
+
 describe('CreateWorkspaceForm', () => {
   beforeEach(() => {
     push.mockClear();
   });
 
-  it('suggests the slug from the name, submits and opens the workspace page', async () => {
+  it('suggests the slug from the name and opens the workspace after step 2', async () => {
     let posted: unknown;
     server.use(
       http.post('/api/workspaces', async ({ request }) => {
@@ -35,12 +39,44 @@ describe('CreateWorkspaceForm', () => {
     await user.type(screen.getByLabelText(/Название/), 'Команда маркетинга');
     expect(screen.getByLabelText(/Адрес/)).toHaveValue('komanda-marketinga');
 
-    await user.click(screen.getByRole('button', { name: 'Продолжить' }));
+    await user.click(continueButton());
+    expect(await screen.findByText('Пригласите участников')).toBeVisible();
+    expect(screen.getByText('Шаг 2 из 2 — Команда маркетинга')).toBeVisible();
+    expect(posted).toBeUndefined();
+
+    await user.click(createButton());
 
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith('/workspaces/komanda-marketinga');
     });
     expect(posted).toEqual({ name: 'Команда маркетинга', slug: 'komanda-marketinga' });
+  });
+
+  it('offers an invite link on step 2 before the workspace exists', async () => {
+    const user = userEvent.setup();
+    renderWithApi(<CreateWorkspaceForm />);
+
+    await user.type(screen.getByLabelText(/Название/), 'My Team');
+    await user.click(continueButton());
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Invite-ссылка')).toHaveDisplayValue(/\/invite\//);
+    });
+  });
+
+  it('goes back to step 1 keeping the entered values', async () => {
+    const user = userEvent.setup();
+    renderWithApi(<CreateWorkspaceForm />);
+
+    await user.type(screen.getByLabelText(/Название/), 'My Team');
+    await user.click(continueButton());
+    expect(await screen.findByText('Пригласите участников')).toBeVisible();
+
+    await user.click(backButton());
+
+    expect(screen.getByLabelText(/Название/)).toHaveValue('My Team');
+    expect(screen.getByLabelText(/Адрес/)).toHaveValue('my-team');
+    expect(screen.getByText('Шаг 1 из 2 — название и адрес')).toBeVisible();
   });
 
   it('marks the cached workspace list stale after a successful create', async () => {
@@ -55,7 +91,8 @@ describe('CreateWorkspaceForm', () => {
     queryClient.setQueryData(getWorkspaceListQueryKey(), []);
 
     await user.type(screen.getByLabelText(/Название/), 'My Team');
-    await user.click(screen.getByRole('button', { name: 'Продолжить' }));
+    await user.click(continueButton());
+    await user.click(createButton());
 
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith('/workspaces/my-team');
@@ -86,7 +123,7 @@ describe('CreateWorkspaceForm', () => {
     expect(slug).toHaveValue('');
   });
 
-  it('shows validation errors and does not submit', async () => {
+  it('shows validation errors and stays on step 1', async () => {
     let posts = 0;
     server.use(
       http.post('/api/workspaces', () => {
@@ -100,16 +137,17 @@ describe('CreateWorkspaceForm', () => {
     const slug = screen.getByLabelText(/Адрес/);
     await user.clear(slug);
     await user.type(slug, 'плохой адрес!');
-    await user.click(screen.getByRole('button', { name: 'Продолжить' }));
+    await user.click(continueButton());
 
     expect(
       await screen.findByText('Только латиница, цифры и дефис, без дефиса в начале и в конце'),
     ).toBeVisible();
+    expect(screen.queryByText('Пригласите участников')).not.toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
     expect(posts).toBe(0);
   });
 
-  it('shows a taken-slug error on the address field', async () => {
+  it('returns to step 1 with a taken-slug error on the address field', async () => {
     server.use(
       http.post('/api/workspaces', () =>
         HttpResponse.json(
@@ -127,11 +165,15 @@ describe('CreateWorkspaceForm', () => {
     renderWithApi(<CreateWorkspaceForm />);
 
     await user.type(screen.getByLabelText(/Название/), 'My Team');
-    await user.click(screen.getByRole('button', { name: 'Продолжить' }));
+    await user.click(continueButton());
+    await user.click(createButton());
 
     expect(await screen.findByText('Этот адрес уже занят — придумайте другой')).toBeVisible();
     // Keyboard and screen-reader users land on the field they have to fix.
-    expect(screen.getByLabelText(/Адрес/)).toHaveFocus();
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Адрес/)).toHaveFocus();
+    });
+    expect(screen.getByText('Шаг 1 из 2 — название и адрес')).toBeVisible();
     expect(push).not.toHaveBeenCalled();
   });
 
@@ -148,7 +190,8 @@ describe('CreateWorkspaceForm', () => {
     renderWithApi(<CreateWorkspaceForm />);
 
     await user.type(screen.getByLabelText(/Название/), 'My Team');
-    await user.click(screen.getByRole('button', { name: 'Продолжить' }));
+    await user.click(continueButton());
+    await user.click(createButton());
     expect(await screen.findByText('Этот адрес уже занят — придумайте другой')).toBeVisible();
 
     await user.type(screen.getByLabelText(/Название/), ' 2');
@@ -178,18 +221,20 @@ describe('CreateWorkspaceForm', () => {
     renderWithApi(<CreateWorkspaceForm />);
 
     await user.type(screen.getByLabelText(/Название/), 'My Team');
-    const submit = screen.getByRole('button', { name: 'Продолжить' });
-    await user.click(submit);
-    await waitFor(() => expect(submit).toBeDisabled());
+    await user.click(continueButton());
+    await user.click(createButton());
+    await waitFor(() => expect(createButton()).toBeDisabled());
+    await user.click(backButton());
     await user.type(screen.getByLabelText(/Адрес/), '-2');
     release();
 
-    await waitFor(() => expect(submit).toBeEnabled());
-    expect(screen.getByLabelText(/Адрес/)).toHaveValue('my-team-2');
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Адрес/)).toHaveValue('my-team-2');
+    });
     expect(screen.queryByText('Этот адрес уже занят — придумайте другой')).not.toBeInTheDocument();
   });
 
-  it('puts the field issues of a 400 next to their fields', async () => {
+  it('puts the field issues of a 400 next to their fields on step 1', async () => {
     server.use(
       http.post('/api/workspaces', () =>
         HttpResponse.json(
@@ -206,9 +251,11 @@ describe('CreateWorkspaceForm', () => {
     renderWithApi(<CreateWorkspaceForm />);
 
     await user.type(screen.getByLabelText(/Название/), 'My Team');
-    await user.click(screen.getByRole('button', { name: 'Продолжить' }));
+    await user.click(continueButton());
+    await user.click(createButton());
 
     expect(await screen.findByText('Название не подходит')).toBeVisible();
+    expect(screen.getByText('Шаг 1 из 2 — название и адрес')).toBeVisible();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -233,13 +280,13 @@ describe('CreateWorkspaceForm', () => {
     renderWithApi(<CreateWorkspaceForm />);
 
     await user.type(screen.getByLabelText(/Название/), 'My Team');
-    const submit = screen.getByRole('button', { name: 'Продолжить' });
-    await user.click(submit);
-    await waitFor(() => expect(submit).toBeDisabled());
+    await user.click(continueButton());
+    await user.click(createButton());
+    await waitFor(() => expect(createButton()).toBeDisabled());
+    await user.click(backButton());
     await user.type(screen.getByLabelText(/Название/), ' 2');
     release();
 
-    await waitFor(() => expect(submit).toBeEnabled());
     expect(screen.queryByText('Название не подходит')).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
@@ -254,7 +301,8 @@ describe('CreateWorkspaceForm', () => {
     renderWithApi(<CreateWorkspaceForm />);
 
     await user.type(screen.getByLabelText(/Название/), 'My Team');
-    await user.click(screen.getByRole('button', { name: 'Продолжить' }));
+    await user.click(continueButton());
+    await user.click(createButton());
 
     const banner = await screen.findByRole('alert');
     expect(banner).toHaveTextContent('Сервер ответил ошибкой');
@@ -267,20 +315,24 @@ describe('CreateWorkspaceForm', () => {
     renderWithApi(<CreateWorkspaceForm />);
 
     await user.type(screen.getByLabelText(/Название/), 'My Team');
-    await user.click(screen.getByRole('button', { name: 'Продолжить' }));
+    await user.click(continueButton());
+    await user.click(createButton());
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось создать пространство');
-    expect(screen.getByLabelText(/Название/)).toHaveValue('My Team');
     expect(push).not.toHaveBeenCalled();
+
+    // The entered values survive stepping back.
+    await user.click(backButton());
+    expect(screen.getByLabelText(/Название/)).toHaveValue('My Team');
 
     // The banner describes the failed request: it goes away once the form itself is invalid.
     await user.clear(screen.getByLabelText(/Название/));
-    await user.click(screen.getByRole('button', { name: 'Продолжить' }));
+    await user.click(continueButton());
     expect(await screen.findByText('Введите название пространства')).toBeVisible();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('stays on the list when the user cancelled while the request was in flight', async () => {
+  it('stays on the list when the user left the wizard while the request was in flight', async () => {
     let release: () => void = () => {};
     server.use(
       http.post('/api/workspaces', async () => {
@@ -294,18 +346,20 @@ describe('CreateWorkspaceForm', () => {
     renderWithApi(<CreateWorkspaceForm />);
 
     await user.type(screen.getByLabelText(/Название/), 'My Team');
-    const submit = screen.getByRole('button', { name: 'Продолжить' });
-    await user.click(submit);
-    await waitFor(() => expect(submit).toBeDisabled());
+    await user.click(continueButton());
+    await user.click(createButton());
+    await waitFor(() => expect(createButton()).toBeDisabled());
+    await user.click(backButton());
     await user.click(screen.getByRole('button', { name: 'Отмена' }));
     release();
 
-    await waitFor(() => expect(submit).toBeEnabled());
-    expect(push).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledTimes(1);
+    });
     expect(push).toHaveBeenCalledWith('/workspaces');
   });
 
-  it('disables the submit while the request is in flight', async () => {
+  it('disables the create button while the request is in flight', async () => {
     let release: () => void = () => {};
     server.use(
       http.post('/api/workspaces', async () => {
@@ -319,10 +373,10 @@ describe('CreateWorkspaceForm', () => {
     renderWithApi(<CreateWorkspaceForm />);
 
     await user.type(screen.getByLabelText(/Название/), 'My Team');
-    const submit = screen.getByRole('button', { name: 'Продолжить' });
-    await user.click(submit);
+    await user.click(continueButton());
+    await user.click(createButton());
 
-    await waitFor(() => expect(submit).toBeDisabled());
+    await waitFor(() => expect(createButton()).toBeDisabled());
     release();
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith('/workspaces/my-team');
