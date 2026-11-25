@@ -11,43 +11,59 @@ export class ApiError extends Error {
 }
 
 export type ApiRequestOptions = RequestInit;
+export type SessionRefreshResult = 'refreshed' | 'rejected' | 'unavailable';
+
+interface RefreshEntry {
+  key: unknown;
+  promise: Promise<SessionRefreshResult>;
+}
 
 let accessTokenProvider: (() => string | undefined) | undefined;
 let rejectedTokenHandler: ((token: string) => void) | undefined;
-let sessionRefresher: (() => Promise<boolean>) | undefined;
-let refreshPromise: Promise<boolean> | undefined;
+let sessionRefresher: (() => Promise<SessionRefreshResult>) | undefined;
+let sessionRefreshKey: (() => unknown) | undefined;
+let refreshEntry: RefreshEntry | undefined;
 
 /**
  * Registers the single source of the access token (kept in application memory by the auth
  * code). Every request asks it and sends `Authorization: Bearer <token>` when it returns one.
  * Pass `undefined` to remove it. `onRejected` hears about every `401` answered to a request that
  * carried the provider's token, whichever screen sent it, so the session can end in one place.
- * `refresh` gets a `401` answered to a provider's token first: when it resolves `true`, the
+ * `refresh` gets a `401` answered to a provider's token first: when it resolves `refreshed`, the
  * request is repeated once with the new token and `onRejected` only fires if that one fails too.
+ * `unavailable` leaves the token alone so a later request can try refresh again; `refreshKey`
+ * separates the shared in-flight refresh of one session generation from the next one.
  */
 export function setAccessTokenProvider(
   provider: (() => string | undefined) | undefined,
   onRejected?: (token: string) => void,
-  refresh?: () => Promise<boolean>,
+  refresh?: () => Promise<SessionRefreshResult>,
+  refreshKey?: () => unknown,
 ): void {
   accessTokenProvider = provider;
   rejectedTokenHandler = provider ? onRejected : undefined;
   sessionRefresher = provider ? refresh : undefined;
+  sessionRefreshKey = provider ? refreshKey : undefined;
 }
 
 /**
  * One shared refresh for every request waiting on it: a second call would rotate the refresh
  * token again while later requests still hold the old one, and the server treats a rotated
- * token's reuse as theft and revokes the session. `false` when no refresher is registered.
+ * token's reuse as theft and revokes the session. `rejected` when no refresher is registered.
  */
-function refreshSession(): Promise<boolean> {
-  if (!sessionRefresher) return Promise.resolve(false);
-  refreshPromise ??= sessionRefresher()
-    .catch(() => false)
+function refreshSession(): Promise<SessionRefreshResult> {
+  if (!sessionRefresher) return Promise.resolve('rejected');
+  const key = sessionRefreshKey?.();
+  const current = refreshEntry;
+  if (current && current.key === key) return current.promise;
+  const entry = { key } as RefreshEntry;
+  entry.promise = sessionRefresher()
+    .catch((): SessionRefreshResult => 'unavailable')
     .finally(() => {
-      refreshPromise = undefined;
+      if (refreshEntry === entry) refreshEntry = undefined;
     });
-  return refreshPromise;
+  refreshEntry = entry;
+  return entry.promise;
 }
 
 // Orval supplies the documented error body as a type argument. HTTP bodies are
@@ -82,12 +98,25 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
   // Not a TypeError: that is what fetch throws for a network failure, and those are retried.
   if (!url.startsWith('/api/')) throw new Error('Expected a relative /api/ URL');
 
+  const requestRefreshKey = sessionRefreshKey?.();
+  const refreshKeyChanged = () => sessionRefreshKey?.() !== requestRefreshKey;
   let { response, sentToken } = await send(url, options);
-  if (response.status === 401 && sentToken && (await refreshSession())) {
-    ({ response, sentToken } = await send(url, options));
+  let refreshResult: SessionRefreshResult | undefined;
+  if (response.status === 401 && sentToken && !refreshKeyChanged()) {
+    refreshResult = await refreshSession();
+    if (refreshResult === 'refreshed' && !refreshKeyChanged()) {
+      ({ response, sentToken } = await send(url, options));
+    }
   }
   // Before the body is read: the status is enough, and reading the body can still fail.
-  if (response.status === 401 && sentToken) rejectedTokenHandler?.(sentToken);
+  if (
+    response.status === 401 &&
+    sentToken &&
+    refreshResult !== 'unavailable' &&
+    !refreshKeyChanged()
+  ) {
+    rejectedTokenHandler?.(sentToken);
+  }
   const text = await response.text();
 
   if (!response.ok) {

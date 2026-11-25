@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useStore } from 'zustand';
-import { hasApiStatus, restoreSession, sessionStore, useAuthMe } from '@/shared/api';
+import { restoreSession, sessionStore, useAuthMe } from '@/shared/api';
 import { routes } from '@/shared/config';
 import { Alert, Spinner } from '@/shared/ui';
 
@@ -22,9 +22,9 @@ export function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
   const queryClient = useQueryClient();
   const accessToken = useStore(sessionStore, (state) => state.accessToken);
   const me = useAuthMe({ query: { enabled: accessToken !== undefined } });
-  const rejected = hasApiStatus(me.error, 401);
-  const guest = accessToken === undefined || rejected;
+  const guest = accessToken === undefined;
   const [restoring, setRestoring] = useState(() => accessToken === undefined);
+  const [restoreUnavailable, setRestoreUnavailable] = useState(false);
 
   useEffect(() => {
     // Only a mount without a token restores: a mid-session loss already went through refresh
@@ -32,16 +32,20 @@ export function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
     if (!restoring || accessToken !== undefined) return;
     // No cancellation: a token set by the resolve rerenders this effect away, and the settle
     // still has to end `restoring`, so the finally stays attached either way.
-    void restoreSession().finally(() => {
-      setRestoring(false);
-    });
+    void restoreSession()
+      .then((result) => {
+        setRestoreUnavailable(result === 'unavailable');
+      })
+      .finally(() => {
+        setRestoring(false);
+      });
   }, [accessToken, restoring]);
 
   useEffect(() => {
-    if (!guest || restoring) return;
+    if (!guest || restoring || restoreUnavailable) return;
     // Leaving with the sign-out button needs no address to come back to.
     const { signedOut } = sessionStore.getState();
-    sessionStore.setState({ accessToken: undefined, signedOut: false });
+    sessionStore.setState({ accessToken: undefined });
     // Cached answers belong to the account that just lost access.
     queryClient.clear();
     router.replace(
@@ -49,7 +53,26 @@ export function SessionGate({ children }: Readonly<{ children: ReactNode }>) {
         ? routes.login()
         : routes.login(`${pathname}${window.location.search}${window.location.hash}`),
     );
-  }, [guest, restoring, pathname, queryClient, router]);
+  }, [guest, restoring, restoreUnavailable, pathname, queryClient, router]);
+
+  if (restoreUnavailable) {
+    return (
+      <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center p-8">
+        <Alert
+          palette="danger"
+          title="Не удалось восстановить сессию"
+          description="Проверьте подключение к сети и попробуйте ещё раз."
+          action={{
+            label: 'Повторить',
+            onClick: () => {
+              setRestoreUnavailable(false);
+              setRestoring(true);
+            },
+          }}
+        />
+      </main>
+    );
+  }
 
   if (restoring || guest || me.isPending) {
     return (

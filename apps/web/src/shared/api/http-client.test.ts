@@ -5,7 +5,12 @@ import {
   type useHealthReady,
 } from './generated/api';
 import type { AuthRegisterBody } from './generated/models';
-import { ApiError, apiFetch, setAccessTokenProvider } from './http-client';
+import {
+  ApiError,
+  apiFetch,
+  setAccessTokenProvider,
+  type SessionRefreshResult,
+} from './http-client';
 import { createQueryClient } from './query-client';
 
 it('passes a relative URL, caller headers, signal and the provided bearer token to fetch', async () => {
@@ -90,7 +95,7 @@ describe('session refresh on 401', () => {
     let token: string | undefined = 'stale-token';
     const refresh = vi.fn(() => {
       token = 'fresh-token';
-      return Promise.resolve(true);
+      return Promise.resolve('refreshed' as const);
     });
     setAccessTokenProvider(() => token, undefined, refresh);
     const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
@@ -122,7 +127,7 @@ describe('session refresh on 401', () => {
     const onRejected = vi.fn((rejected: string) => {
       if (rejected === token) token = undefined;
     });
-    const refresh = vi.fn(() => Promise.resolve(false));
+    const refresh = vi.fn(() => Promise.resolve('rejected' as const));
     setAccessTokenProvider(() => token, onRejected, refresh);
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       Response.json({ message: 'Unauthorized' }, { status: 401 }),
@@ -143,7 +148,7 @@ describe('session refresh on 401', () => {
       onRejected,
       () => {
         token = 'fresh-token';
-        return Promise.resolve(true);
+        return Promise.resolve('refreshed' as const);
       },
     );
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -155,8 +160,100 @@ describe('session refresh on 401', () => {
     expect(onRejected).toHaveBeenCalledWith('fresh-token');
   });
 
+  it('keeps the session when refresh is temporarily unavailable', async () => {
+    let token: string | undefined = 'stale-token';
+    const onRejected = vi.fn((rejected: string) => {
+      if (rejected === token) token = undefined;
+    });
+    const refresh = vi.fn(() => Promise.resolve('unavailable' as const));
+    setAccessTokenProvider(() => token, onRejected, refresh);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({ message: 'Unauthorized' }, { status: 401 }),
+    );
+
+    await expect(apiFetch('/api/auth/me')).rejects.toMatchObject({ status: 401 });
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(onRejected).not.toHaveBeenCalled();
+    expect(token).toBe('stale-token');
+  });
+
+  it('starts a new refresh when the refresh key changes', async () => {
+    let token: string | undefined = 'stale-token';
+    let key = 1;
+    let answerFirstRefresh: (result: SessionRefreshResult) => void = () => undefined;
+    const refresh = vi.fn(() => {
+      if (refresh.mock.calls.length === 1) {
+        return new Promise<SessionRefreshResult>((resolve) => {
+          answerFirstRefresh = resolve;
+        });
+      }
+      token = 'fresh-token';
+      return Promise.resolve('refreshed' as const);
+    });
+    setAccessTokenProvider(
+      () => token,
+      undefined,
+      refresh,
+      () => key,
+    );
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => {
+      const authorization = new Headers(init?.headers).get('Authorization');
+      return Promise.resolve(
+        authorization === 'Bearer fresh-token'
+          ? Response.json({ ok: true })
+          : Response.json({ message: 'Expired' }, { status: 401 }),
+      );
+    });
+
+    const first = apiFetch('/api/first');
+    await vi.waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+    key = 2;
+    const second = apiFetch('/api/second');
+
+    await expect(second).resolves.toEqual({ ok: true });
+    expect(refresh).toHaveBeenCalledTimes(2);
+
+    answerFirstRefresh('rejected');
+    await expect(first).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('does not retry a request from an older session generation', async () => {
+    let key = 1;
+    let answerRefresh: (result: SessionRefreshResult) => void = () => undefined;
+    const onRejected = vi.fn();
+    const refresh = vi.fn(
+      () =>
+        new Promise<SessionRefreshResult>((resolve) => {
+          answerRefresh = resolve;
+        }),
+    );
+    setAccessTokenProvider(
+      () => 'stale-token',
+      onRejected,
+      refresh,
+      () => key,
+    );
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+
+    const request = apiFetch('/api/auth/me');
+    await vi.waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+    key = 2;
+    answerRefresh('refreshed');
+
+    await expect(request).rejects.toMatchObject({ status: 401 });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(onRejected).not.toHaveBeenCalled();
+  });
+
   it('does not refresh a 401 answered to a request without the provider token', async () => {
-    const refresh = vi.fn(() => Promise.resolve(true));
+    const refresh = vi.fn(() => Promise.resolve('refreshed' as const));
     setAccessTokenProvider(() => 'demo-token', undefined, refresh);
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       Response.json({ message: 'Unauthorized' }, { status: 401 }),

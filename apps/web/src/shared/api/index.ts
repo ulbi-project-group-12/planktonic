@@ -9,7 +9,13 @@ export {
 export { getSocket, type AppSocket } from './socket';
 export { getApiIssues, hasApiStatus, isApiError, type ApiIssue } from './errors';
 export { createQueryClient } from './query-client';
-export { ApiError, apiFetch, setAccessTokenProvider, type ApiRequestOptions } from './http-client';
+export {
+  ApiError,
+  apiFetch,
+  setAccessTokenProvider,
+  type ApiRequestOptions,
+  type SessionRefreshResult,
+} from './http-client';
 export { restoreSession, sessionStore, signIn, signOut } from './session';
 // Every generated hook, query key and options helper. A new operation needs no edit here.
 export * from './generated/api';

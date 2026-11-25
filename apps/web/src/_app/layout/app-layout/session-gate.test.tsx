@@ -2,7 +2,13 @@ import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { apiFetch, sessionStore, setAccessTokenProvider, signOut } from '@/shared/api';
+import {
+  apiFetch,
+  sessionStore,
+  setAccessTokenProvider,
+  signOut,
+  type SessionRefreshResult,
+} from '@/shared/api';
 import { server } from '@/shared/api-mocks-node';
 import { renderWithApi } from '@/shared/lib/testing';
 import { SessionGate } from './session-gate';
@@ -21,12 +27,13 @@ const profile = {
 };
 
 // The wiring signIn sets up, with a token the test chooses.
-function signInAs(accessToken: string) {
+function signInAs(accessToken: string, refresh?: () => Promise<SessionRefreshResult>) {
   setAccessTokenProvider(
     () => sessionStore.getState().accessToken,
     () => {
       sessionStore.setState({ accessToken: undefined });
     },
+    refresh,
   );
   sessionStore.setState({ accessToken });
 }
@@ -112,6 +119,34 @@ describe('SessionGate', () => {
     expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
   });
 
+  it('offers a retry instead of login when refresh is temporarily unavailable', async () => {
+    let unavailable = true;
+    let authorization: string | null = null;
+    server.use(
+      http.post('/api/auth/refresh', () =>
+        unavailable
+          ? HttpResponse.json({ message: 'Service unavailable' }, { status: 503 })
+          : HttpResponse.json({ accessToken: 'restored-access-token' }),
+      ),
+      http.get('/api/auth/me', ({ request }) => {
+        authorization = request.headers.get('authorization');
+        return HttpResponse.json(profile);
+      }),
+    );
+
+    renderGate();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось восстановить сессию');
+    expect(replace).not.toHaveBeenCalled();
+
+    unavailable = false;
+    await userEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+
+    expect(await screen.findByText('Закрытая страница')).toBeInTheDocument();
+    expect(authorization).toBe('Bearer restored-access-token');
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it('keeps the hash of the address in the return address', async () => {
     window.history.replaceState(null, '', '/workspaces/my-team?thread=t1#m2');
 
@@ -139,6 +174,21 @@ describe('SessionGate', () => {
     expect(await screen.findByText('Закрытая страница')).toBeInTheDocument();
     expect(authorization).toBe('Bearer test-access-token');
     expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('keeps the session when refresh after a profile 401 is temporarily unavailable', async () => {
+    server.use(
+      http.get('/api/auth/me', () =>
+        HttpResponse.json({ statusCode: 401, message: 'Unauthorized' }, { status: 401 }),
+      ),
+    );
+    signInAs('test-access-token', () => Promise.resolve('unavailable'));
+
+    renderGate();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить профиль');
+    expect(replace).not.toHaveBeenCalled();
+    expect(sessionStore.getState().accessToken).toBe('test-access-token');
   });
 
   it('forgets a token the api rejects and sends the visitor to login', async () => {
@@ -195,8 +245,8 @@ describe('SessionGate', () => {
     });
     expect(queryClient.getQueryCache().getAll()).toEqual([]);
     expect(screen.queryByText('Закрытая страница')).not.toBeInTheDocument();
-    // The next guest visit is an ordinary one again.
-    expect(sessionStore.getState().signedOut).toBe(false);
+    // The explicit sign-out survives the redirect, so a later visit cannot restore the session.
+    expect(sessionStore.getState().signedOut).toBe(true);
   });
 
   it('keeps the session and offers a retry when the profile request fails', async () => {
