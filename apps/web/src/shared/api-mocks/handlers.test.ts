@@ -100,6 +100,7 @@ it('returns the current user', async () => {
     id: '019a8f00-0000-7000-8000-000000000004',
     name: 'Ada',
     email: 'ada@example.com',
+    tz: 'Europe/Berlin',
   });
 });
 

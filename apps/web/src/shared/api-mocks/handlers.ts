@@ -20,6 +20,15 @@ const CreateWorkspaceRequest = z.object({
   slug: WorkspaceSlug,
 });
 
+const IANA_TIMEZONES = new Set(Intl.supportedValuesOf('timeZone'));
+const UpdateMeRequest = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  tz: z
+    .string()
+    .refine((tz) => IANA_TIMEZONES.has(tz), { message: 'Invalid timezone' })
+    .optional(),
+});
+
 interface MockWorkspace {
   id: string;
   name: string;
@@ -30,6 +39,7 @@ const currentUser = {
   id: '019a8f00-0000-7000-8000-000000000004',
   name: 'Ada',
   email: 'ada@example.com',
+  tz: 'Europe/Berlin',
 };
 
 /** POST /api/workspaces + GET /api/workspaces over an in-memory list (per handler set). */
@@ -109,5 +119,34 @@ export function createApiHandlers() {
     getMessagesCreateMockHandler(),
     getMessagesListMockHandler(),
     ...createWorkspaceHandlers(),
+    ...createUserHandlers(),
+  ];
+}
+
+/**
+ * PATCH /api/users/me lives here until UL-155 lands the real contracts and the OpenAPI schema
+ * gains the endpoint — then Orval regenerates the handlers and this block goes.
+ */
+function createUserHandlers() {
+  return [
+    http.patch('*/api/users/me', async ({ request }) => {
+      const parsed = UpdateMeRequest.safeParse(await request.json());
+      if (!parsed.success) {
+        return HttpResponse.json(
+          {
+            statusCode: 400,
+            message: 'Validation failed',
+            issues: parsed.error.issues.map((issue) => ({
+              path: issue.path.join('.'),
+              message: issue.message,
+            })),
+          },
+          { status: 400 },
+        );
+      }
+      currentUser.name = parsed.data.name ?? currentUser.name;
+      currentUser.tz = parsed.data.tz ?? currentUser.tz;
+      return HttpResponse.json(currentUser);
+    }),
   ];
 }

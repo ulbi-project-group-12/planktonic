@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { InvitePage } from './invite';
 import { VerifyEmailPage } from './verify-email';
 import { ResetPasswordPage } from './auth/reset-password';
-import { ProfileSettingsPage } from './account/profile';
 import { DevicesSettingsPage } from './account/devices';
 import { NotificationSettingsPage } from './account/notifications';
 import { AppearanceSettingsPage } from './account/appearance';
@@ -15,7 +14,6 @@ const pages = [
   ['InvitePage', InvitePage],
   ['VerifyEmailPage', VerifyEmailPage],
   ['ResetPasswordPage', ResetPasswordPage],
-  ['ProfileSettingsPage', ProfileSettingsPage],
   ['DevicesSettingsPage', DevicesSettingsPage],
   ['NotificationSettingsPage', NotificationSettingsPage],
   ['AppearanceSettingsPage', AppearanceSettingsPage],
