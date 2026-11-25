@@ -10,7 +10,7 @@ export async function WorkspaceDashboardPage({ params }: WorkspaceDashboardPageP
   const { workspaceSlug } = await params;
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center gap-4 p-8">
+    <main className="mx-auto flex min-h-[calc(100svh-4rem)] max-w-2xl flex-col justify-center gap-4 p-8">
       <Typography as="h1" size="h3">
         Скоро здесь будет страница пространства {PRODUCT_DISPLAY_NAME}
       </Typography>

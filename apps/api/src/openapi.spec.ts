@@ -43,10 +43,31 @@ describe('pnpm openapi:export', () => {
       'get /api/channels/{channelId}/messages Messages_list',
       'get /api/health Health_live',
       'get /api/health/ready Health_ready',
+      'get /api/workspaces Workspace_list',
+      'get /api/workspaces/{slug} Workspace_getBySlug',
       'post /api/auth/login Auth_login',
       'post /api/auth/register Auth_register',
       'post /api/channels/{channelId}/messages Messages_create',
+      'post /api/workspaces Workspace_create',
     ]);
+  });
+
+  it('documents the workspace creation contract and bearer authentication', () => {
+    expect(document.paths['/api/workspaces']?.post).toMatchObject({
+      security: [{ bearer: [] }],
+      requestBody: {
+        required: true,
+        content: { 'application/json': { schema: { required: ['name', 'slug'] } } },
+      },
+      responses: {
+        201: {
+          content: { 'application/json': { schema: { required: ['id', 'name', 'slug'] } } },
+        },
+        400: {},
+        401: {},
+        409: {},
+      },
+    });
   });
 
   it('takes bodies, queries and responses from the contracts', () => {

@@ -24,7 +24,13 @@ export function shouldRetryQuery(failureCount: number, error: unknown): boolean 
 export function createQueryClient({ retry = true }: { retry?: boolean } = {}): QueryClient {
   return new QueryClient({
     defaultOptions: {
-      queries: { retry: retry ? shouldRetryQuery : false },
+      queries: {
+        retry: retry ? shouldRetryQuery : false,
+        // Fresh data does not refetch when a new observer mounts. Without this, two components
+        // subscribing to the same query (e.g. SessionGate and AppHeader for /api/auth/me) fire
+        // two identical requests back-to-back.
+        staleTime: 30 * 1000,
+      },
       // A repeated POST can create a duplicate; a screen that wants a retry asks for it.
       mutations: { retry: false },
     },

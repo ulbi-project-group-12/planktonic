@@ -1,7 +1,22 @@
 export { TICKET_KEY_PATTERN, TicketKey } from './ticket-key.js';
 export { ChannelId } from './channel.js';
 export { PROJECT_KEY_PATTERN, ProjectKey } from './project.js';
-export { RESERVED_WORKSPACE_SLUGS, WORKSPACE_SLUG_PATTERN, WorkspaceSlug } from './workspace.js';
+export {
+  type CreateWorkspaceRequest,
+  CreateWorkspaceRequestSchema,
+  type ListWorkspacesResponse,
+  ListWorkspacesResponseSchema,
+  RESERVED_WORKSPACE_SLUGS,
+  WORKSPACE_NAME_MAX_LENGTH,
+  WORKSPACE_SLUG_PATTERN,
+  type WorkspaceResponse,
+  WorkspaceResponseSchema,
+  WorkspaceSlug,
+  type WorkspaceSlugConflictResponse,
+  WorkspaceSlugConflictResponseSchema,
+  type WorkspaceSlugParams,
+  WorkspaceSlugParamsSchema,
+} from './workspace.js';
 export {
   ChannelMessagesParams,
   ClientMsgId,
@@ -42,6 +57,15 @@ export {
   LoginResponseSchema,
 } from './auth/login.js';
 export { type MeResponse, MeResponseSchema } from './auth/me.js';
+export { type LogoutResponse, LogoutResponseSchema } from './auth/logout.js';
+export {
+  type AuthSession,
+  type AuthSessionParams,
+  AuthSessionParamsSchema,
+  AuthSessionSchema,
+  type AuthSessionsResponse,
+  AuthSessionsResponseSchema,
+} from './auth/sessions.js';
 export {
   EMAIL_MAX_LENGTH,
   PASSWORD_MAX_LENGTH,

@@ -32,6 +32,17 @@ import type {
   MessagesList200,
   MessagesList400,
   MessagesList404,
+  WorkspaceCreate201,
+  WorkspaceCreate400,
+  WorkspaceCreate401,
+  WorkspaceCreate409,
+  WorkspaceCreateBody,
+  WorkspaceGetBySlug200,
+  WorkspaceGetBySlug400,
+  WorkspaceGetBySlug401,
+  WorkspaceGetBySlug404,
+  WorkspaceList200Item,
+  WorkspaceList401,
 } from './models';
 
 export const getAuthRegisterResponseMock = (
@@ -423,6 +434,132 @@ export const getMessagesListResponseMock400 = (
 export const getMessagesListResponseMock404 = (
   overrideResponse: Partial<Extract<MessagesList404, object>> = {},
 ): MessagesList404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceListResponseMock = (): WorkspaceList200Item[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.string.uuid(),
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    slug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  }));
+
+export const getWorkspaceListResponseMock200 = (): WorkspaceList200Item[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.string.uuid(),
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    slug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  }));
+
+export const getWorkspaceListResponseMock401 = (
+  overrideResponse: Partial<Extract<WorkspaceList401, object>> = {},
+): WorkspaceList401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceCreateResponseMock = (
+  overrideResponse: Partial<Extract<WorkspaceCreate201, object>> = {},
+): WorkspaceCreate201 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  slug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  ...overrideResponse,
+});
+
+export const getWorkspaceCreateResponseMock201 = (
+  overrideResponse: Partial<Extract<WorkspaceCreate201, object>> = {},
+): WorkspaceCreate201 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  slug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  ...overrideResponse,
+});
+
+export const getWorkspaceCreateResponseMock400 = (
+  overrideResponse: Partial<Extract<WorkspaceCreate400, object>> = {},
+): WorkspaceCreate400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getWorkspaceCreateResponseMock401 = (
+  overrideResponse: Partial<Extract<WorkspaceCreate401, object>> = {},
+): WorkspaceCreate401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceCreateResponseMock409 = (
+  overrideResponse: Partial<Extract<WorkspaceCreate409, object>> = {},
+): WorkspaceCreate409 => ({
+  statusCode: faker.helpers.arrayElement([409] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.helpers.arrayElement(['slug'] as const),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getWorkspaceGetBySlugResponseMock = (
+  overrideResponse: Partial<Extract<WorkspaceGetBySlug200, object>> = {},
+): WorkspaceGetBySlug200 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  slug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  ...overrideResponse,
+});
+
+export const getWorkspaceGetBySlugResponseMock200 = (
+  overrideResponse: Partial<Extract<WorkspaceGetBySlug200, object>> = {},
+): WorkspaceGetBySlug200 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  slug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  ...overrideResponse,
+});
+
+export const getWorkspaceGetBySlugResponseMock400 = (
+  overrideResponse: Partial<Extract<WorkspaceGetBySlug400, object>> = {},
+): WorkspaceGetBySlug400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getWorkspaceGetBySlugResponseMock401 = (
+  overrideResponse: Partial<Extract<WorkspaceGetBySlug401, object>> = {},
+): WorkspaceGetBySlug401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceGetBySlugResponseMock404 = (
+  overrideResponse: Partial<Extract<WorkspaceGetBySlug404, object>> = {},
+): WorkspaceGetBySlug404 => ({
   statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
   message: faker.string.alpha({ length: { min: 10, max: 20 } }),
   error: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -1043,6 +1180,316 @@ export const getMessagesListMockHandler404 = (
     options,
   );
 };
+
+export const getWorkspaceListMockHandler = (
+  overrideResponse?:
+    | WorkspaceList200Item[]
+    | ((
+        info: Parameters<HttpResponseResolver>[0],
+      ) => Promise<WorkspaceList200Item[]> | WorkspaceList200Item[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    '*/api/workspaces',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceListResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceListMockHandler200 = (
+  overrideResponse?:
+    | WorkspaceList200Item[]
+    | ((
+        info: Parameters<HttpResponseResolver>[0],
+      ) => Promise<WorkspaceList200Item[]> | WorkspaceList200Item[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    '*/api/workspaces',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceListResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceListMockHandler401 = (
+  overrideResponse?:
+    | WorkspaceList401
+    | ((info: Parameters<HttpResponseResolver>[0]) => Promise<WorkspaceList401> | WorkspaceList401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    '*/api/workspaces',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceListResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceCreateMockHandler = (
+  overrideResponse?:
+    | WorkspaceCreate201
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, WorkspaceCreateBody>>[0],
+      ) => Promise<WorkspaceCreate201> | WorkspaceCreate201),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, WorkspaceCreateBody>(
+    '*/api/workspaces',
+    async (info: Parameters<HttpResponseResolver<PathParams, WorkspaceCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceCreateResponseMock(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceCreateMockHandler201 = (
+  overrideResponse?:
+    | WorkspaceCreate201
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, WorkspaceCreateBody>>[0],
+      ) => Promise<WorkspaceCreate201> | WorkspaceCreate201),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, WorkspaceCreateBody>(
+    '*/api/workspaces',
+    async (info: Parameters<HttpResponseResolver<PathParams, WorkspaceCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceCreateResponseMock201(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceCreateMockHandler400 = (
+  overrideResponse?:
+    | WorkspaceCreate400
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, WorkspaceCreateBody>>[0],
+      ) => Promise<WorkspaceCreate400> | WorkspaceCreate400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, WorkspaceCreateBody>(
+    '*/api/workspaces',
+    async (info: Parameters<HttpResponseResolver<PathParams, WorkspaceCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceCreateResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceCreateMockHandler401 = (
+  overrideResponse?:
+    | WorkspaceCreate401
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, WorkspaceCreateBody>>[0],
+      ) => Promise<WorkspaceCreate401> | WorkspaceCreate401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, WorkspaceCreateBody>(
+    '*/api/workspaces',
+    async (info: Parameters<HttpResponseResolver<PathParams, WorkspaceCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceCreateResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceCreateMockHandler409 = (
+  overrideResponse?:
+    | WorkspaceCreate409
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, WorkspaceCreateBody>>[0],
+      ) => Promise<WorkspaceCreate409> | WorkspaceCreate409),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, WorkspaceCreateBody>(
+    '*/api/workspaces',
+    async (info: Parameters<HttpResponseResolver<PathParams, WorkspaceCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceCreateResponseMock409(),
+        { status: 409 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceGetBySlugMockHandler = (
+  overrideResponse?:
+    | WorkspaceGetBySlug200
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<WorkspaceGetBySlug200> | WorkspaceGetBySlug200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceGetBySlugResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceGetBySlugMockHandler200 = (
+  overrideResponse?:
+    | WorkspaceGetBySlug200
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<WorkspaceGetBySlug200> | WorkspaceGetBySlug200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceGetBySlugResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceGetBySlugMockHandler400 = (
+  overrideResponse?:
+    | WorkspaceGetBySlug400
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<WorkspaceGetBySlug400> | WorkspaceGetBySlug400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceGetBySlugResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceGetBySlugMockHandler401 = (
+  overrideResponse?:
+    | WorkspaceGetBySlug401
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<WorkspaceGetBySlug401> | WorkspaceGetBySlug401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceGetBySlugResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceGetBySlugMockHandler404 = (
+  overrideResponse?:
+    | WorkspaceGetBySlug404
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<WorkspaceGetBySlug404> | WorkspaceGetBySlug404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceGetBySlugResponseMock404(),
+        { status: 404 },
+      );
+    },
+    options,
+  );
+};
 export const getApiMock = () => [
   getAuthRegisterMockHandler(),
   getAuthLoginMockHandler(),
@@ -1051,4 +1498,7 @@ export const getApiMock = () => [
   getHealthReadyMockHandler(),
   getMessagesCreateMockHandler(),
   getMessagesListMockHandler(),
+  getWorkspaceListMockHandler(),
+  getWorkspaceCreateMockHandler(),
+  getWorkspaceGetBySlugMockHandler(),
 ];

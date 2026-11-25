@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getWorkspaceListQueryKey } from '@/shared/api';
 import { server } from '@/shared/api-mocks-node';
 import { renderWithApi } from '@/shared/lib/testing';
 import { CreateWorkspaceForm } from './create-workspace-form';
@@ -40,6 +41,26 @@ describe('CreateWorkspaceForm', () => {
       expect(push).toHaveBeenCalledWith('/workspaces/komanda-marketinga');
     });
     expect(posted).toEqual({ name: 'Команда маркетинга', slug: 'komanda-marketinga' });
+  });
+
+  it('marks the cached workspace list stale after a successful create', async () => {
+    server.use(
+      http.post('/api/workspaces', () =>
+        HttpResponse.json({ id: 'ws-1', name: 'My Team', slug: 'my-team' }, { status: 201 }),
+      ),
+    );
+    const user = userEvent.setup();
+    const { queryClient } = renderWithApi(<CreateWorkspaceForm />);
+    // The shell's switcher loaded the list before the form was opened.
+    queryClient.setQueryData(getWorkspaceListQueryKey(), []);
+
+    await user.type(screen.getByLabelText(/Название/), 'My Team');
+    await user.click(screen.getByRole('button', { name: 'Продолжить' }));
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith('/workspaces/my-team');
+    });
+    expect(queryClient.getQueryState(getWorkspaceListQueryKey())?.isInvalidated).toBe(true);
   });
 
   it('stops suggesting once the address was edited by hand', async () => {
