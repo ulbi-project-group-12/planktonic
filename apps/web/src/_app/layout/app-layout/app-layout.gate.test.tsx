@@ -2,7 +2,12 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { sessionStore, setAccessTokenProvider } from '@/shared/api';
+import {
+  ensureSessionHandlers,
+  sessionStore,
+  setAccessTokenProvider,
+  setRefreshHandler,
+} from '@/shared/api';
 import { server } from '@/shared/api-mocks-node';
 import { renderWithApi } from '@/shared/lib/testing';
 import { AppLayout } from './app-layout';
@@ -34,16 +39,25 @@ describe('AppLayout behind the login', () => {
   beforeEach(() => {
     push.mockClear();
     replace.mockClear();
+    ensureSessionHandlers();
+    sessionStore.setState({ accessToken: undefined, signedOut: false, restoreStatus: 'done' });
     window.history.replaceState(null, '', '/workspaces');
     server.use(http.get('/api/auth/me', () => HttpResponse.json(profile)));
   });
 
   afterEach(() => {
-    sessionStore.setState({ accessToken: undefined, signedOut: false });
+    sessionStore.setState({ accessToken: undefined, signedOut: false, restoreStatus: 'idle' });
     setAccessTokenProvider(undefined);
+    setRefreshHandler(undefined);
   });
 
   it('does not mount the shell for a guest and sends them to login', async () => {
+    server.use(
+      http.post('/api/auth/refresh', () =>
+        HttpResponse.json({ statusCode: 401, message: 'Unauthorized' }, { status: 401 }),
+      ),
+    );
+
     renderLayout();
 
     await waitFor(() => {

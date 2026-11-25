@@ -5,7 +5,7 @@ import { ValidationErrorResponse } from '../errors.js';
 export const EMAIL_MAX_LENGTH = 254;
 
 /** Shortest password registration accepts, in characters. */
-export const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_MIN_LENGTH = 15;
 
 /** Upper bound for a password, in characters: long passphrases fit, hashing input stays bounded. */
 export const PASSWORD_MAX_LENGTH = 128;
@@ -27,12 +27,20 @@ export const RegisterRequestSchema = z
       format: 'email',
       example: 'ada@example.com',
     }),
-    password: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH).meta({
-      description: 'Password for the new account.',
-      format: 'password',
-      writeOnly: true,
-      example: 'example-passphrase',
-    }),
+    password: z
+      .string()
+      .max(PASSWORD_MAX_LENGTH)
+      // String.length counts UTF-16 units. Count Unicode code points for the minimum.
+      .refine((password) => Array.from(password).length >= PASSWORD_MIN_LENGTH, {
+        message: `Password must be at least ${String(PASSWORD_MIN_LENGTH)} characters long`,
+      })
+      .meta({
+        minLength: PASSWORD_MIN_LENGTH,
+        description: 'Password for the new account.',
+        format: 'password',
+        writeOnly: true,
+        example: 'example-passphrase',
+      }),
     confirmPassword: z.string().meta({
       description: 'Must exactly match password.',
       format: 'password',

@@ -1,31 +1,59 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type FieldError } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
-import { LoginRequestSchema, type LoginRequest } from '@app/contracts';
-import { getApiIssues, hasApiStatus, isApiError } from '@/shared/api';
+import {
+  LoginRateLimitResponseSchema,
+  LoginRequestSchema,
+  type LoginRequest,
+} from '@app/contracts';
+import { getApiIssues, getWorkspaceListQueryOptions, hasApiStatus, isApiError } from '@/shared/api';
 import { routes } from '@/shared/config';
 import { Alert, Button, Field, Input, Link } from '@/shared/ui';
 import { useSignIn } from '../api/sign-in';
 import { INVALID_CREDENTIALS_MESSAGE, validationMessage, type LoginField } from '../model/messages';
 
+const MIN_NOTICE_MS = 20_000;
+const waitTime = new Intl.RelativeTimeFormat('ru');
+
 const FIELDS: readonly LoginField[] = ['email', 'password'];
 
 export function LoginForm() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   // The session gate sends a guest here with the address to come back to.
   const next = useSearchParams().get('next');
   const signIn = useSignIn();
   const [submitError, setSubmitError] = useState<string>();
+  const [retryNotice, setRetryNotice] = useState<{ seconds: number }>();
+  const [isRateLimited, setIsRateLimited] = useState(false);
+  useEffect(() => {
+    if (!retryNotice) return;
+    const waitMs = retryNotice.seconds * 1000;
+    const unlock = window.setTimeout(() => {
+      setIsRateLimited(false);
+    }, waitMs);
+    const dismiss = window.setTimeout(
+      () => {
+        setRetryNotice(undefined);
+      },
+      Math.max(MIN_NOTICE_MS, waitMs),
+    );
+    return () => {
+      window.clearTimeout(unlock);
+      window.clearTimeout(dismiss);
+    };
+  }, [retryNotice]);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const {
     register,
     handleSubmit,
     setError,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<LoginRequest>({
     resolver: zodResolver(LoginRequestSchema),
     defaultValues: { email: '', password: '' },
@@ -37,14 +65,35 @@ export function LoginForm() {
 
   const onSubmit = handleSubmit(
     async (values) => {
+      if (isRateLimited) return;
+      setRetryNotice(undefined);
       setSubmitError(undefined);
       const editsAtSubmit = editsRef.current;
       try {
         await signIn.mutateAsync(values);
-        router.push(routes.afterLogin(next));
+        // Answers cached for whoever used this tab before belong to another account: without
+        // this, a workspace list younger than the client's staleTime would be shown as ours.
+        queryClient.removeQueries();
+        const destination = routes.afterLogin(next);
+        if (destination !== routes.workspaces()) {
+          router.push(destination);
+          return;
+        }
+        const workspaces = await queryClient
+          .query(getWorkspaceListQueryOptions())
+          .catch(() => undefined);
+        router.push(workspaces?.length === 0 ? routes.workspaceCreate() : destination);
       } catch (error) {
         if (hasApiStatus(error, 401)) {
           if (editsRef.current === editsAtSubmit) setSubmitError(INVALID_CREDENTIALS_MESSAGE);
+          return;
+        }
+        if (isApiError(error) && error.status === 429) {
+          const limit = LoginRateLimitResponseSchema.safeParse(error.body);
+          setIsRateLimited(true);
+          setRetryNotice({
+            seconds: limit.success ? Math.min(60, limit.data.retryAfterSeconds) : 60,
+          });
           return;
         }
         if (isApiError(error)) {
@@ -85,7 +134,17 @@ export function LoginForm() {
     // method="post": a submit before hydration (or with scripts off) is a native one, and the
     // default GET would put the email and the password into the address bar and server logs.
     <form method="post" onSubmit={onSubmit} noValidate className="flex w-full flex-col gap-5">
-      {submitError ? (
+      {retryNotice ? (
+        <Alert
+          palette="warning"
+          title={isRateLimited ? 'Слишком много попыток входа' : 'Можно повторить вход'}
+          description={
+            isRateLimited
+              ? `Попробуйте ещё раз ${retryNotice.seconds === 60 ? 'через минуту' : waitTime.format(retryNotice.seconds, 'second')}.`
+              : undefined
+          }
+        />
+      ) : submitError ? (
         <Alert palette="danger" title="Не удалось войти" description={submitError} />
       ) : null}
       <Field
@@ -144,7 +203,8 @@ export function LoginForm() {
       <Button
         type="submit"
         size="l"
-        loading={signIn.isPending}
+        loading={isSubmitting}
+        disabled={isRateLimited}
         fullWidth
         className="text-[15px] leading-6"
       >

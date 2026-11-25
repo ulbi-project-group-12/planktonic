@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { WorkspaceAccess } from './workspace-access';
 import { WorkspaceLayout } from './workspace-layout';
 
 const notFoundMock = vi.hoisted(() =>
@@ -16,20 +17,14 @@ async function render(workspaceSlug: string) {
 }
 
 describe('WorkspaceLayout', () => {
-  it('renders children for a valid slug', async () => {
-    await expect(render('my-team')).resolves.toBe(children);
+  it('passes a valid slug and children to the access check', async () => {
+    await expect(render('my-team')).resolves.toEqual(
+      <WorkspaceAccess slug="my-team">{children}</WorkspaceAccess>,
+    );
     expect(notFoundMock).not.toHaveBeenCalled();
   });
 
   it.each(['create', 'My-Team', 'team_1', '-team'])('calls notFound for %s', async (slug) => {
     await expect(render(slug)).rejects.toThrow('NEXT_NOT_FOUND');
-  });
-});
-
-describe('WorkspaceLayout format vs membership', () => {
-  // Format is only a shape check: a well-formed slug passes here, and the membership check
-  // (UL-144) is what turns an unknown workspace into a 404.
-  it('lets a well-formed unknown slug through to the membership check', async () => {
-    await expect(render('forgot-password222')).resolves.toBe(children);
   });
 });

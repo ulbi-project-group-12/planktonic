@@ -1,13 +1,19 @@
-import { RESERVED_WORKSPACE_SLUGS, WORKSPACE_SLUG_PATTERN } from '@app/contracts';
+import {
+  RESERVED_WORKSPACE_SLUGS,
+  WORKSPACE_NAME_MAX_LENGTH,
+  WORKSPACE_SLUG_PATTERN,
+} from '@app/contracts';
 import { z } from 'zod';
 
-/** Form values of the create-workspace step: slug rules come from the shared contract. */
+/** Form values of the create-workspace step: name length and slug rules come from the shared contract. */
 export const workspaceFormSchema = z.object({
   name: z
     .string()
     .trim()
     .min(1, { error: 'Введите название пространства' })
-    .max(80, { error: 'Название — не длиннее 80 символов' }),
+    .max(WORKSPACE_NAME_MAX_LENGTH, {
+      error: `Название — не длиннее ${String(WORKSPACE_NAME_MAX_LENGTH)} символов`,
+    }),
   slug: z
     .string()
     .regex(WORKSPACE_SLUG_PATTERN, {

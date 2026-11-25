@@ -81,7 +81,7 @@ describe('RegisterForm', () => {
     renderWithApi(<RegisterForm />);
 
     const password = screen.getByLabelText(/^Пароль/);
-    expect(password).toHaveAccessibleDescription('Не короче 12 символов');
+    expect(password).toHaveAccessibleDescription('Не короче 15 символов');
     const confirm = screen.getByLabelText(/Повторите пароль/);
     await user.type(password, PASSWORD);
     await user.type(confirm, PASSWORD);
@@ -119,10 +119,10 @@ describe('RegisterForm', () => {
 
     expect(await screen.findByText('Имя — от 2 до 15 символов')).toBeVisible();
     expect(screen.getByText('Введите корректный email')).toBeVisible();
-    expect(screen.getByText('Пароль — не короче 12 символов')).toBeVisible();
+    expect(screen.getByText('Пароль — не короче 15 символов')).toBeVisible();
     // The hint gives the real rule and steps aside for the error, which repeats it.
     expect(screen.getByLabelText(/^Пароль/)).toHaveAccessibleDescription(
-      'Пароль — не короче 12 символов',
+      'Пароль — не короче 15 символов',
     );
     expect(screen.getByText('Пароли не совпадают')).toBeVisible();
     expect(posts).toBe(0);

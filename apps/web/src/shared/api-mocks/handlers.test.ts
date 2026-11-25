@@ -2,6 +2,7 @@ import { MessageSeq, RegisterResponseSchema } from '@app/contracts';
 import { expect, it } from 'vitest';
 import { getAuthRegisterMockHandler409, getMessagesListResponseMock } from '.';
 import { ApiError, authRegister, messagesList } from '../api';
+import { createApiHandlers } from '.';
 import { server } from '../api-mocks-node';
 
 const registration = {
@@ -53,9 +54,7 @@ it('generates message sequence numbers the contract accepts', async () => {
   expect(page.messages.every((message) => MessageSeq.safeParse(message.seq).success)).toBe(true);
 });
 
-// Workspaces are mocked by hand until UL-143 adds the endpoints to the OpenAPI schema. The list
-// lives in memory for the whole test file (server.resetHandlers() does not empty it), so each
-// test below uses its own slug.
+// Workspace operations share an in-memory list, so each test uses its own slug.
 function postWorkspace(body: unknown): Promise<Response> {
   return fetch('http://api.example.invalid/api/workspaces', {
     method: 'POST',
@@ -72,6 +71,10 @@ it('creates a workspace and returns it in the list', async () => {
 
   const list = await fetch('http://api.example.invalid/api/workspaces');
   expect(await list.json()).toContainEqual(workspace);
+
+  const bySlug = await fetch('http://api.example.invalid/api/workspaces/team-one');
+  expect(bySlug.status).toBe(200);
+  expect(await bySlug.json()).toEqual(workspace);
 });
 
 it('answers 409 with a slug issue when the slug is taken', async () => {
@@ -93,6 +96,39 @@ it('answers 400 with field issues for a slug the contract rejects', async () => 
   }
 });
 
+it('keeps an invite usable across a fresh handler set (a new page load)', async () => {
+  await postWorkspace({ name: 'Invite Team', slug: 'invite-team' });
+  const created = await fetch('http://api.example.invalid/api/workspaces/invite-team/invites', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ role: 'MEMBER' }),
+  });
+  const { token } = (await created.json()) as { token: string };
+
+  // A full page load starts mocks from scratch; the invite must survive it.
+  server.resetHandlers(...createApiHandlers());
+  try {
+    const invite = await fetch(`http://api.example.invalid/api/invites/${token}`);
+    expect(invite.status).toBe(200);
+    expect(await invite.json()).toMatchObject({ workspaceName: 'Invite Team', role: 'MEMBER' });
+
+    const accept = await fetch(`http://api.example.invalid/api/invites/${token}/accept`, {
+      method: 'POST',
+    });
+    expect(accept.status).toBe(200);
+    const dead = await fetch(`http://api.example.invalid/api/invites/${token}`);
+    expect(dead.status).toBe(404);
+  } finally {
+    server.resetHandlers(...createApiHandlers());
+  }
+});
+
+it('returns a refreshed access token', async () => {
+  const response = await fetch('http://api.example.invalid/api/auth/refresh', { method: 'POST' });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ accessToken: 'msw-refreshed-token' });
+});
+
 it('returns the current user', async () => {
   const response = await fetch('http://api.example.invalid/api/auth/me');
   expect(response.status).toBe(200);
@@ -104,16 +140,69 @@ it('returns the current user', async () => {
   });
 });
 
-it('filters workspaces by name or slug', async () => {
-  await postWorkspace({ name: 'Alpha Team', slug: 'alpha-team' });
-  await postWorkspace({ name: 'Beta Crew', slug: 'beta-crew' });
+// Email verification is mocked by hand until UL-158 adds the endpoints to the OpenAPI schema.
+// Token state lives in memory for the whole test file (like the workspace list), so each test
+// below relies on its own token or its own resend session key.
+function postVerifyEmail(body: unknown): Promise<Response> {
+  return fetch('http://api.example.invalid/api/auth/verify-email', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
 
-  const byName = await fetch('http://api.example.invalid/api/workspaces?q=alpha');
-  expect(await byName.json()).toEqual([expect.objectContaining({ name: 'Alpha Team' })]);
+function postResend(accessToken: string): Promise<Response> {
+  return fetch('http://api.example.invalid/api/auth/verify-email/resend', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+}
 
-  const bySlug = await fetch('http://api.example.invalid/api/workspaces?q=crew');
-  expect(await bySlug.json()).toEqual([expect.objectContaining({ name: 'Beta Crew' })]);
+it('confirms a fresh token once and reads it as used on the second open', async () => {
+  const first = await postVerifyEmail({ token: 'valid' });
+  expect(first.status).toBe(200);
+  expect(await first.json()).toEqual({ status: 'confirmed' });
 
-  const empty = await fetch('http://api.example.invalid/api/workspaces?q=unknown');
-  expect(await empty.json()).toEqual([]);
+  const second = await postVerifyEmail({ token: 'valid' });
+  expect(second.status).toBe(409);
+});
+
+it('answers 409 for a token that was already used', async () => {
+  const response = await postVerifyEmail({ token: 'used' });
+  expect(response.status).toBe(409);
+});
+
+it('answers 410 for an expired or unknown link', async () => {
+  for (const token of ['expired', 'no-such-token']) {
+    const response = await postVerifyEmail({ token });
+    expect(response.status).toBe(410);
+  }
+});
+
+it('answers 400 with a token issue when the token is missing', async () => {
+  const response = await postVerifyEmail({});
+  expect(response.status).toBe(400);
+  expect(await response.json()).toMatchObject({ statusCode: 400, issues: [{ path: 'token' }] });
+});
+
+it('resends the letter and reports the wait before the next one', async () => {
+  const response = await postResend('session-one');
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ resendAfterSec: 60 });
+});
+
+it('limits the resend frequency per session and says how long to wait', async () => {
+  await postResend('session-two');
+  const limited = await postResend('session-two');
+
+  expect(limited.status).toBe(429);
+  const body: unknown = await limited.json();
+  expect(body).toMatchObject({ statusCode: 429 });
+  expect((body as { retryAfterSec: number }).retryAfterSec).toBeGreaterThan(0);
+  expect((body as { retryAfterSec: number }).retryAfterSec).toBeLessThanOrEqual(60);
+});
+
+it('does not share the resend limit between sessions', async () => {
+  const response = await postResend('session-three');
+  expect(response.status).toBe(200);
 });

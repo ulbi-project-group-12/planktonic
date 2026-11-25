@@ -1,23 +1,12 @@
-import { Progress } from '@/shared/ui/progress';
-import { Typography } from '@/shared/ui/typography';
 import { CreateWorkspaceForm } from './create-workspace-form';
 
 /**
- * Create-workspace screen, step 1 of 2 (mockup screen.ws.create1): name and address.
- * Step 2 (inviting members) is UL-220's job; after submit the form goes to the workspace page.
+ * Create-workspace wizard (mockup screen.ws.create1 → screen.ws.create2):
+ * step 1 — name and address, step 2 — invite members by link (UL-218, UL-220).
  */
 export function WorkspaceCreatePage() {
   return (
     <main className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-md flex-col justify-center gap-8 p-8">
-      <div className="flex flex-col gap-3">
-        <Typography size="caption" color="text-secondary">
-          Шаг 1 из 2 — название и адрес
-        </Typography>
-        <Progress value={50} aria-label="Шаг 1 из 2" />
-        <Typography as="h1" size="h3">
-          Создайте пространство
-        </Typography>
-      </div>
       <CreateWorkspaceForm />
     </main>
   );

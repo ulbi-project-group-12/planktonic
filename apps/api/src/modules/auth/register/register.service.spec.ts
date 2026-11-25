@@ -1,8 +1,9 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { RegisterConflictResponseSchema, type RegisterRequest } from '@app/contracts';
 import { verify } from 'argon2';
 import { describe, expect, it, vi } from 'vitest';
+import { PasswordBreachService } from './password-breach.service.js';
 import { RegisterRepository } from './register.repository.js';
 import { RegisterService } from './register.service.js';
 
@@ -20,13 +21,38 @@ const user = {
 
 async function setup() {
   const create = vi.fn<RegisterRepository['create']>();
+  const isBlocked = vi.fn<PasswordBreachService['isBlocked']>().mockResolvedValue(false);
   const moduleRef = await Test.createTestingModule({
-    providers: [RegisterService, { provide: RegisterRepository, useValue: { create } }],
+    providers: [
+      RegisterService,
+      { provide: RegisterRepository, useValue: { create } },
+      { provide: PasswordBreachService, useValue: { isBlocked } },
+    ],
   }).compile();
-  return { service: moduleRef.get(RegisterService), create };
+  return { service: moduleRef.get(RegisterService), create, isBlocked };
 }
 
 describe('RegisterService.register', () => {
+  it('rejects a blocked password on its field before creating the user', async () => {
+    const { service, create, isBlocked } = await setup();
+    isBlocked.mockResolvedValue(true);
+
+    const error: unknown = await service.register(request).catch((cause: unknown) => cause);
+    expect(error).toBeInstanceOf(BadRequestException);
+    if (!(error instanceof BadRequestException)) throw error;
+    expect(error.getResponse()).toMatchObject({
+      statusCode: 400,
+      issues: [
+        {
+          path: 'password',
+          message: 'Этот пароль слишком распространён или встречался в утечках. Выберите другой.',
+        },
+      ],
+    });
+    expect(isBlocked).toHaveBeenCalledWith(request.password);
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it('stores an Argon2id hash and returns only public user fields', async () => {
     const { service, create } = await setup();
     create.mockImplementation((_name, _email, passwordHash) =>

@@ -39,6 +39,7 @@ export const routes = {
   // Public
   home: () => '/',
   prototype: () => '/prototype',
+  /** Outside the shell, but behind the login: only a signed-in user accepts an invite. */
   invite: (token: string) => `/invite/${encodeURIComponent(token)}`,
   /** Without a token: the "confirm your email" screen. With a token: the link page. */
   verifyEmail: (token?: string) => withQuery('/verify-email', { token }),
