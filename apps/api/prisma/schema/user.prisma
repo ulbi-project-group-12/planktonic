@@ -10,6 +10,7 @@ model User {
 
   messages             Message[]
   workspaceMemberships WorkspaceMember[]
+  createdInvites       Invite[]
 
   @@map("users")
 }

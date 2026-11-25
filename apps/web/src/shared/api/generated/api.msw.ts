@@ -25,6 +25,19 @@ import type {
   HealthLive200,
   HealthReady200,
   HealthReady503,
+  InviteAccept200,
+  InviteAccept401,
+  InviteAccept403,
+  InviteAccept410,
+  InviteCreate201,
+  InviteCreate400,
+  InviteCreate401,
+  InviteCreate403,
+  InviteCreate404,
+  InviteCreateBody,
+  InviteGet200,
+  InviteGet401,
+  InviteGet404,
   MessagesCreate201,
   MessagesCreate400,
   MessagesCreate404,
@@ -543,6 +556,7 @@ export const getWorkspaceGetBySlugResponseMock = (
   id: faker.string.uuid(),
   name: faker.string.alpha({ length: { min: 10, max: 20 } }),
   slug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  role: faker.helpers.arrayElement(['MEMBER', 'ADMIN', 'OWNER'] as const),
   ...overrideResponse,
 });
 
@@ -552,6 +566,7 @@ export const getWorkspaceGetBySlugResponseMock200 = (
   id: faker.string.uuid(),
   name: faker.string.alpha({ length: { min: 10, max: 20 } }),
   slug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  role: faker.helpers.arrayElement(['MEMBER', 'ADMIN', 'OWNER'] as const),
   ...overrideResponse,
 });
 
@@ -580,6 +595,137 @@ export const getWorkspaceGetBySlugResponseMock401 = (
 export const getWorkspaceGetBySlugResponseMock404 = (
   overrideResponse: Partial<Extract<WorkspaceGetBySlug404, object>> = {},
 ): WorkspaceGetBySlug404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getInviteCreateResponseMock = (
+  overrideResponse: Partial<Extract<InviteCreate201, object>> = {},
+): InviteCreate201 => ({
+  role: faker.helpers.arrayElement(['MEMBER', 'ADMIN'] as const),
+  token: faker.string.alpha({ length: { min: 1, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getInviteCreateResponseMock201 = (
+  overrideResponse: Partial<Extract<InviteCreate201, object>> = {},
+): InviteCreate201 => ({
+  role: faker.helpers.arrayElement(['MEMBER', 'ADMIN'] as const),
+  token: faker.string.alpha({ length: { min: 1, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getInviteCreateResponseMock400 = (
+  overrideResponse: Partial<Extract<InviteCreate400, object>> = {},
+): InviteCreate400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getInviteCreateResponseMock401 = (
+  overrideResponse: Partial<Extract<InviteCreate401, object>> = {},
+): InviteCreate401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getInviteCreateResponseMock403 = (
+  overrideResponse: Partial<Extract<InviteCreate403, object>> = {},
+): InviteCreate403 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getInviteCreateResponseMock404 = (
+  overrideResponse: Partial<Extract<InviteCreate404, object>> = {},
+): InviteCreate404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getInviteGetResponseMock = (
+  overrideResponse: Partial<Extract<InviteGet200, object>> = {},
+): InviteGet200 => ({
+  workspaceName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  workspaceSlug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  role: faker.helpers.arrayElement(['MEMBER', 'ADMIN'] as const),
+  ...overrideResponse,
+});
+
+export const getInviteGetResponseMock200 = (
+  overrideResponse: Partial<Extract<InviteGet200, object>> = {},
+): InviteGet200 => ({
+  workspaceName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  workspaceSlug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  role: faker.helpers.arrayElement(['MEMBER', 'ADMIN'] as const),
+  ...overrideResponse,
+});
+
+export const getInviteGetResponseMock401 = (
+  overrideResponse: Partial<Extract<InviteGet401, object>> = {},
+): InviteGet401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getInviteGetResponseMock404 = (
+  overrideResponse: Partial<Extract<InviteGet404, object>> = {},
+): InviteGet404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getInviteAcceptResponseMock = (
+  overrideResponse: Partial<Extract<InviteAccept200, object>> = {},
+): InviteAccept200 => ({
+  workspaceSlug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  ...overrideResponse,
+});
+
+export const getInviteAcceptResponseMock200 = (
+  overrideResponse: Partial<Extract<InviteAccept200, object>> = {},
+): InviteAccept200 => ({
+  workspaceSlug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  ...overrideResponse,
+});
+
+export const getInviteAcceptResponseMock401 = (
+  overrideResponse: Partial<Extract<InviteAccept401, object>> = {},
+): InviteAccept401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getInviteAcceptResponseMock403 = (
+  overrideResponse: Partial<Extract<InviteAccept403, object>> = {},
+): InviteAccept403 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getInviteAcceptResponseMock410 = (
+  overrideResponse: Partial<Extract<InviteAccept410, object>> = {},
+): InviteAccept410 => ({
   statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
   message: faker.string.alpha({ length: { min: 10, max: 20 } }),
   error: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -1558,6 +1704,366 @@ export const getWorkspaceGetBySlugMockHandler404 = (
     options,
   );
 };
+
+export const getInviteCreateMockHandler = (
+  overrideResponse?:
+    | InviteCreate201
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, InviteCreateBody>>[0],
+      ) => Promise<InviteCreate201> | InviteCreate201),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, InviteCreateBody>(
+    '*/api/workspaces/:slug/invites',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, InviteCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteCreateResponseMock(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteCreateMockHandler201 = (
+  overrideResponse?:
+    | InviteCreate201
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, InviteCreateBody>>[0],
+      ) => Promise<InviteCreate201> | InviteCreate201),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, InviteCreateBody>(
+    '*/api/workspaces/:slug/invites',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, InviteCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteCreateResponseMock201(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteCreateMockHandler400 = (
+  overrideResponse?:
+    | InviteCreate400
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, InviteCreateBody>>[0],
+      ) => Promise<InviteCreate400> | InviteCreate400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, InviteCreateBody>(
+    '*/api/workspaces/:slug/invites',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, InviteCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteCreateResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteCreateMockHandler401 = (
+  overrideResponse?:
+    | InviteCreate401
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, InviteCreateBody>>[0],
+      ) => Promise<InviteCreate401> | InviteCreate401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, InviteCreateBody>(
+    '*/api/workspaces/:slug/invites',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, InviteCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteCreateResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteCreateMockHandler403 = (
+  overrideResponse?:
+    | InviteCreate403
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, InviteCreateBody>>[0],
+      ) => Promise<InviteCreate403> | InviteCreate403),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, InviteCreateBody>(
+    '*/api/workspaces/:slug/invites',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, InviteCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteCreateResponseMock403(),
+        { status: 403 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteCreateMockHandler404 = (
+  overrideResponse?:
+    | InviteCreate404
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, InviteCreateBody>>[0],
+      ) => Promise<InviteCreate404> | InviteCreate404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, InviteCreateBody>(
+    '*/api/workspaces/:slug/invites',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, InviteCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteCreateResponseMock404(),
+        { status: 404 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteGetMockHandler = (
+  overrideResponse?:
+    | InviteGet200
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteGet200> | InviteGet200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ token: string }>(
+    '*/api/invites/:token',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteGetResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteGetMockHandler200 = (
+  overrideResponse?:
+    | InviteGet200
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteGet200> | InviteGet200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ token: string }>(
+    '*/api/invites/:token',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteGetResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteGetMockHandler401 = (
+  overrideResponse?:
+    | InviteGet401
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteGet401> | InviteGet401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ token: string }>(
+    '*/api/invites/:token',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteGetResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteGetMockHandler404 = (
+  overrideResponse?:
+    | InviteGet404
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteGet404> | InviteGet404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ token: string }>(
+    '*/api/invites/:token',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteGetResponseMock404(),
+        { status: 404 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteAcceptMockHandler = (
+  overrideResponse?:
+    | InviteAccept200
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteAccept200> | InviteAccept200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ token: string }>(
+    '*/api/invites/:token/accept',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteAcceptResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteAcceptMockHandler200 = (
+  overrideResponse?:
+    | InviteAccept200
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteAccept200> | InviteAccept200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ token: string }>(
+    '*/api/invites/:token/accept',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteAcceptResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteAcceptMockHandler401 = (
+  overrideResponse?:
+    | InviteAccept401
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteAccept401> | InviteAccept401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ token: string }>(
+    '*/api/invites/:token/accept',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteAcceptResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteAcceptMockHandler403 = (
+  overrideResponse?:
+    | InviteAccept403
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteAccept403> | InviteAccept403),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ token: string }>(
+    '*/api/invites/:token/accept',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteAcceptResponseMock403(),
+        { status: 403 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteAcceptMockHandler410 = (
+  overrideResponse?:
+    | InviteAccept410
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteAccept410> | InviteAccept410),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ token: string }>(
+    '*/api/invites/:token/accept',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteAcceptResponseMock410(),
+        { status: 410 },
+      );
+    },
+    options,
+  );
+};
 export const getApiMock = () => [
   getAuthRegisterMockHandler(),
   getAuthLoginMockHandler(),
@@ -1569,4 +2075,7 @@ export const getApiMock = () => [
   getWorkspaceListMockHandler(),
   getWorkspaceCreateMockHandler(),
   getWorkspaceGetBySlugMockHandler(),
+  getInviteCreateMockHandler(),
+  getInviteGetMockHandler(),
+  getInviteAcceptMockHandler(),
 ];
