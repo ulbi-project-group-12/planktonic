@@ -54,3 +54,55 @@ it('keeps the connection through idle time and reconnects after a stalled operat
   expect(client.connect).toHaveBeenCalledTimes(2);
   connection.onApplicationShutdown();
 });
+
+it('times out a shared handshake and lets the next login connect with a new client', async () => {
+  vi.useFakeTimers();
+  let finishHandshake!: () => void;
+  const handshake = new Promise<void>((resolve) => {
+    finishHandshake = resolve;
+  });
+  const stalledClient = {
+    isOpen: true,
+    isReady: false,
+    on: vi.fn(),
+    connect: vi.fn(() => handshake),
+    destroy: vi.fn(),
+  };
+  const readyClient = {
+    isOpen: true,
+    isReady: false,
+    on: vi.fn(),
+    connect: vi.fn(() => {
+      readyClient.isReady = true;
+      return Promise.resolve();
+    }),
+    destroy: vi.fn(),
+  };
+  createClient.mockReturnValueOnce(stalledClient).mockReturnValueOnce(readyClient);
+  const config = new ConfigService<Env, true>({ REDIS_URL: 'redis://localhost:6379' });
+  const connection = new LoginAttemptsConnection(config);
+  const operation = vi.fn().mockResolvedValue('ok');
+
+  const first = expect(connection.run(operation)).rejects.toBeInstanceOf(
+    ServiceUnavailableException,
+  );
+  await vi.advanceTimersByTimeAsync(500);
+  const second = expect(connection.run(operation)).rejects.toBeInstanceOf(
+    ServiceUnavailableException,
+  );
+  expect(stalledClient.connect).toHaveBeenCalledOnce();
+
+  await vi.advanceTimersByTimeAsync(1_500);
+  await first;
+  expect(stalledClient.destroy).toHaveBeenCalledOnce();
+  expect(operation).not.toHaveBeenCalled();
+
+  await expect(connection.run(operation)).resolves.toBe('ok');
+  expect(readyClient.connect).toHaveBeenCalledOnce();
+
+  finishHandshake();
+  await vi.advanceTimersByTimeAsync(500);
+  await second;
+  expect(operation).toHaveBeenCalledOnce();
+  expect(readyClient.destroy).not.toHaveBeenCalled();
+});

@@ -23,28 +23,38 @@ export class LoginAttemptsConnection implements OnApplicationShutdown {
     let timeout: NodeJS.Timeout | undefined;
     try {
       const client = (this.client ??= this.createClient());
-      if (!client.isReady) {
-        this.connecting ??= client.connect().finally(() => {
-          this.connecting = undefined;
-        });
-        await this.connecting;
-      }
-      // The Redis client's command timeout only covers its queue before sending.
-      // Bound the reply as well, and close the socket only if an operation stalls.
-      return await Promise.race([
-        operation(new LoginAttemptsStore(client)),
-        new Promise<never>((_, reject) => {
-          timeout = setTimeout(() => {
+      // Bound both the Redis handshake and the command reply with one deadline.
+      const deadline = new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => {
+          reject(new Error('Login rate-limit Redis operation timed out'));
+          if (this.client === client) {
+            this.client = undefined;
+            this.connecting = undefined;
             if (client.isOpen) client.destroy();
-            reject(new Error('Login rate-limit Redis operation timed out'));
-          }, REDIS_OPERATION_TIMEOUT_MS);
-        }),
-      ]);
+          }
+        }, REDIS_OPERATION_TIMEOUT_MS);
+      });
+      return await Promise.race([deadline, this.runOnClient(client, operation)]);
     } catch {
       throw new ServiceUnavailableException('Login is unavailable');
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private async runOnClient<T>(
+    client: RedisClientType,
+    operation: (store: LoginAttemptsStore) => Promise<T>,
+  ): Promise<T> {
+    if (!client.isReady) {
+      this.connecting ??= client.connect().finally(() => {
+        if (this.client === client) this.connecting = undefined;
+      });
+      await this.connecting;
+    }
+    // A handshake may settle after its deadline, by which point a new client can be in use.
+    if (this.client !== client) throw new Error('Login rate-limit Redis client was replaced');
+    return operation(new LoginAttemptsStore(client));
   }
 
   onApplicationShutdown(): void {
