@@ -15,9 +15,9 @@ export class WorkspaceRepository {
     });
   }
 
-  findBySlugForUser(slug: string, userId: string) {
+  findBySlug(slug: string) {
     return this.prisma.workspace.findUnique({
-      where: { slug, members: { some: { userId } } },
+      where: { slug },
       select: { id: true, name: true, slug: true },
     });
   }

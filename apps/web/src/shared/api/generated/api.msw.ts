@@ -35,6 +35,7 @@ import type {
   WorkspaceCreate201,
   WorkspaceCreate400,
   WorkspaceCreate401,
+  WorkspaceCreate403,
   WorkspaceCreate409,
   WorkspaceCreateBody,
   WorkspaceGetBySlug200,
@@ -499,6 +500,15 @@ export const getWorkspaceCreateResponseMock401 = (
 ): WorkspaceCreate401 => ({
   statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
   message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceCreateResponseMock403 = (
+  overrideResponse: Partial<Extract<WorkspaceCreate403, object>> = {},
+): WorkspaceCreate403 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
   ...overrideResponse,
 });
 
@@ -1341,6 +1351,30 @@ export const getWorkspaceCreateMockHandler401 = (
             : overrideResponse
           : getWorkspaceCreateResponseMock401(),
         { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceCreateMockHandler403 = (
+  overrideResponse?:
+    | WorkspaceCreate403
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, WorkspaceCreateBody>>[0],
+      ) => Promise<WorkspaceCreate403> | WorkspaceCreate403),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, WorkspaceCreateBody>(
+    '*/api/workspaces',
+    async (info: Parameters<HttpResponseResolver<PathParams, WorkspaceCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceCreateResponseMock403(),
+        { status: 403 },
       );
     },
     options,

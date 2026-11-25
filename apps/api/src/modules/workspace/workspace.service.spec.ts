@@ -1,6 +1,7 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { CreateWorkspaceRequestSchema, WorkspaceSlugConflictResponseSchema } from '@app/contracts';
 import { describe, expect, it, vi } from 'vitest';
+import type { AccessService } from '../../core/access/access.service.js';
 import type { WorkspaceRepository } from './workspace.repository.js';
 import { WorkspaceService } from './workspace.service.js';
 
@@ -10,11 +11,13 @@ const userId = 'user-id';
 function setup() {
   const createWithOwner = vi.fn<WorkspaceRepository['createWithOwner']>();
   const findAllForUser = vi.fn<WorkspaceRepository['findAllForUser']>();
-  const service = new WorkspaceService({
-    createWithOwner,
-    findAllForUser,
-  } as unknown as WorkspaceRepository);
-  return { service, createWithOwner, findAllForUser };
+  const findBySlug = vi.fn<WorkspaceRepository['findBySlug']>();
+  const can = vi.fn<AccessService['can']>();
+  const service = new WorkspaceService(
+    { createWithOwner, findAllForUser, findBySlug } as unknown as WorkspaceRepository,
+    { can } as unknown as AccessService,
+  );
+  return { service, createWithOwner, findAllForUser, findBySlug, can };
 }
 
 describe('WorkspaceService.listForUser', () => {
@@ -33,6 +36,35 @@ describe('WorkspaceService.listForUser', () => {
 
     await expect(service.listForUser(userId)).resolves.toEqual([]);
   });
+});
+
+describe('WorkspaceService.getBySlugForUser', () => {
+  const workspace = { id: '019a8f00-0000-7000-8000-000000000004', ...input };
+
+  it('resolves the slug and delegates access for the workspace ID', async () => {
+    const { service, findBySlug, can } = setup();
+    findBySlug.mockResolvedValue(workspace);
+    can.mockResolvedValue(true);
+
+    await expect(service.getBySlugForUser(input.slug, userId)).resolves.toEqual(workspace);
+    expect(findBySlug).toHaveBeenCalledExactlyOnceWith(input.slug);
+    expect(can).toHaveBeenCalledExactlyOnceWith({ id: userId }, 'workspace.read', {
+      workspaceId: workspace.id,
+    });
+  });
+
+  it.each([workspace, null])(
+    'returns the same 404 for a hidden or absent workspace',
+    async (found) => {
+      const { service, findBySlug, can } = setup();
+      findBySlug.mockResolvedValue(found);
+      can.mockResolvedValue(false);
+
+      await expect(service.getBySlugForUser(input.slug, userId)).rejects.toThrow(
+        new NotFoundException('Workspace not found'),
+      );
+    },
+  );
 });
 
 describe('WorkspaceService.create', () => {
