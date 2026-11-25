@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { routes } from '@/shared/config';
-import { Alert, Button, Field, Input, Select, Spinner } from '@/shared/ui';
-import { useCreateInvite } from '../api/create-invite';
+import { Alert, Button, Field, Input, Select } from '@/shared/ui';
+import { type CreatedInvite, useCreateInvite } from '../api/create-invite';
 import { invitableRoles, WORKSPACE_ROLE_LABEL, type WorkspaceRole } from '../model/roles';
 
 const COPY_RESET_MS = 2000;
@@ -28,19 +28,51 @@ export function InviteLinkPanel({
 }: InviteLinkPanelProps) {
   const roles = invitableRoles(inviterRole);
   const [role, setRole] = useState<WorkspaceRole>('MEMBER');
+  const [invite, setInvite] = useState<CreatedInvite>();
+  const [state, setState] = useState<'pending' | 'ready' | 'error'>('pending');
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
-  const { mutate: createInvite, data: invite, isPending, isError } = useCreateInvite();
+  const { mutateAsync: createInvite } = useCreateInvite();
+
+  // Requests are out-of-order racy: keep only the answer of the latest one — an earlier
+  // resolve must not overwrite a newer role's link, and a new request drops the old link
+  // before it starts, so an error never leaves a stale link behind.
+  const requestRef = useRef(0);
+  const fetchInvite = useCallback(
+    (inviteRole: WorkspaceRole) => {
+      const request = ++requestRef.current;
+      createInvite({ workspaceSlug, role: inviteRole }).then(
+        (created) => {
+          if (request !== requestRef.current) return;
+          setInvite(created);
+          setState('ready');
+        },
+        () => {
+          if (request === requestRef.current) setState('error');
+        },
+      );
+    },
+    [workspaceSlug, createInvite],
+  );
+
+  // The mount state is already pending/empty; the sync resets live in requestInvite, which
+  // only event handlers (role change, retry) call — effects may not set state synchronously.
+  function requestInvite(inviteRole: WorkspaceRole) {
+    setState('pending');
+    setInvite(undefined);
+    fetchInvite(inviteRole);
+  }
 
   useEffect(() => {
-    createInvite({ workspaceSlug, role: 'MEMBER' });
-  }, [workspaceSlug, createInvite]);
+    fetchInvite('MEMBER');
+  }, [fetchInvite]);
 
   function handleRoleChange(values: string[]) {
-    const next = values[0] as WorkspaceRole;
+    const next = values[0] as WorkspaceRole | undefined;
+    if (next === undefined) return;
     setRole(next);
     setCopied(false);
-    createInvite({ workspaceSlug, role: next });
+    requestInvite(next);
   }
 
   // invite only ever exists after a client-side mutation, so the window read never runs
@@ -83,17 +115,28 @@ export function InviteLinkPanel({
           options={roles.map((r) => ({ value: r, label: WORKSPACE_ROLE_LABEL[r] }))}
           value={[role]}
           onValueChange={handleRoleChange}
-          disabled={isPending}
+          disabled={state === 'pending' || roles.length <= 1}
         />
       </Field>
-      {isError && <Alert palette="danger" title="Не удалось создать ссылку. Попробуйте ещё раз." />}
+      {state === 'error' && (
+        <Alert
+          palette="danger"
+          title="Не удалось создать ссылку."
+          action={{
+            label: 'Попробовать ещё раз',
+            onClick: () => {
+              requestInvite(role);
+            },
+          }}
+        />
+      )}
       {copyError && <Alert palette="danger" title={copyError} />}
       <Field label="Invite-ссылка" hint={linkHint}>
         <div className="flex items-center gap-2">
           <Input
             readOnly
             value={link ?? ''}
-            placeholder={isPending ? 'Создаём ссылку…' : 'Ссылка не создана'}
+            placeholder={state === 'pending' ? 'Создаём ссылку…' : 'Ссылка не создана'}
             aria-label="Invite-ссылка"
             onFocus={(event) => {
               event.currentTarget.select();
@@ -110,11 +153,6 @@ export function InviteLinkPanel({
           </Button>
         </div>
       </Field>
-      {isPending && (
-        <p role="status" className="flex items-center gap-2">
-          <Spinner size="s" />
-        </p>
-      )}
     </div>
   );
 }

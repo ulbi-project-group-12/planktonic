@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/shared/api';
 import type { WorkspaceRole } from '@/widgets/invite-member';
 
@@ -39,5 +39,13 @@ export function useInvite(token: string) {
 }
 
 export function useAcceptInvite(token: string) {
-  return useMutation({ mutationFn: () => acceptInvite(token) });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => acceptInvite(token),
+    onSuccess: () => {
+      // The token is consumed now: drop the cached "valid" invite so the browser's
+      // Back button re-checks the link and lands on the dead-link screen.
+      queryClient.removeQueries({ queryKey: ['invite', token] });
+    },
+  });
 }

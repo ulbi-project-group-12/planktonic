@@ -1,6 +1,5 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { server } from '@/shared/api-mocks-node';
@@ -57,15 +56,15 @@ describe('InviteMemberDialog', () => {
   });
 
   it('offers the admin only the member role (ADR-0002 §2)', async () => {
-    // Radix keeps pointer-events off on the stretched trigger in jsdom — disable the check.
-    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+    const user = userEvent.setup();
     renderWithApi(
       <InviteMemberDialog isShown onClose={() => {}} workspaceSlug="demo-hq" inviterRole="ADMIN" />,
     );
 
-    // The trigger's accessible name combines the field label and the value — match loosely.
-    await user.click(screen.getByRole('button', { name: /участник/i }));
-    expect(await screen.findByRole('option', { name: 'Участник' })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: 'Админ' })).not.toBeInTheDocument();
+    // A single possible role makes the select a fixed readout — no listbox to open.
+    const trigger = screen.getByRole('button', { name: /участник/i });
+    expect(trigger).toBeDisabled();
+    await user.click(trigger);
+    expect(screen.queryByRole('option')).not.toBeInTheDocument();
   });
 });
