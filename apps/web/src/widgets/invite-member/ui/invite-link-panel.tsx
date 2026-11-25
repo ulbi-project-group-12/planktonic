@@ -12,6 +12,8 @@ interface InviteLinkPanelProps {
   workspaceSlug: string;
   /** Role of the inviting user — it bounds the select (ADR-0002 §2). */
   inviterRole: WorkspaceRole;
+  /** Hint under the link field; the wizard adds a skip note to the default. */
+  linkHint?: string;
 }
 
 /**
@@ -19,7 +21,11 @@ interface InviteLinkPanelProps {
  * link — the dialog remounts it on every open, the create-workspace wizard on entering
  * step 2, so no reset bookkeeping is needed here.
  */
-export function InviteLinkPanel({ workspaceSlug, inviterRole }: InviteLinkPanelProps) {
+export function InviteLinkPanel({
+  workspaceSlug,
+  inviterRole,
+  linkHint = 'Ссылку можно использовать только один раз',
+}: InviteLinkPanelProps) {
   const roles = invitableRoles(inviterRole);
   const [role, setRole] = useState<WorkspaceRole>('MEMBER');
   const [copied, setCopied] = useState(false);
@@ -82,7 +88,7 @@ export function InviteLinkPanel({ workspaceSlug, inviterRole }: InviteLinkPanelP
       </Field>
       {isError && <Alert palette="danger" title="Не удалось создать ссылку. Попробуйте ещё раз." />}
       {copyError && <Alert palette="danger" title={copyError} />}
-      <Field label="Invite-ссылка" hint="Ссылку можно использовать только один раз">
+      <Field label="Invite-ссылка" hint={linkHint}>
         <div className="flex items-center gap-2">
           <Input
             readOnly

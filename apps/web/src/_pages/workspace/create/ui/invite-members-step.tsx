@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Typography } from '@/shared/ui';
+import { Button } from '@/shared/ui';
 import { InviteLinkPanel } from '@/widgets/invite-member';
 
 interface InviteMembersStepProps {
@@ -23,10 +23,11 @@ export function InviteMembersStep({
 }: InviteMembersStepProps) {
   return (
     <div className="flex w-full flex-col gap-5">
-      <InviteLinkPanel workspaceSlug={workspaceSlug} inviterRole="OWNER" />
-      <Typography as="p" size="body-s" color="text-secondary">
-        Можно пропустить — пригласить людей получится и позже.
-      </Typography>
+      <InviteLinkPanel
+        workspaceSlug={workspaceSlug}
+        inviterRole="OWNER"
+        linkHint="Ссылку можно использовать только один раз. Можно пропустить — пригласить людей получится и позже."
+      />
       <div className="flex justify-between gap-3 pt-1">
         <Button type="button" variant="secondary" onClick={onBack}>
           Назад
