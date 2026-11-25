@@ -8,11 +8,18 @@ import { getApiIssues, isApiError } from '@/shared/api';
 import { Alert, Avatar, Button, Field, Input, Select } from '@/shared/ui';
 import { toast } from '@/shared/ui/toast';
 import { useUpdateProfile, type ProfileMe } from '../api/profile';
-import { TIMEZONE_OPTIONS } from '../model/timezones';
+import { TIMEZONE_OPTIONS, getBrowserTimeZone } from '../model/timezones';
 
 // Client-side validation only — the PATCH contract lands in packages/contracts with UL-155.
+// The name limits repeat RegisterRequestSchema (2–15 after trimming): a name the registration
+// form refuses must not be reachable through the profile.
 const ProfileFormSchema = z.object({
-  name: z.string().trim().min(1, 'Введите имя').max(80, 'Имя — не длиннее 80 символов'),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Введите имя')
+    .min(2, 'Имя — от 2 до 15 символов')
+    .max(15, 'Имя — не длиннее 15 символов'),
   tz: z.string().min(1, 'Выберите часовой пояс'),
 });
 type ProfileFormValues = z.infer<typeof ProfileFormSchema>;
@@ -32,9 +39,12 @@ export function ProfileForm({ initial }: { initial: ProfileMe }) {
     formState: { errors, isDirty },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(ProfileFormSchema),
-    // Mounted only once the profile is loaded (the page gates on isPending), so the
-    // defaults are real server values, not placeholders.
-    defaultValues: { name: initial.name, tz: initial.tz },
+    // Mounted only once the profile is loaded (the page gates on isPending), so these are real
+    // server values. `values` (not `defaultValues`) keeps the form in step with the me cache: a
+    // refetch that brings a name changed elsewhere updates the untouched fields, so a later save
+    // does not send the stale one back. Fields the user has edited keep their input.
+    values: { name: initial.name, tz: initial.tz ?? getBrowserTimeZone() },
+    resetOptions: { keepDirtyValues: true },
   });
 
   const onSubmit = handleSubmit(async (values) => {

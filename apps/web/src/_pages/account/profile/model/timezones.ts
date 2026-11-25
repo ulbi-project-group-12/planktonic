@@ -1,7 +1,7 @@
 export interface TimeZoneOption {
-  /** IANA-имя, уходит в PATCH. */
+  /** IANA name, sent in the PATCH. */
   value: string;
-  /** То, что видит и ищет пользователь: 'Europe/Berlin (UTC+1)'. */
+  /** What the user sees and searches: 'Europe/Berlin (UTC+1)'. */
   label: string;
 }
 
@@ -10,10 +10,9 @@ export interface TimeZoneOption {
 export const TIMEZONES: string[] = [...new Set(['UTC', ...Intl.supportedValuesOf('timeZone')])];
 
 /**
-    * The UTC offset of a zone on a given date ('GMT+3', 'GMT-5', 'GMT'). Daylight saving 
-   makes it
-    * a property of the moment: Berlin is UTC+1 in winter and UTC+2 in summer.
-    */
+ * The UTC offset of a zone on a given date ('GMT+3', 'GMT-5', 'GMT'). Daylight saving makes it
+ * a property of the moment: Berlin is UTC+1 in winter and UTC+2 in summer.
+ */
 function utcOffsetLabel(timeZone: string, date: Date): string {
   const part = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'shortOffset' })
     .formatToParts(date)
@@ -29,7 +28,7 @@ export const TIMEZONE_OPTIONS: TimeZoneOption[] = TIMEZONES.map((tz) => ({
   label: `${tz} (${utcOffsetLabel(tz, now)})`,
 }));
 
-/** Fallback for the form default when the profile has no tz yet. */
+/** Fallback for the form when the profile has no tz yet (the real API before UL-155). */
 export function getBrowserTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }

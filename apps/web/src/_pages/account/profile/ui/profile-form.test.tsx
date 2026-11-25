@@ -16,6 +16,7 @@ const ada: ProfileMe = {
 };
 
 const nameInput = () => screen.getByLabelText('Имя');
+const zoneTrigger = () => screen.getByRole('button', { name: 'Часовой пояс' });
 const submitButton = () => screen.getByRole('button', { name: 'Сохранить' });
 
 describe('ProfileForm', () => {
@@ -39,6 +40,83 @@ describe('ProfileForm', () => {
     });
     // The header reads useAuthMe — the same key — so it shows the new name without a reload.
     expect(queryClient.getQueryData(getAuthMeQueryKey())).toMatchObject({ name: 'Vlad' });
+    // The saved answer is the new baseline: nothing left to save.
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+    expect(nameInput()).toHaveValue('Vlad');
+  });
+
+  it('picks a zone from the searchable IANA list and sends it', async () => {
+    let patched: unknown;
+    server.use(
+      http.patch('*/api/users/me', async ({ request }) => {
+        patched = await request.json();
+        return HttpResponse.json({ ...ada, tz: 'Asia/Tokyo' });
+      }),
+    );
+    renderWithApi(<ProfileForm initial={ada} />);
+    const user = userEvent.setup();
+
+    await user.click(zoneTrigger());
+    await user.type(screen.getByLabelText('Поиск по списку'), 'tokyo');
+    await user.click(screen.getByRole('option', { name: /^Asia\/Tokyo \(UTC\+9\)$/ }));
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(patched).toEqual({ name: 'Ada', tz: 'Asia/Tokyo' });
+    });
+  });
+
+  it('takes a refetched profile into untouched fields and keeps the edited ones', async () => {
+    const { rerender } = renderWithApi(<ProfileForm initial={ada} />);
+    const user = userEvent.setup();
+
+    // Nothing edited: the name changed elsewhere replaces the shown one, the form stays clean.
+    rerender(<ProfileForm initial={{ ...ada, name: 'Grace' }} />);
+    await waitFor(() => {
+      expect(nameInput()).toHaveValue('Grace');
+    });
+    expect(submitButton()).toBeDisabled();
+
+    // The name is being edited: a refetch brings a new zone but must not drop the input.
+    await user.clear(nameInput());
+    await user.type(nameInput(), 'Vlad');
+    rerender(<ProfileForm initial={{ ...ada, name: 'Grace', tz: 'Asia/Tokyo' }} />);
+    await waitFor(() => {
+      expect(zoneTrigger()).toHaveTextContent('Asia/Tokyo');
+    });
+    expect(nameInput()).toHaveValue('Vlad');
+    expect(submitButton()).toBeEnabled();
+  });
+
+  it('falls back to the browser zone when the profile has none', () => {
+    renderWithApi(<ProfileForm initial={{ id: ada.id, name: ada.name, email: ada.email }} />);
+
+    expect(zoneTrigger()).toHaveTextContent(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  });
+
+  it('holds the name to the registration limits without a request', async () => {
+    let patched: unknown;
+    server.use(
+      http.patch('*/api/users/me', async ({ request }) => {
+        patched = await request.json();
+        return HttpResponse.json(ada);
+      }),
+    );
+    renderWithApi(<ProfileForm initial={ada} />);
+    const user = userEvent.setup();
+
+    await user.clear(nameInput());
+    await user.type(nameInput(), 'A');
+    await user.click(submitButton());
+    expect(await screen.findByText('Имя — от 2 до 15 символов')).toBeInTheDocument();
+
+    await user.clear(nameInput());
+    await user.type(nameInput(), 'A'.repeat(16));
+    await user.click(submitButton());
+    expect(await screen.findByText('Имя — не длиннее 15 символов')).toBeInTheDocument();
+    expect(patched).toBeUndefined();
   });
 
   it('keeps submit disabled until the form is dirty', async () => {

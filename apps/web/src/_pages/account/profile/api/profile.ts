@@ -7,8 +7,8 @@ import { apiFetch, getAuthMeQueryKey, type AuthMe200 } from '@/shared/api';
  * to the generated useAuthMe (same story as sessions.ts in UL-223).
  */
 export interface ProfileMe extends AuthMe200 {
-  /** IANA zone, e.g. 'Europe/Berlin'. */
-  tz: string;
+  /** IANA zone, e.g. 'Europe/Berlin'. The real GET /api/auth/me does not return it before UL-155. */
+  tz?: string;
 }
 
 export interface UpdateMeBody {
