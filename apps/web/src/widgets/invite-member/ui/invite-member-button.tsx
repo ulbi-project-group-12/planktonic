@@ -19,7 +19,6 @@ export function InviteMemberButton({ workspaceSlug, inviterRole }: InviteMemberB
     <>
       <Button
         type="button"
-        size="s"
         onClick={() => {
           setOpen(true);
         }}
