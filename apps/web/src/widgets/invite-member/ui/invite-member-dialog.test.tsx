@@ -1,7 +1,7 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { server } from '@/shared/api-mocks-node';
 import { renderWithApi } from '@/shared/lib/testing';
 import { invitableRoles } from '../model/roles';
@@ -37,6 +37,10 @@ describe('invitableRoles', () => {
 });
 
 describe('InviteMemberDialog', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('creates a link on open and copies it to the clipboard', async () => {
     // userEvent.setup() installs its own clipboard stub — assert through readText().
     const user = userEvent.setup();
@@ -53,6 +57,47 @@ describe('InviteMemberDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Копировать' }));
     expect(await navigator.clipboard.readText()).toBe('http://localhost:3000/invite/tok42');
     expect(screen.getByRole('button', { name: 'Скопировано' })).toBeInTheDocument();
+  });
+
+  it('keeps «Скопировано» for a fresh link even when the old copy timer was still armed', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    server.use(
+      http.post('/api/workspaces/:slug/invites', async ({ request }) => {
+        const { role } = (await request.json()) as { role: string };
+        return HttpResponse.json({ token: `tok-${role}`, role }, { status: 201 });
+      }),
+    );
+    renderWithApi(
+      <InviteMemberDialog isShown onClose={() => {}} workspaceSlug="demo-hq" inviterRole="OWNER" />,
+    );
+    // Timer callbacks set state — advancing the clock outside act() would leave the
+    // rendered output stale. The sync callback makes act() flush synchronously.
+    const advance = (ms: number) => {
+      void act(() => vi.advanceTimersByTime(ms));
+    };
+
+    const linkInput = await screen.findByLabelText('Invite-ссылка');
+    await waitFor(() => {
+      expect(linkInput).toHaveValue('http://localhost:3000/invite/tok-MEMBER');
+    });
+    await user.click(screen.getByRole('button', { name: 'Копировать' }));
+    expect(screen.getByRole('button', { name: 'Скопировано' })).toBeInTheDocument();
+
+    // 1.5s into the 2s reset window the role changes and the new link is copied:
+    // the armed timer of the old link must not flip the button back early.
+    advance(1500);
+    await user.click(screen.getByRole('button', { name: /участник/i }));
+    await user.click(screen.getByRole('option', { name: 'Админ' }));
+    await waitFor(() => {
+      expect(linkInput).toHaveValue('http://localhost:3000/invite/tok-ADMIN');
+    });
+    await user.click(screen.getByRole('button', { name: 'Копировать' }));
+
+    advance(600); // past the old timer's deadline, inside the new one
+    expect(screen.getByRole('button', { name: 'Скопировано' })).toBeInTheDocument();
+    advance(2000);
+    expect(screen.getByRole('button', { name: 'Копировать' })).toBeInTheDocument();
   });
 
   it('offers the admin only the member role (ADR-0002 §2)', async () => {

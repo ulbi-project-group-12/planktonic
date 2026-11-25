@@ -38,6 +38,9 @@ export function InviteLinkPanel({
   // resolve must not overwrite a newer role's link, and a new request drops the old link
   // before it starts, so an error never leaves a stale link behind.
   const requestRef = useRef(0);
+  // The "Скопировано" reset timer is cleared on unmount and before it is re-armed —
+  // no stale setCopied after the panel is gone.
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchInvite = useCallback(
     (inviteRole: WorkspaceRole) => {
       const request = ++requestRef.current;
@@ -60,6 +63,13 @@ export function InviteLinkPanel({
   function requestInvite(inviteRole: WorkspaceRole) {
     setState('pending');
     setInvite(undefined);
+    // A new link replaces the old one: drop its "Скопировано" state — and the timer too,
+    // or a timer armed by the previous copy would flip the button back early.
+    setCopied(false);
+    if (copyTimerRef.current !== null) {
+      clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = null;
+    }
     fetchInvite(inviteRole);
   }
 
@@ -71,7 +81,6 @@ export function InviteLinkPanel({
     const next = values[0] as WorkspaceRole | undefined;
     if (next === undefined) return;
     setRole(next);
-    setCopied(false);
     requestInvite(next);
   }
 
@@ -82,9 +91,6 @@ export function InviteLinkPanel({
       ? `${window.location.origin}${routes.invite(invite.token)}`
       : null;
 
-  // The "Скопировано" reset timer is cleared on unmount and before it is re-armed —
-  // no stale setCopied after the panel is gone.
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
       if (copyTimerRef.current !== null) clearTimeout(copyTimerRef.current);
