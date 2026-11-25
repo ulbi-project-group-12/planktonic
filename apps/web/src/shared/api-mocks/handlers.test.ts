@@ -2,6 +2,7 @@ import { MessageSeq, RegisterResponseSchema } from '@app/contracts';
 import { expect, it } from 'vitest';
 import { getAuthRegisterMockHandler409, getMessagesListResponseMock } from '.';
 import { ApiError, authRegister, messagesList } from '../api';
+import { createApiHandlers } from '.';
 import { server } from '../api-mocks-node';
 
 const registration = {
@@ -92,6 +93,33 @@ it('answers 400 with field issues for a slug the contract rejects', async () => 
     const response = await postWorkspace({ name: 'Team', slug });
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ statusCode: 400, issues: [{ path: 'slug' }] });
+  }
+});
+
+it('keeps an invite usable across a fresh handler set (a new page load)', async () => {
+  await postWorkspace({ name: 'Invite Team', slug: 'invite-team' });
+  const created = await fetch('http://api.example.invalid/api/workspaces/invite-team/invites', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ role: 'MEMBER' }),
+  });
+  const { token } = (await created.json()) as { token: string };
+
+  // A full page load starts mocks from scratch; the invite must survive it.
+  server.resetHandlers(...createApiHandlers());
+  try {
+    const invite = await fetch(`http://api.example.invalid/api/invites/${token}`);
+    expect(invite.status).toBe(200);
+    expect(await invite.json()).toMatchObject({ workspaceName: 'Invite Team', role: 'MEMBER' });
+
+    const accept = await fetch(`http://api.example.invalid/api/invites/${token}/accept`, {
+      method: 'POST',
+    });
+    expect(accept.status).toBe(200);
+    const dead = await fetch(`http://api.example.invalid/api/invites/${token}`);
+    expect(dead.status).toBe(404);
+  } finally {
+    server.resetHandlers(...createApiHandlers());
   }
 });
 
