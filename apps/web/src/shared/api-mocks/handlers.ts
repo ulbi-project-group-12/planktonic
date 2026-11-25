@@ -121,11 +121,35 @@ interface MockInvite {
   used: boolean;
 }
 
-/** Workspace and UL-220 invite routes share in-memory maps per handler set. */
+/**
+ * MSW handlers run in the page context, so plain in-memory maps reset on every full page
+ * load. The invite flow crosses a navigation — the link is opened in a new page — so both
+ * maps are persisted to localStorage where it exists (browser dev and jsdom tests).
+ */
+const WORKSPACES_KEY = 'api-mocks.workspaces';
+const INVITES_KEY = 'api-mocks.invites';
+
+function loadMap<V>(key: string): Map<string, V> {
+  if (typeof localStorage === 'undefined') return new Map();
+  try {
+    return new Map(JSON.parse(localStorage.getItem(key) ?? '[]') as [string, V][]);
+  } catch {
+    return new Map();
+  }
+}
+
+function saveMap<V>(key: string, map: Map<string, V>): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify([...map.entries()]));
+  } catch {
+    // Storage full or blocked: the in-memory map still serves this page.
+  }
+}
 
 function createWorkspaceHandlers() {
-  const workspaces = new Map<string, MockWorkspace>();
-  const invites = new Map<string, MockInvite>();
+  const workspaces = loadMap<MockWorkspace>(WORKSPACES_KEY);
+  const invites = loadMap<MockInvite>(INVITES_KEY);
 
   return [
     http.get('*/api/workspaces', () => HttpResponse.json([...workspaces.values()])),
@@ -167,6 +191,7 @@ function createWorkspaceHandlers() {
       }
       const workspace: MockWorkspace = { id: crypto.randomUUID(), name, slug };
       workspaces.set(slug, workspace);
+      saveMap(WORKSPACES_KEY, workspaces);
       return HttpResponse.json(workspace, { status: 201 });
     }),
     http.post('*/api/workspaces/:slug/invites', async ({ request, params }) => {
@@ -184,6 +209,7 @@ function createWorkspaceHandlers() {
         role: parsed.data.role,
         used: false,
       });
+      saveMap(INVITES_KEY, invites);
       return HttpResponse.json({ token, role: parsed.data.role }, { status: 201 });
     }),
     http.get('*/api/invites/:token', ({ params }) => {
@@ -210,6 +236,7 @@ function createWorkspaceHandlers() {
         );
       }
       invite.used = true;
+      saveMap(INVITES_KEY, invites);
       return HttpResponse.json({ workspaceSlug: invite.workspaceSlug });
     }),
   ];
