@@ -21,3 +21,9 @@ export const LoginResponseSchema = z.object({
 });
 
 export type LoginResponse = z.infer<typeof LoginResponseSchema>;
+
+export const LoginRateLimitResponseSchema = z.object({
+  statusCode: z.literal(429),
+  message: z.literal('Too many login attempts'),
+  retryAfterSeconds: z.int().positive(),
+});

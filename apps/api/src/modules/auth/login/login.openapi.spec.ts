@@ -58,6 +58,13 @@ it('documents the login request and responses', async () => {
             'application/json': { schema: { required: ['statusCode', 'message', 'error'] } },
           },
         },
+        429: {
+          content: {
+            'application/json': {
+              schema: { required: ['statusCode', 'message', 'retryAfterSeconds'] },
+            },
+          },
+        },
         503: {
           content: {
             'application/json': { schema: { required: ['statusCode', 'message', 'error'] } },
@@ -65,7 +72,7 @@ it('documents the login request and responses', async () => {
         },
       },
     });
-    expect(Object.keys(login?.responses ?? {}).sort()).toEqual(['200', '400', '401', '503']);
+    expect(Object.keys(login?.responses ?? {}).sort()).toEqual(['200', '400', '401', '429', '503']);
   } finally {
     await app.close();
   }

@@ -8,6 +8,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { configureApp } from '../../src/app.setup.js';
 import { AuthModule } from '../../src/modules/auth/auth.module.js';
 import { AuthRepository } from '../../src/modules/auth/auth.repository.js';
+import { LoginAttemptsConnection } from '../../src/modules/auth/login/login-attempts.connection.js';
+import type { LoginAttemptsStore } from '../../src/modules/auth/login/login-attempts.store.js';
 import { LoginRepository } from '../../src/modules/auth/login/login.repository.js';
 import { RegisterRepository } from '../../src/modules/auth/register/register.repository.js';
 
@@ -16,6 +18,10 @@ const request = { email: 'ada@example.com', password: ' example-passphrase ' };
 const userId = '019a8f00-0000-7000-8000-000000000004';
 const findActiveByEmail = vi.fn<LoginRepository['findActiveByEmail']>();
 
+const attempts = {
+  begin: vi.fn<LoginAttemptsStore['begin']>(),
+  finish: vi.fn<LoginAttemptsStore['finish']>(),
+};
 let app: INestApplication | undefined;
 let baseUrl: string;
 let passwordHash: string;
@@ -25,6 +31,10 @@ beforeAll(async () => {
   const moduleRef = await Test.createTestingModule({ imports: [AuthModule] })
     .overrideProvider(ConfigService)
     .useValue({ get: () => secret })
+    .overrideProvider(LoginAttemptsConnection)
+    .useValue({
+      run: (operation: (store: typeof attempts) => Promise<unknown>) => operation(attempts),
+    })
     .overrideProvider(LoginRepository)
     .useValue({ findActiveByEmail })
     .overrideProvider(RegisterRepository)
@@ -39,6 +49,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   findActiveByEmail.mockReset();
+  attempts.begin.mockReset().mockResolvedValue({ id: 'reservation' });
+  attempts.finish.mockReset().mockResolvedValue(undefined);
 });
 
 afterAll(async () => {
@@ -54,6 +66,22 @@ function login(body: unknown) {
 }
 
 describe('POST /api/auth/login', () => {
+  it('returns the wait in seconds with HTTP 429 before checking the credentials', async () => {
+    attempts.begin.mockResolvedValue({ retryAfterMs: 1500 });
+
+    const response = await login(request);
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('2');
+    expect(await response.json()).toEqual({
+      statusCode: 429,
+      message: 'Too many login attempts',
+      retryAfterSeconds: 2,
+    });
+    expect(findActiveByEmail).not.toHaveBeenCalled();
+    expect(attempts.finish).not.toHaveBeenCalled();
+  });
+
   it('returns a signed access token valid for 15 minutes', async () => {
     findActiveByEmail.mockResolvedValue({ id: userId, passwordHash });
 

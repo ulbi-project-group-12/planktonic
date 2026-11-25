@@ -186,6 +186,7 @@ loopback connection below.
 | `PRODUCT_SLUG`         | Slug override (URLs, image names)                                     | empty                                                   | reserved (no local reader yet)             |
 | `API_PORT`             | Port the api listens on                                               | `3001`                                                  | `@app/api`                                 |
 | `API_HOST`             | Interface the api binds to (the api image sets `0.0.0.0`)             | empty (`127.0.0.1`, loopback only)                      | `@app/api`                                 |
+| `API_BEHIND_TRAEFIK`   | Trust one reverse proxy's `X-Forwarded-For` for the login limit       | empty (`false`)                                         | `@app/api`; compose sets `true`            |
 | `TRAEFIK_PORT`         | Host HTTP port for Traefik                                            | `58080`                                                 | compose `traefik`                          |
 | `POSTGRES_DB`          | Database created on the first start                                   | `app`                                                   | compose `postgres`                         |
 | `POSTGRES_USER`        | Database owner role created on the first start                        | `app`                                                   | compose `postgres`                         |

@@ -11,12 +11,12 @@ import {
 const request = {
   name: 'Ada',
   email: 'Ada@example.com',
-  password: '123456789012',
-  confirmPassword: '123456789012',
+  password: 'abcdefghijkl mno',
+  confirmPassword: 'abcdefghijkl mno',
 };
 
 describe('RegisterRequestSchema', () => {
-  it('accepts a 12-character password and trims name and email', () => {
+  it('accepts a 15-character password and trims name and email', () => {
     expect(
       RegisterRequestSchema.parse({ ...request, name: ' Ada ', email: ' Ada@example.com ' }),
     ).toEqual(request);
@@ -31,7 +31,7 @@ describe('RegisterRequestSchema', () => {
     ['name', undefined],
     ['email', undefined],
     ['confirmPassword', 123456789012],
-    ['confirmPassword', '123456789012 '],
+    ['confirmPassword', 'abcdefghijkl mno '],
   ] as const)('reports invalid %s on its field', (field, value) => {
     const result = RegisterRequestSchema.safeParse({ ...request, [field]: value });
 
@@ -40,8 +40,7 @@ describe('RegisterRequestSchema', () => {
     );
   });
 
-  it('reports an 11-character password on the password field', () => {
-    const password = '12345678901';
+  it.each(['abcdefghijklmn', '🔑'.repeat(14)])('rejects 14 characters (%s)', (password) => {
     const result = RegisterRequestSchema.safeParse({
       ...request,
       password,
@@ -53,6 +52,13 @@ describe('RegisterRequestSchema', () => {
 });
 
 describe('RegisterRequestSchema length limits', () => {
+  it('accepts 15 Unicode code points', () => {
+    const password = '🔑'.repeat(15);
+    expect(
+      RegisterRequestSchema.safeParse({ ...request, password, confirmPassword: password }).success,
+    ).toBe(true);
+  });
+
   const emailOfLength = (length: number) =>
     `${'a'.repeat(length - '@example.com'.length)}@example.com`;
 

@@ -15,6 +15,8 @@ export const envSchema = z.object({
   // Interface the api binds to. Loopback by default, so `pnpm dev` is not reachable from the
   // LAN; the image sets 0.0.0.0 because a container must listen on every interface.
   API_HOST: z.preprocess(emptyAsUnset, z.string().trim().min(1).default('127.0.0.1')),
+  // Enable only when the API is reachable through exactly one trusted reverse proxy.
+  API_BEHIND_TRAEFIK: z.preprocess(emptyAsUnset, z.enum(['true', 'false']).optional()),
   // Required: the app has no database default. Only postgres:// and postgresql:// URLs pass.
   DATABASE_URL: z.preprocess(emptyAsUnset, z.url({ protocol: /^postgres(ql)?$/ })),
   // Required: Socket.IO crosses replicas through the Redis Streams adapter.

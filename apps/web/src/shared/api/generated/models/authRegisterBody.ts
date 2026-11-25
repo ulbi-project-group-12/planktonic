@@ -19,7 +19,7 @@ export type AuthRegisterBody = {
   email: string;
   /**
    * Password for the new account.
-   * @minLength 12
+   * @minLength 15
    * @maxLength 128
    */
   password: string;

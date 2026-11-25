@@ -39,6 +39,51 @@ describe('LoginForm', () => {
     setAccessTokenProvider(undefined);
   });
 
+  it('explains a rate limit and disables the submit button during the wait', async () => {
+    server.use(
+      http.post('*/api/auth/login', () =>
+        HttpResponse.json(
+          {
+            statusCode: 429,
+            message: 'Too many login attempts',
+            retryAfterSeconds: 60,
+          },
+          { status: 429 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<LoginForm />);
+    await fill(user);
+    await user.click(submit());
+
+    expect(await screen.findByText('Слишком много попыток входа')).toBeVisible();
+    expect(screen.getByText('Попробуйте ещё раз через минуту.')).toBeVisible();
+    expect(submit()).toBeDisabled();
+    await user.type(screen.getByLabelText(/Email/), 'x');
+    expect(submit()).toBeDisabled();
+  });
+
+  it('keeps the notice visible after a short wait and enables retry', async () => {
+    server.use(
+      http.post('*/api/auth/login', () =>
+        HttpResponse.json(
+          { statusCode: 429, message: 'Too many login attempts', retryAfterSeconds: 1 },
+          { status: 429 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<LoginForm />);
+    await fill(user);
+    await user.click(submit());
+
+    expect(await screen.findByText('Попробуйте ещё раз через 1 секунду.')).toBeVisible();
+    expect(submit()).toBeDisabled();
+    expect(await screen.findByText('Можно повторить вход', {}, { timeout: 3000 })).toBeVisible();
+    expect(submit()).toBeEnabled();
+  });
+
   it('opens creation when the authenticated workspace list is empty', async () => {
     let posted: unknown;
     let authorization: string | null = null;
