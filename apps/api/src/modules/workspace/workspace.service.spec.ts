@@ -12,12 +12,13 @@ function setup() {
   const createWithOwner = vi.fn<WorkspaceRepository['createWithOwner']>();
   const findAllForUser = vi.fn<WorkspaceRepository['findAllForUser']>();
   const findBySlug = vi.fn<WorkspaceRepository['findBySlug']>();
+  const getWorkspaceRole = vi.fn<AccessService['getWorkspaceRole']>();
   const can = vi.fn<AccessService['can']>();
   const service = new WorkspaceService(
     { createWithOwner, findAllForUser, findBySlug } as unknown as WorkspaceRepository,
-    { can } as unknown as AccessService,
+    { can, getWorkspaceRole } as unknown as AccessService,
   );
-  return { service, createWithOwner, findAllForUser, findBySlug, can };
+  return { service, createWithOwner, findAllForUser, findBySlug, can, getWorkspaceRole };
 }
 
 describe('WorkspaceService.listForUser', () => {
@@ -42,27 +43,33 @@ describe('WorkspaceService.getBySlugForUser', () => {
   const workspace = { id: '019a8f00-0000-7000-8000-000000000004', ...input };
 
   it('resolves the slug and delegates access for the workspace ID', async () => {
-    const { service, findBySlug, can } = setup();
+    const { service, findBySlug, can, getWorkspaceRole } = setup();
     findBySlug.mockResolvedValue(workspace);
     can.mockResolvedValue(true);
+    getWorkspaceRole.mockResolvedValue('OWNER');
 
-    await expect(service.getBySlugForUser(input.slug, userId)).resolves.toEqual(workspace);
+    await expect(service.getBySlugForUser(input.slug, userId)).resolves.toEqual({
+      ...workspace,
+      role: 'OWNER',
+    });
     expect(findBySlug).toHaveBeenCalledExactlyOnceWith(input.slug);
     expect(can).toHaveBeenCalledExactlyOnceWith({ id: userId }, 'workspace.read', {
       workspaceId: workspace.id,
     });
+    expect(getWorkspaceRole).toHaveBeenCalledExactlyOnceWith({ id: userId }, workspace.id);
   });
 
   it.each([workspace, null])(
     'returns the same 404 for a hidden or absent workspace',
     async (found) => {
-      const { service, findBySlug, can } = setup();
+      const { service, findBySlug, can, getWorkspaceRole } = setup();
       findBySlug.mockResolvedValue(found);
       can.mockResolvedValue(false);
 
       await expect(service.getBySlugForUser(input.slug, userId)).rejects.toThrow(
         new NotFoundException('Workspace not found'),
       );
+      expect(getWorkspaceRole).not.toHaveBeenCalled();
     },
   );
 });

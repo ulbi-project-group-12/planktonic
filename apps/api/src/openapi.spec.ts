@@ -43,12 +43,15 @@ describe('pnpm openapi:export', () => {
       'get /api/channels/{channelId}/messages Messages_list',
       'get /api/health Health_live',
       'get /api/health/ready Health_ready',
+      'get /api/invites/{token} Invite_get',
       'get /api/workspaces Workspace_list',
       'get /api/workspaces/{slug} Workspace_getBySlug',
       'post /api/auth/login Auth_login',
       'post /api/auth/register Auth_register',
       'post /api/channels/{channelId}/messages Messages_create',
+      'post /api/invites/{token}/accept Invite_accept',
       'post /api/workspaces Workspace_create',
+      'post /api/workspaces/{slug}/invites Invite_create',
     ]);
   });
 
