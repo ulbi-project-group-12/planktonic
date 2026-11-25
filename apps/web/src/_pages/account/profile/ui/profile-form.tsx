@@ -50,8 +50,11 @@ export function ProfileForm({ initial }: { initial: ProfileMe }) {
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(undefined);
     try {
-      // The saved answer becomes the new baseline: the submit goes disabled again.
-      reset(await updateProfile.mutateAsync(values));
+      // The saved answer becomes the new baseline: the submit goes disabled again. A plain
+      // reset() inherits resetOptions and would leave the saved fields marked as edited, so
+      // the next refetch could no longer update them.
+      const saved = await updateProfile.mutateAsync(values);
+      reset({ name: saved.name, tz: saved.tz ?? values.tz }, { keepDirtyValues: false });
       toast({ title: 'Профиль обновлён' });
     } catch (error) {
       if (isApiError(error)) {

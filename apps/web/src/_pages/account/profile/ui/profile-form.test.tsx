@@ -90,6 +90,42 @@ describe('ProfileForm', () => {
     expect(submitButton()).toBeEnabled();
   });
 
+  it('follows a refetch again after a save: the saved field is no longer treated as edited', async () => {
+    const patched: unknown[] = [];
+    server.use(
+      http.patch('*/api/users/me', async ({ request }) => {
+        const body = (await request.json()) as Partial<ProfileMe>;
+        patched.push(body);
+        return HttpResponse.json({ ...ada, ...body });
+      }),
+    );
+    const { rerender } = renderWithApi(<ProfileForm initial={ada} />);
+    const user = userEvent.setup();
+
+    await user.clear(nameInput());
+    await user.type(nameInput(), 'Vlad');
+    await user.click(submitButton());
+    await waitFor(() => {
+      expect(submitButton()).toBeDisabled();
+    });
+    expect(nameInput()).toHaveValue('Vlad');
+
+    // The name is changed elsewhere after the save: the form must show it, not keep 'Vlad'.
+    rerender(<ProfileForm initial={{ ...ada, name: 'Grace' }} />);
+    await waitFor(() => {
+      expect(nameInput()).toHaveValue('Grace');
+    });
+
+    await user.click(zoneTrigger());
+    await user.type(screen.getByLabelText('Поиск по списку'), 'tokyo');
+    await user.click(screen.getByRole('option', { name: /^Asia\/Tokyo/ }));
+    await user.click(submitButton());
+    await waitFor(() => {
+      expect(patched).toHaveLength(2);
+    });
+    expect(patched[1]).toEqual({ name: 'Grace', tz: 'Asia/Tokyo' });
+  });
+
   it('falls back to the browser zone when the profile has none', () => {
     renderWithApi(<ProfileForm initial={{ id: ada.id, name: ada.name, email: ada.email }} />);
 
