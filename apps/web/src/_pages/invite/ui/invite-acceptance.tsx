@@ -43,10 +43,14 @@ export function InviteAcceptance({ token }: InviteAcceptanceProps) {
     );
   }
 
-  if (invite.isError) {
+  // The link can die between the load and the click (used in another tab, revoked): the
+  // accept then answers 404/410, and "try again" would be a promise that cannot be kept.
+  const deadOnAccept = hasApiStatus(accept.error, 404) || hasApiStatus(accept.error, 410);
+
+  if (invite.isError || deadOnAccept) {
     // Only a 404/410 verdict means a dead or consumed token: anything else (network,
     // 500/503…) is transient and deserves a retry, not a "dead link" notice.
-    if (!hasApiStatus(invite.error, 404) && !hasApiStatus(invite.error, 410)) {
+    if (!deadOnAccept && !hasApiStatus(invite.error, 404) && !hasApiStatus(invite.error, 410)) {
       return (
         <Alert
           palette="danger"

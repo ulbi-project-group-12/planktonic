@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '@/shared/api';
+import { apiFetch, getWorkspaceListQueryKey } from '@/shared/api';
 import type { WorkspaceRole } from '@/widgets/invite-member';
 
 /**
@@ -46,6 +46,9 @@ export function useAcceptInvite(token: string) {
       // The token is consumed now: drop the cached "valid" invite so the browser's
       // Back button re-checks the link and lands on the dead-link screen.
       queryClient.removeQueries({ queryKey: ['invite', token] });
+      // The user is a member of one more workspace: a list cached before the join (the
+      // switcher, the workspace access check) no longer tells the truth.
+      return queryClient.invalidateQueries({ queryKey: getWorkspaceListQueryKey() });
     },
   });
 }
