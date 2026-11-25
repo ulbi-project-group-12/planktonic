@@ -95,6 +95,85 @@ it('returns 403 when a regular member tries to create an invitation', async () =
   expect(await stand.prisma.invite.count()).toBe(0);
 });
 
+describe('invite refusals', () => {
+  async function setupInvite(role: 'MEMBER' | 'ADMIN' = 'MEMBER') {
+    const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
+    const app = stand.apps[0]!;
+    const base = `${await app.getUrl()}/api`;
+    const create = (userId: string, inviteRole: string = role) =>
+      fetch(`${base}/workspaces/${workspace.slug}/invites`, {
+        method: 'POST',
+        headers: { authorization: authorization(app, userId), 'content-type': 'application/json' },
+        body: JSON.stringify({ role: inviteRole }),
+      });
+    const created = await create(DEFAULT_AUTHOR_ID);
+    expect(created.status).toBe(201);
+    const { token } = CreateInviteResponseSchema.parse(await created.json());
+    const joiner = await stand.prisma.user.create({
+      data: { name: 'Joiner', email: 'joiner@users.invalid', passwordHash: '!' },
+    });
+    const headers = { authorization: authorization(app, joiner.id) };
+    return {
+      workspace,
+      joiner,
+      create,
+      preview: (inviteToken = token) => fetch(`${base}/invites/${inviteToken}`, { headers }),
+      accept: (inviteToken = token) =>
+        fetch(`${base}/invites/${inviteToken}/accept`, { method: 'POST', headers }),
+    };
+  }
+
+  it.each([
+    ['expired', { expiresAt: new Date(Date.now() - 1_000) }],
+    ['revoked', { revokedAt: new Date() }],
+  ])('answers 404 on preview and 410 on accept for an %s link', async (_name, data) => {
+    const { workspace, preview, accept } = await setupInvite();
+    await stand.prisma.invite.updateMany({ data });
+
+    expect((await preview()).status).toBe(404);
+    expect((await accept()).status).toBe(410);
+    expect(await stand.prisma.workspaceMember.count({ where: { workspaceId: workspace.id } })).toBe(
+      1,
+    );
+    expect(await stand.prisma.invite.findFirstOrThrow()).toMatchObject({ consumedAt: null });
+  });
+
+  it('answers an unknown token the same way as a dead one', async () => {
+    const { preview, accept } = await setupInvite();
+
+    expect((await preview('unknown-token')).status).toBe(404);
+    expect((await accept('unknown-token')).status).toBe(410);
+  });
+
+  it('rejects a deactivated user at authentication and keeps the link alive', async () => {
+    const { workspace, joiner, accept } = await setupInvite();
+    await stand.prisma.user.update({
+      where: { id: joiner.id },
+      data: { deactivatedAt: new Date() },
+    });
+
+    expect((await accept()).status).toBe(401);
+    expect(await stand.prisma.workspaceMember.count({ where: { workspaceId: workspace.id } })).toBe(
+      1,
+    );
+    expect(await stand.prisma.invite.findFirstOrThrow()).toMatchObject({ consumedAt: null });
+  });
+
+  it('hides the workspace from an outsider and limits an admin to member invites', async () => {
+    const { workspace, joiner, create } = await setupInvite();
+
+    expect((await create(joiner.id)).status).toBe(404);
+
+    await stand.prisma.workspaceMember.create({
+      data: { workspaceId: workspace.id, userId: joiner.id, role: WsRole.ADMIN },
+    });
+    expect((await create(joiner.id, 'ADMIN')).status).toBe(403);
+    expect((await create(joiner.id, 'OWNER')).status).toBe(400);
+    expect(await stand.prisma.invite.count()).toBe(1);
+    expect((await create(joiner.id, 'MEMBER')).status).toBe(201);
+  });
+});
+
 async function createWorkspace(body: unknown, authenticated = true): Promise<Response> {
   const [app] = stand.apps;
   return fetch(`${await app!.getUrl()}/api/workspaces`, {
