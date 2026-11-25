@@ -74,7 +74,7 @@ it('creates a workspace and returns it in the list', async () => {
 
   const bySlug = await fetch('http://api.example.invalid/api/workspaces/team-one');
   expect(bySlug.status).toBe(200);
-  expect(await bySlug.json()).toEqual(workspace);
+  expect(await bySlug.json()).toEqual(Object.assign({}, workspace, { role: 'OWNER' }));
 });
 
 it('answers 409 with a slug issue when the slug is taken', async () => {

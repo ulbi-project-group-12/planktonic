@@ -4,6 +4,7 @@
  * API
  * OpenAPI spec version: 1.0.0
  */
+import type { WorkspaceGetBySlug200Role } from './workspaceGetBySlug200Role';
 
 export type WorkspaceGetBySlug200 = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$ */
@@ -11,4 +12,5 @@ export type WorkspaceGetBySlug200 = {
   name: string;
   /** @pattern ^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$ */
   slug: string;
+  role: WorkspaceGetBySlug200Role;
 };

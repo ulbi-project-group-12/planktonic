@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { HttpErrorResponse } from './errors.js';
 
+export const WorkspaceRoleSchema = z.enum(['MEMBER', 'ADMIN', 'OWNER']);
+
+export type WorkspaceRole = z.infer<typeof WorkspaceRoleSchema>;
+
 /** Workspace slug: lowercase Latin letters, digits and inner hyphens, 1–40 characters. */
 export const WORKSPACE_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
 
@@ -40,6 +44,12 @@ export const WorkspaceResponseSchema = z.object({
 });
 
 export type WorkspaceResponse = z.infer<typeof WorkspaceResponseSchema>;
+
+export const WorkspaceDetailsResponseSchema = WorkspaceResponseSchema.extend({
+  role: WorkspaceRoleSchema,
+});
+
+export type WorkspaceDetailsResponse = z.infer<typeof WorkspaceDetailsResponseSchema>;
 
 export const ListWorkspacesResponseSchema = z.array(WorkspaceResponseSchema);
 

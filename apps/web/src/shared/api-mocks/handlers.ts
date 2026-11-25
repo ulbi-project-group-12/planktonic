@@ -1,4 +1,9 @@
-import { type AuthSession, CreateWorkspaceRequestSchema } from '@app/contracts';
+import {
+  type AuthSession,
+  CreateInviteRequestSchema,
+  CreateWorkspaceRequestSchema,
+  type InviteRole,
+} from '@app/contracts';
 import { HttpResponse, http } from 'msw';
 import { z } from 'zod';
 import {
@@ -123,13 +128,10 @@ const currentUser = {
 
 /** Workspace routes share an in-memory list per handler set. */
 
-const InviteRole = z.enum(['MEMBER', 'ADMIN']);
-const CreateInviteRequest = z.object({ role: InviteRole });
-
 interface MockInvite {
   token: string;
   workspaceSlug: string;
-  role: z.infer<typeof InviteRole>;
+  role: InviteRole;
   used: boolean;
 }
 
@@ -167,7 +169,7 @@ function createWorkspaceHandlers() {
     http.get('*/api/workspaces', () => HttpResponse.json([...workspaces.values()])),
     http.get<{ slug: string }>('*/api/workspaces/:slug', ({ params }) => {
       const workspace = workspaces.get(params.slug);
-      if (workspace) return HttpResponse.json(workspace);
+      if (workspace) return HttpResponse.json({ ...workspace, role: 'OWNER' });
       return HttpResponse.json(
         { statusCode: 404, message: 'Workspace not found', error: 'Not Found' },
         { status: 404 },
@@ -207,7 +209,7 @@ function createWorkspaceHandlers() {
       return HttpResponse.json(workspace, { status: 201 });
     }),
     http.post('*/api/workspaces/:slug/invites', async ({ request, params }) => {
-      const parsed = CreateInviteRequest.safeParse(await request.json());
+      const parsed = CreateInviteRequestSchema.safeParse(await request.json());
       if (!parsed.success) {
         return HttpResponse.json(
           { statusCode: 400, message: 'Validation failed', error: 'Bad Request' },
