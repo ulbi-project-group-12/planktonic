@@ -46,6 +46,36 @@ describe('InviteAcceptance', () => {
     });
   });
 
+  it('does not flash the dead-link notice while navigating after accept', async () => {
+    const user = userEvent.setup();
+    let gets = 0;
+    server.use(
+      http.get('/api/invites/tok9', () => {
+        gets += 1;
+        // First load: valid invite. The refetch after accept: consumed → 404.
+        return gets === 1
+          ? HttpResponse.json({
+              workspaceName: 'Demo HQ',
+              workspaceSlug: 'demo-hq',
+              role: 'MEMBER',
+            })
+          : HttpResponse.json({ statusCode: 404 }, { status: 404 });
+      }),
+      http.post('/api/invites/tok9/accept', () => HttpResponse.json({ workspaceSlug: 'demo-hq' })),
+    );
+    renderWithApi(<InviteAcceptance token="tok9" />);
+    await screen.findByText('Demo HQ');
+
+    await user.click(screen.getByRole('button', { name: 'Присоединиться' }));
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith('/workspaces/demo-hq');
+    });
+    // The post-accept refetch of the consumed invite settled — and still no dead-link notice.
+    await waitFor(() => { expect(gets).toBe(2); });
+    expect(screen.getByText('Открываем пространство…')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('shows a dead-link notice for an unknown or used token', async () => {
     server.use(
       http.get('/api/invites/dead', () =>

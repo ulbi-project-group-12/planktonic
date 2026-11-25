@@ -20,6 +20,18 @@ export function InviteAcceptance({ token }: InviteAcceptanceProps) {
   const invite = useInvite(token);
   const accept = useAcceptInvite(token);
 
+  // The accept consumed the token: the invite query refetches behind our back (its cache
+  // entry was dropped) and now fails — but this screen is already leaving, so neither that
+  // error nor a reload skeleton may flash before the navigation lands.
+  if (accept.isSuccess) {
+    return (
+      <div className="flex items-center gap-2" role="status">
+        <Spinner size="s" />
+        <Typography color="text-secondary">Открываем пространство…</Typography>
+      </div>
+    );
+  }
+
   if (invite.isPending) {
     return (
       <div className="flex flex-col gap-4" role="status" aria-label="Загрузка приглашения">
