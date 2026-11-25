@@ -8,12 +8,14 @@ import {
   MessageResponse,
   ValidationErrorResponse,
 } from '@app/contracts';
+import { RequireAccess } from '../../core/access/access.decorator.js';
 import { ApiZodResponse } from '../../core/openapi/zod-decorators.js';
 import { DEFAULT_AUTHOR_ID } from './default-author.js';
 import { MessagesService } from './messages.service.js';
 
 /** HTTP adapter only (STACK §3.1): validation here, rules in MessagesService. */
 @Controller('channels/:channelId/messages')
+@RequireAccess({ kind: 'authenticated' })
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 

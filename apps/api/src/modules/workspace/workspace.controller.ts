@@ -13,6 +13,7 @@ import {
   type WorkspaceSlugParams,
   WorkspaceSlugParamsSchema,
 } from '@app/contracts';
+import { RequireAccess } from '../../core/access/access.decorator.js';
 import { ApiZodResponse } from '../../core/openapi/zod-decorators.js';
 import type { AuthenticatedUser } from '../auth/auth.request.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
@@ -24,6 +25,7 @@ export class WorkspaceController {
   constructor(private readonly workspaceService: WorkspaceService) {}
 
   @Get()
+  @RequireAccess({ kind: 'authenticated' })
   @ApiOperation({ summary: 'List the current user’s workspaces', operationId: 'Workspace_list' })
   @ApiZodResponse(200, 'Workspaces', ListWorkspacesResponseSchema)
   @ApiZodResponse(
@@ -36,6 +38,7 @@ export class WorkspaceController {
   }
 
   @Get(':slug')
+  @RequireAccess({ kind: 'authenticated' })
   @ApiOperation({ summary: 'Get a workspace by slug', operationId: 'Workspace_getBySlug' })
   @ApiZodResponse(200, 'Workspace', WorkspaceResponseSchema)
   @ApiZodResponse(400, 'Invalid workspace slug', ValidationErrorResponse)
@@ -53,6 +56,8 @@ export class WorkspaceController {
   }
 
   @Post()
+  @RequireAccess({ kind: 'permission', permission: 'workspace.create' })
+  @ApiZodResponse(403, 'Workspace creation forbidden', HttpErrorResponse)
   @ApiOperation({ summary: 'Create a workspace', operationId: 'Workspace_create' })
   @ApiZodResponse(201, 'Workspace created', WorkspaceResponseSchema)
   @ApiZodResponse(400, 'Invalid workspace fields', ValidationErrorResponse)
