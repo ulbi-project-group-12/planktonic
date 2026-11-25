@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ResetPasswordPage } from './auth/reset-password';
-import { ProfileSettingsPage } from './account/profile';
 import { NotificationSettingsPage } from './account/notifications';
 import { AppearanceSettingsPage } from './account/appearance';
 import { WorkspaceMembersPage } from './workspace/members';
@@ -10,7 +9,6 @@ import { ProjectMembersPage } from './project/members';
 
 const pages = [
   ['ResetPasswordPage', ResetPasswordPage],
-  ['ProfileSettingsPage', ProfileSettingsPage],
   ['NotificationSettingsPage', NotificationSettingsPage],
   ['AppearanceSettingsPage', AppearanceSettingsPage],
   ['WorkspaceMembersPage', WorkspaceMembersPage],

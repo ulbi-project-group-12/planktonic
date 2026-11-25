@@ -16,6 +16,17 @@ import {
   getMessagesListMockHandler,
 } from '../api/generated/api.msw';
 
+// supportedValuesOf omits 'UTC' (a valid IANA id), so it is added explicitly.
+const IANA_TIMEZONES = new Set(['UTC', ...Intl.supportedValuesOf('timeZone')]);
+// Name limits as in RegisterRequestSchema, so the mock refuses what the real API will refuse.
+const UpdateMeRequest = z.object({
+  name: z.string().trim().min(2).max(15).optional(),
+  tz: z
+    .string()
+    .refine((tz) => IANA_TIMEZONES.has(tz), { message: 'Invalid timezone' })
+    .optional(),
+});
+
 interface MockWorkspace {
   id: string;
   name: string;
@@ -112,6 +123,7 @@ const currentUser = {
   id: '019a8f00-0000-7000-8000-000000000004',
   name: 'Ada',
   email: 'ada@example.com',
+  tz: 'Europe/Berlin',
 };
 
 /** Workspace routes share an in-memory list per handler set. */
@@ -325,13 +337,16 @@ function createAuthSessionHandlers() {
  * are fixed here; the rest come from the generated faker factories.
  */
 export function createApiHandlers() {
+  // A copy per handler set (like the workspace list): a PATCH in one test or story must not
+  // rename the user for every set created after it.
+  const user = { ...currentUser };
   return [
     getAuthLoginMockHandler({ accessToken: 'msw-access-token' }),
     http.post('*/api/auth/refresh', () =>
       HttpResponse.json({ accessToken: 'msw-refreshed-token' }),
     ),
     http.post('*/api/auth/logout', () => HttpResponse.json({})),
-    getAuthMeMockHandler(currentUser),
+    getAuthMeMockHandler(() => user),
     getAuthRegisterMockHandler({
       id: currentUser.id,
       name: currentUser.name,
@@ -350,5 +365,34 @@ export function createApiHandlers() {
     ...createWorkspaceHandlers(),
     ...createAuthSessionHandlers(),
     ...createEmailVerificationHandlers(),
+    ...createUserHandlers(user),
+  ];
+}
+
+/**
+ * PATCH /api/users/me lives here until UL-155 lands the real contracts and the OpenAPI schema
+ * gains the endpoint — then Orval regenerates the handlers and this block goes.
+ */
+function createUserHandlers(user: typeof currentUser) {
+  return [
+    http.patch('*/api/users/me', async ({ request }) => {
+      const parsed = UpdateMeRequest.safeParse(await request.json());
+      if (!parsed.success) {
+        return HttpResponse.json(
+          {
+            statusCode: 400,
+            message: 'Validation failed',
+            issues: parsed.error.issues.map((issue) => ({
+              path: issue.path.join('.'),
+              message: issue.message,
+            })),
+          },
+          { status: 400 },
+        );
+      }
+      user.name = parsed.data.name ?? user.name;
+      user.tz = parsed.data.tz ?? user.tz;
+      return HttpResponse.json(user);
+    }),
   ];
 }

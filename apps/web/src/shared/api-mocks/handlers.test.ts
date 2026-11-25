@@ -136,7 +136,35 @@ it('returns the current user', async () => {
     id: '019a8f00-0000-7000-8000-000000000004',
     name: 'Ada',
     email: 'ada@example.com',
+    tz: 'Europe/Berlin',
   });
+});
+
+// PATCH /api/users/me is mocked by hand until UL-155 adds it to the OpenAPI schema.
+it('updates the current user and refuses a zone outside the IANA list', async () => {
+  const patch = (body: unknown) =>
+    fetch('http://api.example.invalid/api/users/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  try {
+    const refused = await patch({ tz: 'Mars/Olympus' });
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toMatchObject({ issues: [{ path: 'tz' }] });
+
+    const saved = await patch({ name: ' Grace ', tz: 'UTC' });
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toMatchObject({ name: 'Grace', tz: 'UTC' });
+
+    const me = await fetch('http://api.example.invalid/api/auth/me');
+    expect(await me.json()).toMatchObject({ name: 'Grace', tz: 'UTC' });
+  } finally {
+    // The user lives in the handler set: a new set starts from the default again.
+    server.resetHandlers(...createApiHandlers());
+  }
+  const fresh = await fetch('http://api.example.invalid/api/auth/me');
+  expect(await fresh.json()).toMatchObject({ name: 'Ada', tz: 'Europe/Berlin' });
 });
 
 // Email verification is mocked by hand until UL-158 adds the endpoints to the OpenAPI schema.
