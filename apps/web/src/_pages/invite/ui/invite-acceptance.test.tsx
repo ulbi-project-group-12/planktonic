@@ -71,7 +71,9 @@ describe('InviteAcceptance', () => {
       expect(push).toHaveBeenCalledWith('/workspaces/demo-hq');
     });
     // The post-accept refetch of the consumed invite settled — and still no dead-link notice.
-    await waitFor(() => { expect(gets).toBe(2); });
+    await waitFor(() => {
+      expect(gets).toBe(2);
+    });
     expect(screen.getByText('Открываем пространство…')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
