@@ -23,7 +23,25 @@ export function ProfileSettingsPage() {
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
         </div>
-      ) : profile.error ? (
+      ) : profile.data ? (
+        // A background refetch error must not unmount the form and drop unsaved edits.
+        <>
+          {profile.error ? (
+            <Alert
+              palette="warning"
+              title="Не удалось обновить данные профиля"
+              description="Показаны данные последней загрузки. Проверьте подключение и попробуйте ещё раз."
+              action={{
+                label: 'Повторить',
+                onClick: () => {
+                  void profile.refetch();
+                },
+              }}
+            />
+          ) : null}
+          <ProfileForm initial={profile.data} />
+        </>
+      ) : (
         <Alert
           palette="danger"
           title="Не удалось загрузить профиль"
@@ -35,8 +53,6 @@ export function ProfileSettingsPage() {
             },
           }}
         />
-      ) : (
-        <ProfileForm initial={profile.data} />
       )}
     </main>
   );

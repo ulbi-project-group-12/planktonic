@@ -11,7 +11,8 @@ import {
   getMessagesListMockHandler,
 } from '../api/generated/api.msw';
 
-const IANA_TIMEZONES = new Set(Intl.supportedValuesOf('timeZone'));
+// supportedValuesOf omits 'UTC' (a valid IANA id), so it is added explicitly.
+const IANA_TIMEZONES = new Set(['UTC', ...Intl.supportedValuesOf('timeZone')]);
 const UpdateMeRequest = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   tz: z

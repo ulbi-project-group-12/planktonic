@@ -70,6 +70,7 @@ export function ProfileForm({ initial }: { initial: ProfileMe }) {
       {/* Live preview: empty input would render blank initials, so fall back to the name. */}
       <Avatar name={watch('name') || initial.name} size="l" />
 
+      {/* Fields lock while saving so the post-submit reset cannot clobber in-flight edits. */}
       <Field label={<span className="text-fg-secondary">Имя</span>} error={errors.name?.message}>
         <Input
           type="text"
@@ -77,6 +78,7 @@ export function ProfileForm({ initial }: { initial: ProfileMe }) {
           aria-required
           autoFocus
           className="px-3.5"
+          disabled={updateProfile.isPending}
           {...register('name')}
         />
       </Field>
@@ -93,6 +95,7 @@ export function ProfileForm({ initial }: { initial: ProfileMe }) {
               searchable
               options={TIMEZONE_OPTIONS}
               aria-label="Часовой пояс"
+              disabled={updateProfile.isPending}
               value={field.value ? [field.value] : []}
               onValueChange={(values) => {
                 field.onChange(values[0]);

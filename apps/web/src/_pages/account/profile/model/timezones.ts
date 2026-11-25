@@ -5,7 +5,9 @@ export interface TimeZoneOption {
   label: string;
 }
 
-export const TIMEZONES: string[] = Intl.supportedValuesOf('timeZone');
+// V8's supportedValuesOf lists geographical zones only: 'UTC' is a valid IANA id but is not
+// in the catalog, so it is prepended here (the Set also guards engines that do list it).
+export const TIMEZONES: string[] = [...new Set(['UTC', ...Intl.supportedValuesOf('timeZone')])];
 
 /**
     * The UTC offset of a zone on a given date ('GMT+3', 'GMT-5', 'GMT'). Daylight saving 

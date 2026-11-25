@@ -36,9 +36,11 @@ export function useUpdateProfile() {
         },
         body: JSON.stringify(values),
       }),
-    onSuccess: (updatedUser) => {
+    onSuccess: async (updatedUser) => {
       const queryKey = getAuthMeQueryKey();
 
+      // A GET /api/auth/me in flight would land after this and overwrite the patch.
+      await queryClient.cancelQueries({ queryKey });
       queryClient.setQueryData(queryKey, updatedUser);
     },
   });
