@@ -95,14 +95,15 @@ A database health ping goes controller → service → an indicator in `src/core
 `src/core/config/env.ts` validates the environment with zod at startup. A failure names the
 variable and the rule, never the value, and the process exits 1.
 
-| Variable         | Rule                                                 | Default       |
-| ---------------- | ---------------------------------------------------- | ------------- |
-| `NODE_ENV`       | `development`, `test` or `production`                | `development` |
-| `API_PORT`       | integer 1–65535                                      | `3001`        |
-| `API_HOST`       | interface to bind; image: `0.0.0.0`                  | `127.0.0.1`   |
-| `DATABASE_URL`   | `postgres://` or `postgresql://` URL                 | required      |
-| `REDIS_URL`      | Redis connection URL (`redis://` or `rediss://`)     | required      |
-| `REALTIME_DEBUG` | `true` or `false`: diagnostic room and ping endpoint | `false`       |
+| Variable             | Rule                                                   | Default       |
+| -------------------- | ------------------------------------------------------ | ------------- |
+| `NODE_ENV`           | `development`, `test` or `production`                  | `development` |
+| `API_PORT`           | integer 1–65535                                        | `3001`        |
+| `API_HOST`           | interface to bind; image: `0.0.0.0`                    | `127.0.0.1`   |
+| `API_BEHIND_TRAEFIK` | `true` or `false`: trust one proxy's `X-Forwarded-For` | `false`       |
+| `DATABASE_URL`       | `postgres://` or `postgresql://` URL                   | required      |
+| `REDIS_URL`          | Redis connection URL (`redis://` or `rediss://`)       | required      |
+| `REALTIME_DEBUG`     | `true` or `false`: diagnostic room and ping endpoint   | `false`       |
 
 An empty value counts as unset. In development the api reads the repo-root `.env` only, found from
 the module's location rather than the current directory, so it works however the api is started.
