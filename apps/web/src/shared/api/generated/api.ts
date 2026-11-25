@@ -47,6 +47,7 @@ import type {
   WorkspaceCreate201,
   WorkspaceCreate400,
   WorkspaceCreate401,
+  WorkspaceCreate403,
   WorkspaceCreate409,
   WorkspaceCreateBody,
   WorkspaceGetBySlug200,
@@ -1002,7 +1003,9 @@ export const workspaceCreate = async (
 export const getWorkspaceCreateMutationKey = () => ['workspaceCreate'] as const;
 
 export const getWorkspaceCreateMutationOptions = <
-  TError = ErrorType<WorkspaceCreate400 | WorkspaceCreate401 | WorkspaceCreate409>,
+  TError = ErrorType<
+    WorkspaceCreate400 | WorkspaceCreate401 | WorkspaceCreate403 | WorkspaceCreate409
+  >,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1042,13 +1045,15 @@ export type WorkspaceCreateMutationResult = NonNullable<
 >;
 export type WorkspaceCreateMutationBody = WorkspaceCreateBody;
 export type WorkspaceCreateMutationError = ErrorType<
-  WorkspaceCreate400 | WorkspaceCreate401 | WorkspaceCreate409
+  WorkspaceCreate400 | WorkspaceCreate401 | WorkspaceCreate403 | WorkspaceCreate409
 >;
 export type WorkspaceCreateMutationVariables = { data: WorkspaceCreateBody };
 
 /** @summary Create a workspace */
 export const useWorkspaceCreate = <
-  TError = ErrorType<WorkspaceCreate400 | WorkspaceCreate401 | WorkspaceCreate409>,
+  TError = ErrorType<
+    WorkspaceCreate400 | WorkspaceCreate401 | WorkspaceCreate403 | WorkspaceCreate409
+  >,
   TContext = unknown,
 >(
   options?: {
