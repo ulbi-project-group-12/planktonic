@@ -63,9 +63,10 @@ export function InviteLinkPanel({
   function requestInvite(inviteRole: WorkspaceRole) {
     setState('pending');
     setInvite(undefined);
-    // A new link replaces the old one: drop its "Скопировано" state — and the timer too,
-    // or a timer armed by the previous copy would flip the button back early.
+    // A new link replaces the old one: drop its "Скопировано" state and copy error — and
+    // the timer too, or a timer armed by the previous copy would flip the button back early.
     setCopied(false);
+    setCopyError(null);
     if (copyTimerRef.current !== null) {
       clearTimeout(copyTimerRef.current);
       copyTimerRef.current = null;
@@ -100,9 +101,13 @@ export function InviteLinkPanel({
 
   async function copyLink() {
     if (!link) return;
+    // The clipboard write is async: while it is in flight a role change may replace the
+    // link — then the late resolve must not mark the NEW link as copied.
+    const request = requestRef.current;
     setCopyError(null);
     try {
       await navigator.clipboard.writeText(link);
+      if (request !== requestRef.current) return;
       setCopied(true);
       if (copyTimerRef.current !== null) clearTimeout(copyTimerRef.current);
       copyTimerRef.current = setTimeout(() => {
@@ -110,6 +115,7 @@ export function InviteLinkPanel({
         copyTimerRef.current = null;
       }, COPY_RESET_MS);
     } catch {
+      if (request !== requestRef.current) return;
       setCopyError('Не удалось скопировать — выделите ссылку и скопируйте вручную.');
     }
   }

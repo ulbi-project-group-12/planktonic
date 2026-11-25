@@ -17,10 +17,14 @@ export async function WorkspaceDashboardPage({ params }: WorkspaceDashboardPageP
       <Typography as="p" color="text-secondary">
         workspaceSlug = {workspaceSlug}
       </Typography>
-      {/* UL-220 test stand: fixed OWNER until UL-151 exposes the real role. */}
-      <div className="self-center">
-        <InviteMemberButton workspaceSlug={workspaceSlug} inviterRole="OWNER" />
-      </div>
+      {/* UL-220 test stand: fixed OWNER until UL-151 exposes the real role — so it is
+          shown only in the mocked dev environment, where the demo actually runs. On the
+          real api a hardcoded OWNER would lie about the member's permissions. */}
+      {process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_API_MOCKING === 'true' ? (
+        <div className="self-center">
+          <InviteMemberButton workspaceSlug={workspaceSlug} inviterRole="OWNER" />
+        </div>
+      ) : null}
     </main>
   );
 }
