@@ -55,6 +55,7 @@ export {
   LoginRequestSchema,
   type LoginResponse,
   LoginResponseSchema,
+  LoginRateLimitResponseSchema,
 } from './auth/login.js';
 export { type MeResponse, MeResponseSchema } from './auth/me.js';
 export { type LogoutResponse, LogoutResponseSchema } from './auth/logout.js';

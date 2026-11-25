@@ -24,6 +24,7 @@ import type {
   AuthLogin200,
   AuthLogin400,
   AuthLogin401,
+  AuthLogin429,
   AuthLogin503,
   AuthLoginBody,
   AuthMe200,
@@ -222,7 +223,7 @@ export const authLogin = async (
 export const getAuthLoginMutationKey = () => ['authLogin'] as const;
 
 export const getAuthLoginMutationOptions = <
-  TError = ErrorType<AuthLogin400 | AuthLogin401 | AuthLogin503>,
+  TError = ErrorType<AuthLogin400 | AuthLogin401 | AuthLogin429 | AuthLogin503>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -259,12 +260,14 @@ export const getAuthLoginMutationOptions = <
 
 export type AuthLoginMutationResult = NonNullable<Awaited<ReturnType<typeof authLogin>>>;
 export type AuthLoginMutationBody = AuthLoginBody;
-export type AuthLoginMutationError = ErrorType<AuthLogin400 | AuthLogin401 | AuthLogin503>;
+export type AuthLoginMutationError = ErrorType<
+  AuthLogin400 | AuthLogin401 | AuthLogin429 | AuthLogin503
+>;
 export type AuthLoginMutationVariables = { data: AuthLoginBody };
 
 /** @summary Sign in a user */
 export const useAuthLogin = <
-  TError = ErrorType<AuthLogin400 | AuthLogin401 | AuthLogin503>,
+  TError = ErrorType<AuthLogin400 | AuthLogin401 | AuthLogin429 | AuthLogin503>,
   TContext = unknown,
 >(
   options?: {

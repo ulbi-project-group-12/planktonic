@@ -6,6 +6,7 @@ import { configureApp } from '../../src/app.setup.js';
 import { AuthModule } from '../../src/modules/auth/auth.module.js';
 import { AuthRepository } from '../../src/modules/auth/auth.repository.js';
 import { LoginRepository } from '../../src/modules/auth/login/login.repository.js';
+import { PasswordBreachService } from '../../src/modules/auth/register/password-breach.service.js';
 import { RegisterRepository } from '../../src/modules/auth/register/register.repository.js';
 
 const request: RegisterRequest = {
@@ -20,12 +21,15 @@ const user = {
   email: request.email,
 };
 const create = vi.fn<RegisterRepository['create']>();
+const isBlocked = vi.fn<PasswordBreachService['isBlocked']>();
 
 let app: INestApplication | undefined;
 let baseUrl: string;
 
 beforeAll(async () => {
   const moduleRef = await Test.createTestingModule({ imports: [AuthModule] })
+    .overrideProvider(PasswordBreachService)
+    .useValue({ isBlocked })
     .overrideProvider(RegisterRepository)
     .useValue({ create })
     .overrideProvider(LoginRepository)
@@ -40,6 +44,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   create.mockReset();
+  isBlocked.mockReset().mockResolvedValue(false);
 });
 
 afterAll(async () => {
@@ -65,6 +70,20 @@ describe('POST /api/auth/register', () => {
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual(user);
     expect(create).toHaveBeenCalledOnce();
+  });
+
+  it('returns HTTP 400 with a password issue for a blocked password', async () => {
+    isBlocked.mockResolvedValue(true);
+    const response = await register(request);
+
+    expect(response.status).toBe(400);
+    expect(ValidationErrorResponse.parse(await response.json()).issues).toEqual([
+      {
+        path: 'password',
+        message: 'Этот пароль слишком распространён или встречался в утечках. Выберите другой.',
+      },
+    ]);
+    expect(create).not.toHaveBeenCalled();
   });
 
   it.each([

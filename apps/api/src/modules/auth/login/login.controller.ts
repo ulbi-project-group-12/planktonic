@@ -1,6 +1,7 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Ip, Post } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
 import {
+  LoginRateLimitResponseSchema,
   type LoginRequest,
   LoginRequestSchema,
   type LoginResponse,
@@ -35,8 +36,12 @@ export class LoginController {
   @ApiZodResponse(200, 'Access token issued', LoginResponseSchema)
   @ApiZodResponse(400, 'Invalid login fields', ValidationErrorResponse)
   @ApiZodResponse(401, 'Invalid email or password', invalidCredentialsResponse)
+  @ApiZodResponse(429, 'Too many login attempts', LoginRateLimitResponseSchema)
   @ApiZodResponse(503, 'Login is unavailable', loginUnavailableResponse)
-  login(@Body({ schema: LoginRequestSchema }) body: LoginRequest): Promise<LoginResponse> {
-    return this.loginService.login(body);
+  login(
+    @Body({ schema: LoginRequestSchema }) body: LoginRequest,
+    @Ip() ip: string,
+  ): Promise<LoginResponse> {
+    return this.loginService.login(body, ip);
   }
 }

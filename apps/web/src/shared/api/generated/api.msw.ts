@@ -13,6 +13,7 @@ import type {
   AuthLogin200,
   AuthLogin400,
   AuthLogin401,
+  AuthLogin429,
   AuthLogin503,
   AuthLoginBody,
   AuthMe200,
@@ -125,6 +126,15 @@ export const getAuthLoginResponseMock401 = (
   statusCode: faker.helpers.arrayElement([401] as const),
   message: faker.helpers.arrayElement(['Invalid email or password'] as const),
   error: faker.helpers.arrayElement(['Unauthorized'] as const),
+  ...overrideResponse,
+});
+
+export const getAuthLoginResponseMock429 = (
+  overrideResponse: Partial<Extract<AuthLogin429, object>> = {},
+): AuthLogin429 => ({
+  statusCode: faker.helpers.arrayElement([429] as const),
+  message: faker.helpers.arrayElement(['Too many login attempts'] as const),
+  retryAfterSeconds: faker.number.int({ min: 1, max: 9007199254740991 }),
   ...overrideResponse,
 });
 
@@ -752,6 +762,30 @@ export const getAuthLoginMockHandler401 = (
             : overrideResponse
           : getAuthLoginResponseMock401(),
         { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthLoginMockHandler429 = (
+  overrideResponse?:
+    | AuthLogin429
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, AuthLoginBody>>[0],
+      ) => Promise<AuthLogin429> | AuthLogin429),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<PathParams, AuthLoginBody>(
+    '*/api/auth/login',
+    async (info: Parameters<HttpResponseResolver<PathParams, AuthLoginBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthLoginResponseMock429(),
+        { status: 429 },
       );
     },
     options,
