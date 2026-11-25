@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { hasApiStatus } from '@/shared/api';
 import { routes } from '@/shared/config';
 import { Alert, Button, Skeleton, Spinner, Typography } from '@/shared/ui';
 import { WORKSPACE_ROLE_LABEL } from '@/widgets/invite-member';
@@ -43,6 +44,23 @@ export function InviteAcceptance({ token }: InviteAcceptanceProps) {
   }
 
   if (invite.isError) {
+    // Only a 404/410 verdict means a dead or consumed token: anything else (network,
+    // 500/503…) is transient and deserves a retry, not a "dead link" notice.
+    if (!hasApiStatus(invite.error, 404) && !hasApiStatus(invite.error, 410)) {
+      return (
+        <Alert
+          palette="danger"
+          title="Не удалось загрузить приглашение"
+          description="Проверьте подключение и попробуйте ещё раз."
+          action={{
+            label: 'Попробовать ещё раз',
+            onClick: () => {
+              void invite.refetch();
+            },
+          }}
+        />
+      );
+    }
     return (
       <Alert
         palette="danger"

@@ -78,6 +78,32 @@ describe('InviteAcceptance', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('offers a retry on a transient load error instead of a dead-link notice', async () => {
+    const user = userEvent.setup();
+    let gets = 0;
+    server.use(
+      http.get('/api/invites/tok500', () => {
+        gets += 1;
+        return gets === 1
+          ? HttpResponse.json({ statusCode: 503 }, { status: 503 })
+          : HttpResponse.json({
+              workspaceName: 'Demo HQ',
+              workspaceSlug: 'demo-hq',
+              role: 'MEMBER',
+            });
+      }),
+    );
+    renderWithApi(<InviteAcceptance token="tok500" />);
+
+    expect(await screen.findByText('Не удалось загрузить приглашение')).toBeInTheDocument();
+    expect(screen.queryByText(/Ссылка недействительна/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
+
+    expect(await screen.findByText('Demo HQ')).toBeInTheDocument();
+    expect(gets).toBe(2);
+  });
+
   it('shows a dead-link notice for an unknown or used token', async () => {
     server.use(
       http.get('/api/invites/dead', () =>
