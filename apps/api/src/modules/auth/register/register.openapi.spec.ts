@@ -41,7 +41,7 @@ it('documents the registration request and current responses', async () => {
                 },
                 password: {
                   type: 'string',
-                  minLength: 12,
+                  minLength: 15,
                   maxLength: 128,
                   format: 'password',
                   writeOnly: true,

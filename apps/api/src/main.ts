@@ -13,14 +13,12 @@ import { configureRealtime } from './core/realtime/realtime.setup.js';
 async function bootstrap(): Promise<void> {
   // abortOnError: false makes a startup failure (an invalid environment included) reject here
   // instead of Nest calling process.exit, so the catch below sets the exit code.
-  const app = configureApp(
-    await NestFactory.create(AppModule, {
-      abortOnError: false,
-    }),
-  );
+  const app = await NestFactory.create(AppModule, { abortOnError: false });
 
   try {
     const config = app.get<ConfigService<Env, true>>(ConfigService);
+
+    configureApp(app, config.get('API_BEHIND_TRAEFIK', { infer: true }) === 'true');
 
     // Before listen(): the Socket.IO server is created with the Redis Streams adapter in place.
     await configureRealtime(app);

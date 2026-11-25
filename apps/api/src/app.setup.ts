@@ -26,10 +26,14 @@ function validationException(issues: readonly ValidationIssue[]): BadRequestExce
 }
 
 /** App-wide HTTP setup, shared by main.ts and the e2e tests so both serve the same routes. */
-export function configureApp(app: INestApplication): INestApplication {
+export function configureApp(app: INestApplication, behindTraefik = false): INestApplication {
   // Don't advertise the framework (Express sets X-Powered-By by default).
-  const server = app.getHttpAdapter().getInstance() as { disable(setting: string): unknown };
+  const server = app.getHttpAdapter().getInstance() as {
+    disable(setting: string): unknown;
+    set(setting: string, value: number): unknown;
+  };
   server.disable('x-powered-by');
+  if (behindTraefik) server.set('trust proxy', 1);
   app.setGlobalPrefix(API_PREFIX);
   // Validates every `@Body({ schema })` / `@Param(..., { schema })` against its zod schema (zod 4
   // implements Standard Schema); parameters without a schema pass through untouched.
