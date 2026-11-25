@@ -1,4 +1,13 @@
-import { Body, Controller, HttpCode, HttpStatus, Ip, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpException,
+  HttpStatus,
+  Ip,
+  Post,
+  Res,
+} from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
 import {
   LoginRateLimitResponseSchema,
@@ -38,10 +47,20 @@ export class LoginController {
   @ApiZodResponse(401, 'Invalid email or password', invalidCredentialsResponse)
   @ApiZodResponse(429, 'Too many login attempts', LoginRateLimitResponseSchema)
   @ApiZodResponse(503, 'Login is unavailable', loginUnavailableResponse)
-  login(
+  async login(
     @Body({ schema: LoginRequestSchema }) body: LoginRequest,
     @Ip() ip: string,
+    @Res({ passthrough: true }) response: { setHeader(name: string, value: string): unknown },
   ): Promise<LoginResponse> {
-    return this.loginService.login(body, ip);
+    try {
+      return await this.loginService.login(body, ip);
+    } catch (error) {
+      // RFC 6585: a 429 names the wait in Retry-After, for clients that do not read the body.
+      if (error instanceof HttpException && error.getStatus() === 429) {
+        const limit = LoginRateLimitResponseSchema.safeParse(error.getResponse());
+        if (limit.success) response.setHeader('Retry-After', String(limit.data.retryAfterSeconds));
+      }
+      throw error;
+    }
   }
 }

@@ -72,6 +72,7 @@ describe('POST /api/auth/login', () => {
     const response = await login(request);
 
     expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('2');
     expect(await response.json()).toEqual({
       statusCode: 429,
       message: 'Too many login attempts',
