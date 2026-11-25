@@ -82,12 +82,13 @@ export function CreateWorkspaceForm() {
 
   const onSubmit = handleSubmit(
     async (values) => {
+      // A banner left by a failed attempt with other values is not about this submit.
+      setSubmitError(undefined);
       if (created?.values.name === values.name && created.values.slug === values.slug) {
         setStep(2);
         return;
       }
       const attempt = ++attemptRef.current;
-      setSubmitError(undefined);
       try {
         const workspace = await createWorkspace.mutateAsync({ data: values });
         if (attempt !== attemptRef.current) return;

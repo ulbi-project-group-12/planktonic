@@ -105,6 +105,47 @@ describe('CreateWorkspaceForm', () => {
     expect(posts).toBe(1);
   });
 
+  it('drops the banner of a failed attempt when re-entering step 2 with the created values', async () => {
+    let posts = 0;
+    server.use(
+      http.post('/api/workspaces', () => {
+        posts += 1;
+        return posts === 1
+          ? HttpResponse.json({ id: 'ws-1', name: 'Team A', slug: 'team-a' }, { status: 201 })
+          : HttpResponse.json(
+              { statusCode: 500, message: 'Internal server error' },
+              { status: 500 },
+            );
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithApi(<CreateWorkspaceForm />);
+    const nameInput = screen.getByLabelText(/Название/);
+    const slugInput = screen.getByLabelText(/Адрес/);
+
+    await user.type(nameInput, 'Team A');
+    await user.click(continueButton());
+    expect(await screen.findByText('Пригласите участников')).toBeVisible();
+
+    await user.click(backButton());
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Team B');
+    await user.clear(slugInput);
+    await user.type(slugInput, 'team-b');
+    await user.click(continueButton());
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось создать пространство');
+
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Team A');
+    await user.clear(slugInput);
+    await user.type(slugInput, 'team-a');
+    await user.click(continueButton());
+
+    expect(await screen.findByText('Пригласите участников')).toBeVisible();
+    expect(screen.queryByText('Не удалось создать пространство')).not.toBeInTheDocument();
+    expect(posts).toBe(2);
+  });
+
   it('marks the cached workspace list stale after a successful create', async () => {
     server.use(
       http.post('/api/workspaces', () =>
@@ -362,9 +403,10 @@ describe('CreateWorkspaceForm', () => {
     await user.click(screen.getByRole('button', { name: 'Отмена' }));
     release();
 
-    await waitFor(() => {
-      expect(push).toHaveBeenCalledTimes(1);
-    });
+    // The button leaves its loading state only once the form has handled the late answer:
+    // `push` was already called by «Отмена», so it cannot be the signal to wait for.
+    await waitFor(() => expect(submit).toBeEnabled());
+    expect(push).toHaveBeenCalledTimes(1);
     expect(push).toHaveBeenCalledWith('/workspaces');
     expect(screen.queryByText('Пригласите участников')).not.toBeInTheDocument();
   });
