@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sessionStore } from '@/shared/api';
 import { server } from '@/shared/api-mocks-node';
 import { routes } from '@/shared/config';
+import { Toaster } from '@/shared/ui/toast';
 import { LandingCta, LandingLoginButton } from './landing-cta';
 
 const push = vi.fn();
@@ -69,17 +70,44 @@ describe('LandingCta', () => {
     expect(push).not.toHaveBeenCalledWith(routes.register());
   });
 
-  it('stays on the landing when the refresh fails with a network error', async () => {
+  it('stays on the landing and reports it when the refresh fails with a network error', async () => {
+    server.use(http.post('*/api/auth/refresh', () => HttpResponse.error()));
+    const user = userEvent.setup();
+    render(
+      <>
+        <LandingCta />
+        <Toaster />
+      </>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /Зарегистрироваться/ }));
+
+    expect(await screen.findByText('Не удалось проверить сессию')).toBeInTheDocument();
+    expect(sessionStore.getState().restoreStatus).toBe('error');
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('retries the restore on the next click after a network error', async () => {
     server.use(http.post('*/api/auth/refresh', () => HttpResponse.error()));
     const user = userEvent.setup();
     render(<LandingCta />);
 
     await user.click(screen.getByRole('button', { name: /Зарегистрироваться/ }));
-
     await waitFor(() => {
       expect(sessionStore.getState().restoreStatus).toBe('error');
     });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Зарегистрироваться/ })).toBeEnabled();
+    });
     expect(push).not.toHaveBeenCalled();
+
+    // The network is back and the server confirms there is no session.
+    server.use(refreshRejected());
+    await user.click(screen.getByRole('button', { name: /Зарегистрироваться/ }));
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith(routes.register());
+    });
   });
 });
 

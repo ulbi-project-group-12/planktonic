@@ -7,6 +7,7 @@ import { useStore } from 'zustand';
 import { restoreSession, sessionStore } from '@/shared/api';
 import { routes } from '@/shared/config';
 import { Button, buttonClassName, type ButtonProps } from '@/shared/ui/button';
+import { toast } from '@/shared/ui/toast';
 
 /** Waits until the silent refresh in flight settles (the token is remembered per tab). */
 function waitForRestore(): Promise<void> {
@@ -70,8 +71,16 @@ export function LandingCta({
         // would yank them away from the page they chose.
         if (!mountedRef.current) return;
         const state = sessionStore.getState();
-        // A network error says nothing about the session — stay put; the next click retries.
-        if (state.restoreStatus === 'error') return;
+        // A network error says nothing about the session — stay put and say so; the next
+        // click retries.
+        if (state.restoreStatus === 'error') {
+          toast({
+            palette: 'danger',
+            title: 'Не удалось проверить сессию',
+            description: 'Проверьте подключение к сети и попробуйте ещё раз.',
+          });
+          return;
+        }
         router.push(state.accessToken !== undefined ? routes.workspaces() : routes.register());
       } finally {
         setDeciding(false);
