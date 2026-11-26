@@ -1,5 +1,6 @@
 export {
   Button,
+  buttonClassName,
   buttonPalettes,
   buttonSizes,
   buttonVariants,

@@ -1,1 +1,1 @@
-export { LandingPage as default } from '@/_pages/landing';
+export { LandingPage as default, landingMetadata as metadata } from '@/_pages/landing';
