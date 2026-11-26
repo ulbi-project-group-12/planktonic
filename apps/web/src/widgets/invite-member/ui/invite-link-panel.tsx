@@ -1,9 +1,11 @@
 'use client';
 
+import type { InviteRole } from '@app/contracts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { routes } from '@/shared/config';
 import { Alert, Button, Field, Input, Select } from '@/shared/ui';
-import { type CreatedInvite, useCreateInvite } from '../api/create-invite';
+import type { InviteCreate201 } from '@/shared/api';
+import { useCreateInvite } from '../api/create-invite';
 import { invitableRoles, WORKSPACE_ROLE_LABEL, type WorkspaceRole } from '../model/roles';
 
 const COPY_RESET_MS = 2000;
@@ -27,8 +29,8 @@ export function InviteLinkPanel({
   linkHint = 'Ссылку можно использовать только один раз',
 }: InviteLinkPanelProps) {
   const roles = invitableRoles(inviterRole);
-  const [role, setRole] = useState<WorkspaceRole>('MEMBER');
-  const [invite, setInvite] = useState<CreatedInvite>();
+  const [role, setRole] = useState<InviteRole>('MEMBER');
+  const [invite, setInvite] = useState<InviteCreate201>();
   const [state, setState] = useState<'pending' | 'ready' | 'error'>('pending');
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export function InviteLinkPanel({
   // no stale setCopied after the panel is gone.
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchInvite = useCallback(
-    (inviteRole: WorkspaceRole) => {
+    (inviteRole: InviteRole) => {
       const request = ++requestRef.current;
       createInvite({ workspaceSlug, role: inviteRole }).then(
         (created) => {
@@ -60,7 +62,7 @@ export function InviteLinkPanel({
 
   // The mount state is already pending/empty; the sync resets live in requestInvite, which
   // only event handlers (role change, retry) call — effects may not set state synchronously.
-  function requestInvite(inviteRole: WorkspaceRole) {
+  function requestInvite(inviteRole: InviteRole) {
     setState('pending');
     setInvite(undefined);
     // A new link replaces the old one: drop its "Скопировано" state and copy error — and
@@ -79,7 +81,7 @@ export function InviteLinkPanel({
   }, [fetchInvite]);
 
   function handleRoleChange(values: string[]) {
-    const next = values[0] as WorkspaceRole | undefined;
+    const next = roles.find((option) => option === values[0]);
     if (next === undefined) return;
     setRole(next);
     requestInvite(next);

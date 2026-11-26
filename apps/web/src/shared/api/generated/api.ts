@@ -36,6 +36,21 @@ import type {
   HealthLive200,
   HealthReady200,
   HealthReady503,
+  InviteAccept200,
+  InviteAccept401,
+  InviteAccept403,
+  InviteAccept404,
+  InviteAccept410,
+  InviteCreate201,
+  InviteCreate400,
+  InviteCreate401,
+  InviteCreate403,
+  InviteCreate404,
+  InviteCreateBody,
+  InviteGet200,
+  InviteGet401,
+  InviteGet404,
+  InviteGet410,
   MessagesCreate201,
   MessagesCreate400,
   MessagesCreate404,
@@ -1207,3 +1222,321 @@ export function useWorkspaceGetBySlug<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export const getInviteCreateUrl = (slug: string) => {
+  return `/api/workspaces/${encodeURIComponent(String(slug))}/invites`;
+};
+
+/**
+ * @summary Create a workspace invitation
+ */
+export const inviteCreate = async (
+  slug: string,
+  inviteCreateBody: InviteCreateBody,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<InviteCreate201> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<InviteCreate201>(getInviteCreateUrl(slug), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(inviteCreateBody),
+  });
+};
+
+export const getInviteCreateMutationKey = () => ['inviteCreate'] as const;
+
+export const getInviteCreateMutationOptions = <
+  TError = ErrorType<InviteCreate400 | InviteCreate401 | InviteCreate403 | InviteCreate404>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof inviteCreate>>,
+    TError,
+    InviteCreateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof inviteCreate>>,
+  TError,
+  InviteCreateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getInviteCreateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof inviteCreate>>,
+    InviteCreateMutationVariables
+  > = (props) => {
+    const { slug, data } = props ?? {};
+
+    return inviteCreate(slug, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InviteCreateMutationResult = NonNullable<Awaited<ReturnType<typeof inviteCreate>>>;
+export type InviteCreateMutationBody = InviteCreateBody;
+export type InviteCreateMutationError = ErrorType<
+  InviteCreate400 | InviteCreate401 | InviteCreate403 | InviteCreate404
+>;
+export type InviteCreateMutationVariables = { slug: string; data: InviteCreateBody };
+
+/** @summary Create a workspace invitation */
+export const useInviteCreate = <
+  TError = ErrorType<InviteCreate400 | InviteCreate401 | InviteCreate403 | InviteCreate404>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof inviteCreate>>,
+      TError,
+      InviteCreateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof inviteCreate>>,
+  TError,
+  InviteCreateMutationVariables,
+  TContext
+> => {
+  return useMutation(getInviteCreateMutationOptions(options), queryClient);
+};
+
+export const getInviteGetUrl = (token: string) => {
+  return `/api/invites/${encodeURIComponent(String(token))}`;
+};
+
+/**
+ * @summary Preview a workspace invitation
+ */
+export const inviteGet = async (
+  token: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<InviteGet200> => {
+  return apiFetch<InviteGet200>(getInviteGetUrl(token), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getInviteGetQueryKey = (token: string) => {
+  return [`/api/invites/${token}`] as const;
+};
+
+export const getInviteGetQueryOptions = <
+  TData = Awaited<ReturnType<typeof inviteGet>>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
+>(
+  token: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inviteGet>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getInviteGetQueryKey(token);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof inviteGet>>> = ({ signal }) =>
+    inviteGet(token, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: token !== null && token !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof inviteGet>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type InviteGetQueryResult = NonNullable<Awaited<ReturnType<typeof inviteGet>>>;
+export type InviteGetQueryError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>;
+
+/** @summary Preview a workspace invitation */
+export function useInviteGet<
+  TData = Awaited<ReturnType<typeof inviteGet>>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
+>(
+  token: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof inviteGet>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof inviteGet>>,
+          TError,
+          Awaited<ReturnType<typeof inviteGet>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary Preview a workspace invitation */
+export function useInviteGet<
+  TData = Awaited<ReturnType<typeof inviteGet>>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
+>(
+  token: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inviteGet>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof inviteGet>>,
+          TError,
+          Awaited<ReturnType<typeof inviteGet>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary Preview a workspace invitation */
+export function useInviteGet<
+  TData = Awaited<ReturnType<typeof inviteGet>>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
+>(
+  token: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inviteGet>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary Preview a workspace invitation */
+export function useInviteGet<
+  TData = Awaited<ReturnType<typeof inviteGet>>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
+>(
+  token: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inviteGet>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getInviteGetQueryOptions(token, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getInviteAcceptUrl = (token: string) => {
+  return `/api/invites/${encodeURIComponent(String(token))}/accept`;
+};
+
+/**
+ * @summary Accept a workspace invitation
+ */
+export const inviteAccept = async (
+  token: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<InviteAccept200> => {
+  return apiFetch<InviteAccept200>(getInviteAcceptUrl(token), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getInviteAcceptMutationKey = () => ['inviteAccept'] as const;
+
+export const getInviteAcceptMutationOptions = <
+  TError = ErrorType<InviteAccept401 | InviteAccept403 | InviteAccept404 | InviteAccept410>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof inviteAccept>>,
+    TError,
+    InviteAcceptMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof inviteAccept>>,
+  TError,
+  InviteAcceptMutationVariables,
+  TContext
+> => {
+  const mutationKey = getInviteAcceptMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof inviteAccept>>,
+    InviteAcceptMutationVariables
+  > = (props) => {
+    const { token } = props ?? {};
+
+    return inviteAccept(token, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InviteAcceptMutationResult = NonNullable<Awaited<ReturnType<typeof inviteAccept>>>;
+
+export type InviteAcceptMutationError = ErrorType<
+  InviteAccept401 | InviteAccept403 | InviteAccept404 | InviteAccept410
+>;
+export type InviteAcceptMutationVariables = { token: string };
+
+/** @summary Accept a workspace invitation */
+export const useInviteAccept = <
+  TError = ErrorType<InviteAccept401 | InviteAccept403 | InviteAccept404 | InviteAccept410>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof inviteAccept>>,
+      TError,
+      InviteAcceptMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof inviteAccept>>,
+  TError,
+  InviteAcceptMutationVariables,
+  TContext
+> => {
+  return useMutation(getInviteAcceptMutationOptions(options), queryClient);
+};

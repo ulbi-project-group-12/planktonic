@@ -1,7 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import type { CreateWorkspaceRequest } from '@app/contracts';
+import type { CreateWorkspaceRequest, InviteRole } from '@app/contracts';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { Prisma, WsRole } from '../../generated/prisma/client.js';
+
+import { requireActiveInvite } from './invite-status.js';
+
+const inviteSelect = {
+  id: true,
+  workspaceId: true,
+  role: true,
+  expiresAt: true,
+  revokedAt: true,
+  consumedAt: true,
+  workspace: { select: { name: true, slug: true } },
+} satisfies Prisma.InviteSelect;
 
 @Injectable()
 export class WorkspaceRepository {
@@ -19,6 +31,48 @@ export class WorkspaceRepository {
     return this.prisma.workspace.findUnique({
       where: { slug },
       select: { id: true, name: true, slug: true },
+    });
+  }
+
+  async createInvite(data: {
+    workspaceId: string;
+    createdById: string;
+    role: InviteRole;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<void> {
+    await this.prisma.invite.create({ data, select: { id: true } });
+  }
+
+  findInvite(tokenHash: string) {
+    return this.prisma.invite.findUnique({ where: { tokenHash }, select: inviteSelect });
+  }
+
+  acceptInvite(tokenHash: string, userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const invite = requireActiveInvite(
+        await tx.invite.findUnique({ where: { tokenHash }, select: inviteSelect }),
+      );
+      const workspaceSlug = invite.workspace.slug;
+      const membership = await tx.workspaceMember.createMany({
+        data: { workspaceId: invite.workspaceId, userId, role: invite.role },
+        skipDuplicates: true,
+      });
+      if (membership.count === 0) return { workspaceSlug, outcome: 'already_member' } as const;
+
+      const now = new Date();
+      const consumed = await tx.invite.updateMany({
+        where: { id: invite.id, expiresAt: { gt: now }, revokedAt: null, consumedAt: null },
+        data: { consumedAt: now },
+      });
+      if (consumed.count === 0) {
+        requireActiveInvite(
+          await tx.invite.findUnique({ where: { tokenHash }, select: inviteSelect }),
+          now,
+        );
+        throw new Error('Active invite could not be consumed');
+      }
+      return { workspaceSlug, outcome: 'joined' } as const;
     });
   }
 

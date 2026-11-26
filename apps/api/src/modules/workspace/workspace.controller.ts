@@ -1,12 +1,18 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import {
+  type CreateInviteRequest,
+  CreateInviteRequestSchema,
+  type CreateInviteResponse,
+  CreateInviteResponseSchema,
   type CreateWorkspaceRequest,
   CreateWorkspaceRequestSchema,
   HttpErrorResponse,
   type ListWorkspacesResponse,
   ListWorkspacesResponseSchema,
   ValidationErrorResponse,
+  type WorkspaceDetailsResponse,
+  WorkspaceDetailsResponseSchema,
   type WorkspaceResponse,
   WorkspaceResponseSchema,
   WorkspaceSlugConflictResponseSchema,
@@ -40,7 +46,7 @@ export class WorkspaceController {
   @Get(':slug')
   @RequireAccess({ kind: 'authenticated' })
   @ApiOperation({ summary: 'Get a workspace by slug', operationId: 'Workspace_getBySlug' })
-  @ApiZodResponse(200, 'Workspace', WorkspaceResponseSchema)
+  @ApiZodResponse(200, 'Workspace', WorkspaceDetailsResponseSchema)
   @ApiZodResponse(400, 'Invalid workspace slug', ValidationErrorResponse)
   @ApiZodResponse(
     401,
@@ -51,8 +57,28 @@ export class WorkspaceController {
   getBySlug(
     @Param({ schema: WorkspaceSlugParamsSchema }) { slug }: WorkspaceSlugParams,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<WorkspaceResponse> {
+  ): Promise<WorkspaceDetailsResponse> {
     return this.workspaceService.getBySlugForUser(slug, user.id);
+  }
+
+  @Post(':slug/invites')
+  @RequireAccess({ kind: 'authenticated' })
+  @ApiOperation({ summary: 'Create a workspace invitation', operationId: 'Invite_create' })
+  @ApiZodResponse(201, 'Invitation created', CreateInviteResponseSchema)
+  @ApiZodResponse(400, 'Invalid workspace slug or invitation role', ValidationErrorResponse)
+  @ApiZodResponse(
+    401,
+    'Authentication required',
+    HttpErrorResponse.pick({ statusCode: true, message: true }),
+  )
+  @ApiZodResponse(403, 'Invitation creation forbidden', HttpErrorResponse)
+  @ApiZodResponse(404, 'Workspace not found', HttpErrorResponse)
+  createInvite(
+    @Param({ schema: WorkspaceSlugParamsSchema }) { slug }: WorkspaceSlugParams,
+    @Body({ schema: CreateInviteRequestSchema }) { role }: CreateInviteRequest,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<CreateInviteResponse> {
+    return this.workspaceService.createInvite(slug, user.id, role);
   }
 
   @Post()

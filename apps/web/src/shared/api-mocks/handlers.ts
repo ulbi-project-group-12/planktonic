@@ -1,4 +1,9 @@
-import { type AuthSession, CreateWorkspaceRequestSchema } from '@app/contracts';
+import {
+  type AuthSession,
+  CreateInviteRequestSchema,
+  CreateWorkspaceRequestSchema,
+  type InviteRole,
+} from '@app/contracts';
 import { HttpResponse, http } from 'msw';
 import { z } from 'zod';
 import {
@@ -10,6 +15,17 @@ import {
   getMessagesCreateMockHandler,
   getMessagesListMockHandler,
 } from '../api/generated/api.msw';
+
+// supportedValuesOf omits 'UTC' (a valid IANA id), so it is added explicitly.
+const IANA_TIMEZONES = new Set(['UTC', ...Intl.supportedValuesOf('timeZone')]);
+// Name limits as in RegisterRequestSchema, so the mock refuses what the real API will refuse.
+const UpdateMeRequest = z.object({
+  name: z.string().trim().min(2).max(15).optional(),
+  tz: z
+    .string()
+    .refine((tz) => IANA_TIMEZONES.has(tz), { message: 'Invalid timezone' })
+    .optional(),
+});
 
 interface MockWorkspace {
   id: string;
@@ -107,18 +123,38 @@ const currentUser = {
   id: '019a8f00-0000-7000-8000-000000000004',
   name: 'Ada',
   email: 'ada@example.com',
+  tz: 'Europe/Berlin',
 };
 
 /** Workspace routes share an in-memory list per handler set. */
 
-const InviteRole = z.enum(['MEMBER', 'ADMIN']);
-const CreateInviteRequest = z.object({ role: InviteRole });
-
 interface MockInvite {
   token: string;
   workspaceSlug: string;
-  role: z.infer<typeof InviteRole>;
+  role: InviteRole;
   used: boolean;
+}
+
+function unavailableMockInvite(invite: MockInvite | undefined) {
+  return invite
+    ? HttpResponse.json(
+        {
+          statusCode: 410,
+          code: 'invite_consumed',
+          message: 'Invite is no longer valid',
+          error: 'Gone',
+        },
+        { status: 410 },
+      )
+    : HttpResponse.json(
+        {
+          statusCode: 404,
+          code: 'invite_not_found',
+          message: 'Invite not found',
+          error: 'Not Found',
+        },
+        { status: 404 },
+      );
 }
 
 /**
@@ -155,7 +191,7 @@ function createWorkspaceHandlers() {
     http.get('*/api/workspaces', () => HttpResponse.json([...workspaces.values()])),
     http.get<{ slug: string }>('*/api/workspaces/:slug', ({ params }) => {
       const workspace = workspaces.get(params.slug);
-      if (workspace) return HttpResponse.json(workspace);
+      if (workspace) return HttpResponse.json({ ...workspace, role: 'OWNER' });
       return HttpResponse.json(
         { statusCode: 404, message: 'Workspace not found', error: 'Not Found' },
         { status: 404 },
@@ -195,7 +231,7 @@ function createWorkspaceHandlers() {
       return HttpResponse.json(workspace, { status: 201 });
     }),
     http.post('*/api/workspaces/:slug/invites', async ({ request, params }) => {
-      const parsed = CreateInviteRequest.safeParse(await request.json());
+      const parsed = CreateInviteRequestSchema.safeParse(await request.json());
       if (!parsed.success) {
         return HttpResponse.json(
           { statusCode: 400, message: 'Validation failed', error: 'Bad Request' },
@@ -214,30 +250,19 @@ function createWorkspaceHandlers() {
     }),
     http.get('*/api/invites/:token', ({ params }) => {
       const invite = invites.get(String(params.token));
-      if (!invite || invite.used) {
-        return HttpResponse.json(
-          { statusCode: 404, message: 'Invite not found', error: 'Not Found' },
-          { status: 404 },
-        );
-      }
+      if (!invite || invite.used) return unavailableMockInvite(invite);
       return HttpResponse.json({
         workspaceName: workspaces.get(invite.workspaceSlug)?.name ?? invite.workspaceSlug,
         workspaceSlug: invite.workspaceSlug,
         role: invite.role,
       });
     }),
-    // The link is single-use: the first accept consumes the token (ADR-0002 §2).
     http.post('*/api/invites/:token/accept', ({ params }) => {
       const invite = invites.get(String(params.token));
-      if (!invite || invite.used) {
-        return HttpResponse.json(
-          { statusCode: 410, message: 'Invite is no longer valid', error: 'Gone' },
-          { status: 410 },
-        );
-      }
+      if (!invite || invite.used) return unavailableMockInvite(invite);
       invite.used = true;
       saveMap(INVITES_KEY, invites);
-      return HttpResponse.json({ workspaceSlug: invite.workspaceSlug });
+      return HttpResponse.json({ workspaceSlug: invite.workspaceSlug, outcome: 'joined' });
     }),
   ];
 }
@@ -323,13 +348,16 @@ function createAuthSessionHandlers() {
  * are fixed here; the rest come from the generated faker factories.
  */
 export function createApiHandlers() {
+  // A copy per handler set (like the workspace list): a PATCH in one test or story must not
+  // rename the user for every set created after it.
+  const user = { ...currentUser };
   return [
     getAuthLoginMockHandler({ accessToken: 'msw-access-token' }),
     http.post('*/api/auth/refresh', () =>
       HttpResponse.json({ accessToken: 'msw-refreshed-token' }),
     ),
     http.post('*/api/auth/logout', () => HttpResponse.json({})),
-    getAuthMeMockHandler(currentUser),
+    getAuthMeMockHandler(() => user),
     getAuthRegisterMockHandler({
       id: currentUser.id,
       name: currentUser.name,
@@ -348,5 +376,34 @@ export function createApiHandlers() {
     ...createWorkspaceHandlers(),
     ...createAuthSessionHandlers(),
     ...createEmailVerificationHandlers(),
+    ...createUserHandlers(user),
+  ];
+}
+
+/**
+ * PATCH /api/users/me lives here until UL-155 lands the real contracts and the OpenAPI schema
+ * gains the endpoint — then Orval regenerates the handlers and this block goes.
+ */
+function createUserHandlers(user: typeof currentUser) {
+  return [
+    http.patch('*/api/users/me', async ({ request }) => {
+      const parsed = UpdateMeRequest.safeParse(await request.json());
+      if (!parsed.success) {
+        return HttpResponse.json(
+          {
+            statusCode: 400,
+            message: 'Validation failed',
+            issues: parsed.error.issues.map((issue) => ({
+              path: issue.path.join('.'),
+              message: issue.message,
+            })),
+          },
+          { status: 400 },
+        );
+      }
+      user.name = parsed.data.name ?? user.name;
+      user.tz = parsed.data.tz ?? user.tz;
+      return HttpResponse.json(user);
+    }),
   ];
 }

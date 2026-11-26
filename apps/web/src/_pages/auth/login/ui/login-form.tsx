@@ -2,7 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type FieldError } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
@@ -22,11 +22,9 @@ const waitTime = new Intl.RelativeTimeFormat('ru');
 
 const FIELDS: readonly LoginField[] = ['email', 'password'];
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string } = {}) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  // The session gate sends a guest here with the address to come back to.
-  const next = useSearchParams().get('next');
   const signIn = useSignIn();
   const [submitError, setSubmitError] = useState<string>();
   const [retryNotice, setRetryNotice] = useState<{ seconds: number }>();
