@@ -35,12 +35,33 @@ describe('TimeZone', () => {
     expect(TimeZone.parse('UTC')).toBe('UTC');
   });
 
-  it.each(['Mars/Olympus_Mons', 'Europe/Berlin!', 'europe/berlin', '+05:00', 'GMT+3', ''])(
-    'rejects %s',
-    (tz) => {
-      expect(TimeZone.safeParse(tz).success).toBe(false);
-    },
-  );
+  // Engines disagree on the listed spelling: Node and Chrome list the first of each pair,
+  // Firefox the second. A picker built in either browser must be able to save its value.
+  it.each([
+    'Europe/Kiev',
+    'Europe/Kyiv',
+    'Asia/Calcutta',
+    'Asia/Kolkata',
+    'Asia/Saigon',
+    'Asia/Ho_Chi_Minh',
+    'America/Argentina/Buenos_Aires',
+  ])('accepts %s whichever spelling the runtime lists', (tz) => {
+    expect(TimeZone.parse(tz)).toBe(tz);
+  });
+
+  it.each([
+    'Mars/Olympus_Mons',
+    'Europe/Berlin!',
+    'Europe/Berlin ',
+    'europe/berlin',
+    'Europe/BERLIN',
+    '+05:00',
+    'GMT+3',
+    'EST',
+    '',
+  ])('rejects %j', (tz) => {
+    expect(TimeZone.safeParse(tz).success).toBe(false);
+  });
 });
 
 describe('UpdateMeRequestSchema', () => {
