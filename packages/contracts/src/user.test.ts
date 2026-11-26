@@ -45,6 +45,7 @@ describe('TimeZone', () => {
     'Asia/Saigon',
     'Asia/Ho_Chi_Minh',
     'America/Argentina/Buenos_Aires',
+    'Etc/UTC',
   ])('accepts %s whichever spelling the runtime lists', (tz) => {
     expect(TimeZone.parse(tz)).toBe(tz);
   });
@@ -55,6 +56,8 @@ describe('TimeZone', () => {
     'Europe/Berlin ',
     'europe/berlin',
     'Europe/BERLIN',
+    'Europe/KYIV',
+    'Etc/Utc',
     '+05:00',
     'GMT+3',
     'EST',
