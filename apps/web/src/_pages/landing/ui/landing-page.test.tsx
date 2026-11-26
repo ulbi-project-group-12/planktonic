@@ -28,7 +28,7 @@ describe('LandingPage', () => {
   it('offers the login and registration entry points', () => {
     render(<LandingPage />);
 
-    expect(screen.getAllByRole('button', { name: /Войти/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /Войти/ }).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: /Регистрация/ })).toHaveAttribute('href', '/register');
   });
 });

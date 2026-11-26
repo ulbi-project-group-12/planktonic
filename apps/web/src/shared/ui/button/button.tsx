@@ -79,6 +79,24 @@ interface ButtonProps extends ComponentProps<'button'> {
   fullWidth?: boolean;
 }
 
+/** The button look as a class string, for the rare case the element is a link rather than a
+ *  button (navigation keeps the native anchor semantics), e.g. `<Link className={buttonClassName(...)}>`. */
+function buttonClassName({
+  variant = 'solid',
+  palette = 'primary',
+  size = 'm',
+  fullWidth = false,
+  className,
+}: Pick<ButtonProps, 'variant' | 'palette' | 'size' | 'fullWidth' | 'className'>) {
+  return cn(
+    "inline-flex shrink-0 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-button border font-bold outline-none transition-colors focus-visible:ring-3 disabled:pointer-events-none [&:disabled:not([data-loading])]:opacity-45 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+    variantClasses[variant][palette],
+    sizeClasses[size],
+    fullWidth && 'w-full',
+    className,
+  );
+}
+
 function Button({
   className,
   variant = 'solid',
@@ -97,13 +115,7 @@ function Button({
       data-palette={palette}
       data-size={size}
       data-loading={loading || undefined}
-      className={cn(
-        "inline-flex shrink-0 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-button border font-bold outline-none transition-colors focus-visible:ring-3 disabled:pointer-events-none [&:disabled:not([data-loading])]:opacity-45 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        variantClasses[variant][palette],
-        sizeClasses[size],
-        fullWidth && 'w-full',
-        className,
-      )}
+      className={buttonClassName({ variant, palette, size, fullWidth, className })}
       // loading blocks activation natively (mouse, keyboard, form submit);
       // per the mockup loading does not dim the button — opacity 0.45 is only for disabled (rule above)
       disabled={disabled || loading}
@@ -124,6 +136,7 @@ function Button({
 
 export {
   Button,
+  buttonClassName,
   buttonPalettes,
   buttonSizes,
   buttonVariants,

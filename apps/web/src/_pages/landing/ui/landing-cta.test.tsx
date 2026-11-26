@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sessionStore } from '@/shared/api';
 import { server } from '@/shared/api-mocks-node';
 import { routes } from '@/shared/config';
-import { LandingCta } from './landing-cta';
+import { LandingCta, LandingLoginButton } from './landing-cta';
 
 const push = vi.fn();
 
@@ -67,5 +67,27 @@ describe('LandingCta', () => {
 
     expect(push).toHaveBeenCalledWith(routes.workspaces());
     expect(push).not.toHaveBeenCalledWith(routes.register());
+  });
+
+  it('stays on the landing when the refresh fails with a network error', async () => {
+    server.use(http.post('*/api/auth/refresh', () => HttpResponse.error()));
+    const user = userEvent.setup();
+    render(<LandingCta />);
+
+    await user.click(screen.getByRole('button', { name: /Зарегистрироваться/ }));
+
+    await waitFor(() => {
+      expect(sessionStore.getState().restoreStatus).toBe('error');
+    });
+    expect(push).not.toHaveBeenCalled();
+  });
+});
+
+describe('LandingLoginButton', () => {
+  it('is a real link to the login page', () => {
+    render(<LandingLoginButton />);
+
+    const link = screen.getByRole('link', { name: 'Войти' });
+    expect(link).toHaveAttribute('href', routes.login());
   });
 });

@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { restoreSession, sessionStore } from '@/shared/api';
 import { routes } from '@/shared/config';
-import { Button, type ButtonProps } from '@/shared/ui/button';
+import { Button, buttonClassName, type ButtonProps } from '@/shared/ui/button';
 
 /** Waits until the silent refresh in flight settles (the token is remembered per tab). */
 function waitForRestore(): Promise<void> {
@@ -49,9 +50,14 @@ export function LandingCta({
   const router = useRouter();
   const accessToken = useStore(sessionStore, (state) => state.accessToken);
   const [deciding, setDeciding] = useState(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
     void restoreSession();
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const handleClick = () => {
@@ -60,8 +66,13 @@ export function LandingCta({
       try {
         await restoreSession();
         await waitForRestore();
-        const signedIn = sessionStore.getState().accessToken !== undefined;
-        router.push(signedIn ? routes.workspaces() : routes.register());
+        // The user may have left the landing while the restore was in flight; a late push
+        // would yank them away from the page they chose.
+        if (!mountedRef.current) return;
+        const state = sessionStore.getState();
+        // A network error says nothing about the session — stay put; the next click retries.
+        if (state.restoreStatus === 'error') return;
+        router.push(state.accessToken !== undefined ? routes.workspaces() : routes.register());
       } finally {
         setDeciding(false);
       }
@@ -89,23 +100,15 @@ export function LandingCta({
   );
 }
 
-/** «Войти» — a plain link to the login, as a button for the header and the hero. */
+/** «Войти» — a link to the login in the button look, for the header and the hero: a real
+ *  anchor, so the context menu, «open in a new tab» and screen readers all work natively. */
 export function LandingLoginButton({
   size = 'l',
   className,
 }: Pick<LandingCtaProps, 'size' | 'className'>) {
-  const router = useRouter();
   return (
-    <Button
-      type="button"
-      variant="secondary"
-      size={size}
-      className={className}
-      onClick={() => {
-        router.push(routes.login());
-      }}
-    >
+    <Link href={routes.login()} className={buttonClassName({ variant: 'secondary', size, className })}>
       Войти
-    </Button>
+    </Link>
   );
 }
