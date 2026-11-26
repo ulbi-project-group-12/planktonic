@@ -107,7 +107,10 @@ export function LandingLoginButton({
   className,
 }: Pick<LandingCtaProps, 'size' | 'className'>) {
   return (
-    <Link href={routes.login()} className={buttonClassName({ variant: 'secondary', size, className })}>
+    <Link
+      href={routes.login()}
+      className={buttonClassName({ variant: 'secondary', size, className })}
+    >
       Войти
     </Link>
   );
