@@ -4,13 +4,12 @@
  * API
  * OpenAPI spec version: 1.0.0
  */
+import type { InviteAccept410Code } from './inviteAccept410Code';
+import type { InviteAccept410StatusCode } from './inviteAccept410StatusCode';
 
 export type InviteAccept410 = {
-  /**
-   * @minimum -9007199254740991
-   * @maximum 9007199254740991
-   */
-  statusCode: number;
+  statusCode: InviteAccept410StatusCode;
   message: string;
   error: string;
+  code: InviteAccept410Code;
 };

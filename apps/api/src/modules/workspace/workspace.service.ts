@@ -2,13 +2,12 @@ import { createHash, randomBytes } from 'node:crypto';
 import {
   ConflictException,
   ForbiddenException,
-  GoneException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
-  type AcceptInviteResponse,
-  AcceptInviteResponseSchema,
+  type AcceptInviteOutcome,
+  AcceptInviteOutcomeSchema,
   type CreateInviteResponse,
   type CreateWorkspaceRequest,
   type GetInviteResponse,
@@ -23,6 +22,7 @@ import {
   type WorkspaceSlugConflictResponse,
 } from '@app/contracts';
 import { AccessService } from '../../core/access/access.service.js';
+import { requireActiveInvite } from './invite-status.js';
 import { WorkspaceRepository } from './workspace.repository.js';
 
 const INVITE_TTL_MS = 24 * 60 * 60 * 1_000;
@@ -99,8 +99,7 @@ export class WorkspaceService {
   }
 
   async getInvite(token: string): Promise<GetInviteResponse> {
-    const invite = await this.repository.findActiveInvite(hashInviteToken(token));
-    if (!invite) throw new NotFoundException('Invite not found');
+    const invite = requireActiveInvite(await this.repository.findInvite(hashInviteToken(token)));
 
     return GetInviteResponseSchema.parse({
       workspaceName: invite.workspace.name,
@@ -109,17 +108,14 @@ export class WorkspaceService {
     });
   }
 
-  async acceptInvite(token: string, userId: string): Promise<AcceptInviteResponse> {
+  async acceptInvite(token: string, userId: string): Promise<AcceptInviteOutcome> {
     const tokenHash = hashInviteToken(token);
-    if (!(await this.repository.findActiveInvite(tokenHash))) {
-      throw new GoneException('Invite is no longer valid');
-    }
+    requireActiveInvite(await this.repository.findInvite(tokenHash));
     const allowed = await this.access.can({ id: userId }, 'workspace.invite.accept', {
       invitation: { valid: true, email: null },
     });
     if (!allowed) throw new ForbiddenException('Invitation acceptance forbidden');
 
-    const workspaceSlug = await this.repository.acceptInvite(tokenHash, userId);
-    return AcceptInviteResponseSchema.parse({ workspaceSlug });
+    return AcceptInviteOutcomeSchema.parse(await this.repository.acceptInvite(tokenHash, userId));
   }
 }
