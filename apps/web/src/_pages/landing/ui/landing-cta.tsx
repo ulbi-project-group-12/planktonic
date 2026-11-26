@@ -24,7 +24,7 @@ function waitForRestore(): Promise<void> {
 }
 
 interface LandingCtaProps {
-  /** Button label; «Начать» almost everywhere. */
+  /** Button label; «Зарегистрироваться» almost everywhere. */
   label?: string;
   size?: ButtonProps['size'];
   variant?: ButtonProps['variant'];
@@ -33,14 +33,14 @@ interface LandingCtaProps {
 }
 
 /**
- * The «Начать» button (UL-153). The session lives in the tab's memory plus a refresh
+ * The «Зарегистрироваться» button (UL-153). The session lives in the tab's memory plus a refresh
  * cookie neither the server nor a proxy can read, so the choice "the app or the
  * registration" is made here, on the client: a signed-in visitor goes to the workspace
  * list, a guest — to the registration. The restore starts on mount, so by the click
  * the answer is usually already known; otherwise the button waits for it.
  */
 export function LandingCta({
-  label = 'Начать',
+  label = 'Зарегистрироваться',
   size = 'l',
   variant = 'solid',
   fullWidth = false,

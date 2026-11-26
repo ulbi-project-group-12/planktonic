@@ -7,7 +7,7 @@ import { LandingCta, LandingLoginButton } from './landing-cta';
 
 /**
  * The landing header: the logo, anchors to the sections, the theme switch and the
- * entry actions. Sticky, so the «Начать» button is always at hand while scrolling.
+ * entry actions. Sticky, so the «Зарегистрироваться» button is always at hand while scrolling.
  */
 export function LandingHeader() {
   return (
@@ -35,8 +35,8 @@ export function LandingHeader() {
         </nav>
         <div className="flex items-center gap-2">
           <ThemeSwitcher />
-          <LandingLoginButton size="m" className="hidden mobile-xl:inline-flex" />
-          <LandingCta size="m" />
+          <LandingLoginButton size="m" />
+          <LandingCta size="m" className="hidden mobile-xl:inline-flex" />
         </div>
       </div>
     </header>

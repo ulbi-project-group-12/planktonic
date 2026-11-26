@@ -39,7 +39,7 @@ describe('LandingCta', () => {
     const user = userEvent.setup();
     render(<LandingCta />);
 
-    await user.click(screen.getByRole('button', { name: /Начать/ }));
+    await user.click(screen.getByRole('button', { name: /Зарегистрироваться/ }));
 
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith(routes.register());
@@ -51,7 +51,7 @@ describe('LandingCta', () => {
     const user = userEvent.setup();
     render(<LandingCta />);
 
-    await user.click(screen.getByRole('button', { name: /Начать/ }));
+    await user.click(screen.getByRole('button', { name: /Зарегистрироваться/ }));
 
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith(routes.workspaces());
@@ -63,7 +63,7 @@ describe('LandingCta', () => {
     const user = userEvent.setup();
     render(<LandingCta />);
 
-    await user.click(screen.getByRole('button', { name: /Начать/ }));
+    await user.click(screen.getByRole('button', { name: /Зарегистрироваться/ }));
 
     expect(push).toHaveBeenCalledWith(routes.workspaces());
     expect(push).not.toHaveBeenCalledWith(routes.register());

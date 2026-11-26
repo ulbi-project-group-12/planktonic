@@ -13,7 +13,7 @@ describe('LandingPage', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: /Обсуждения, задачи и код/ }),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Начать/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /Зарегистрироваться/ }).length).toBeGreaterThan(0);
   });
 
   it('renders the «Как это работает» and «Возможности» sections', () => {
