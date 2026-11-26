@@ -1,11 +1,11 @@
 'use client';
 
+import { useAuthMe } from '@/shared/api';
 import { Alert, Skeleton, Typography } from '@/shared/ui';
-import { useProfileMe } from '../api/profile';
 import { ProfileForm } from './profile-form';
 
 export function ProfileSettingsPage() {
-  const profile = useProfileMe();
+  const profile = useAuthMe();
 
   return (
     <main className="mx-auto flex min-h-[calc(100svh-4rem)] w-full max-w-2xl flex-col gap-6 p-6 desktop-s:p-8">

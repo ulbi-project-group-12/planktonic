@@ -10,7 +10,7 @@ import { AuthGuard } from './auth.guard.js';
 
 const secret = 'test-only-access-token-signing-secret';
 const userId = '019a8f00-0000-7000-8000-000000000004';
-const profile = { id: userId, name: 'Ada', email: 'ada@example.com' };
+const profile = { id: userId, name: 'Ada', email: 'ada@example.com', tz: 'Europe/Berlin' };
 
 async function setup() {
   const jwt = new JwtService({ secret });

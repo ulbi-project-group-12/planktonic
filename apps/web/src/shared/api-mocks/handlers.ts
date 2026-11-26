@@ -3,6 +3,7 @@ import {
   CreateInviteRequestSchema,
   CreateWorkspaceRequestSchema,
   type InviteRole,
+  UpdateMeRequestSchema,
 } from '@app/contracts';
 import { HttpResponse, http } from 'msw';
 import { z } from 'zod';
@@ -15,17 +16,6 @@ import {
   getMessagesCreateMockHandler,
   getMessagesListMockHandler,
 } from '../api/generated/api.msw';
-
-// supportedValuesOf omits 'UTC' (a valid IANA id), so it is added explicitly.
-const IANA_TIMEZONES = new Set(['UTC', ...Intl.supportedValuesOf('timeZone')]);
-// Name limits as in RegisterRequestSchema, so the mock refuses what the real API will refuse.
-const UpdateMeRequest = z.object({
-  name: z.string().trim().min(2).max(15).optional(),
-  tz: z
-    .string()
-    .refine((tz) => IANA_TIMEZONES.has(tz), { message: 'Invalid timezone' })
-    .optional(),
-});
 
 interface MockWorkspace {
   id: string;
@@ -381,13 +371,14 @@ export function createApiHandlers() {
 }
 
 /**
- * PATCH /api/users/me lives here until UL-155 lands the real contracts and the OpenAPI schema
- * gains the endpoint — then Orval regenerates the handlers and this block goes.
+ * PATCH /api/users/me stays hand-written because the mock must be stateful (the generated
+ * handler answers faker data and the header would never show the saved name). The body is
+ * checked against the same contract schema the real API applies.
  */
 function createUserHandlers(user: typeof currentUser) {
   return [
     http.patch('*/api/users/me', async ({ request }) => {
-      const parsed = UpdateMeRequest.safeParse(await request.json());
+      const parsed = UpdateMeRequestSchema.safeParse(await request.json());
       if (!parsed.success) {
         return HttpResponse.json(
           {

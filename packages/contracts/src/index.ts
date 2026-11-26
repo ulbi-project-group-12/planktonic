@@ -102,3 +102,12 @@ export {
   type RegisterResponse,
   RegisterResponseSchema,
 } from './auth/register.js';
+export {
+  TIME_ZONE_MAX_LENGTH,
+  TimeZone,
+  type UpdateMeRequest,
+  UpdateMeRequestSchema,
+  USER_NAME_MAX_LENGTH,
+  USER_NAME_MIN_LENGTH,
+  UserName,
+} from './user.js';
