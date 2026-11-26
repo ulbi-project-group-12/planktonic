@@ -1,6 +1,12 @@
+import Link from 'next/link';
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
 import { routes } from '@/shared/config';
-import { Link as UiLink, Typography } from '@/shared/ui';
+import { Typography } from '@/shared/ui';
+
+// The look of the shared nav link on the router's <Link>: the shared one renders a plain <a>,
+// which reloads the whole document for an in-app address.
+const footerLinkClassName =
+  'rounded-md px-2 py-1 text-body-s leading-5 text-fg-secondary outline-none transition-colors hover:bg-sunken hover:text-fg-primary focus-visible:ring-3 focus-visible:ring-brand-primary/40';
 
 /** The landing footer: the wordmark, the entry links and the product line. */
 export function LandingFooter() {
@@ -19,12 +25,12 @@ export function LandingFooter() {
           </Typography>
         </div>
         <nav aria-label="Вход и регистрация" className="flex items-center gap-1">
-          <UiLink href={routes.login()} variant="nav">
+          <Link href={routes.login()} className={footerLinkClassName}>
             Войти
-          </UiLink>
-          <UiLink href={routes.register()} variant="nav">
+          </Link>
+          <Link href={routes.register()} className={footerLinkClassName}>
             Регистрация
-          </UiLink>
+          </Link>
         </nav>
       </div>
     </footer>
