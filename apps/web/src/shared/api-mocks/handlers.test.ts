@@ -142,7 +142,7 @@ it('returns the current user', async () => {
   });
 });
 
-// PATCH /api/users/me is mocked by hand until UL-155 adds it to the OpenAPI schema.
+// PATCH /api/users/me is mocked by hand: the handler must update the user the me route serves.
 it('updates the current user and refuses a zone outside the IANA list', async () => {
   const patch = (body: unknown) =>
     fetch('http://api.example.invalid/api/users/me', {
