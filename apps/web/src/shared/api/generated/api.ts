@@ -39,6 +39,7 @@ import type {
   InviteAccept200,
   InviteAccept401,
   InviteAccept403,
+  InviteAccept404,
   InviteAccept410,
   InviteCreate201,
   InviteCreate400,
@@ -49,6 +50,7 @@ import type {
   InviteGet200,
   InviteGet401,
   InviteGet404,
+  InviteGet410,
   MessagesCreate201,
   MessagesCreate400,
   MessagesCreate404,
@@ -1352,7 +1354,7 @@ export const getInviteGetQueryKey = (token: string) => {
 
 export const getInviteGetQueryOptions = <
   TData = Awaited<ReturnType<typeof inviteGet>>,
-  TError = ErrorType<InviteGet401 | InviteGet404>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
 >(
   token: string,
   options?: {
@@ -1378,12 +1380,12 @@ export const getInviteGetQueryOptions = <
 };
 
 export type InviteGetQueryResult = NonNullable<Awaited<ReturnType<typeof inviteGet>>>;
-export type InviteGetQueryError = ErrorType<InviteGet401 | InviteGet404>;
+export type InviteGetQueryError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>;
 
 /** @summary Preview a workspace invitation */
 export function useInviteGet<
   TData = Awaited<ReturnType<typeof inviteGet>>,
-  TError = ErrorType<InviteGet401 | InviteGet404>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
 >(
   token: string,
   options: {
@@ -1403,7 +1405,7 @@ export function useInviteGet<
 /** @summary Preview a workspace invitation */
 export function useInviteGet<
   TData = Awaited<ReturnType<typeof inviteGet>>,
-  TError = ErrorType<InviteGet401 | InviteGet404>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
 >(
   token: string,
   options?: {
@@ -1423,7 +1425,7 @@ export function useInviteGet<
 /** @summary Preview a workspace invitation */
 export function useInviteGet<
   TData = Awaited<ReturnType<typeof inviteGet>>,
-  TError = ErrorType<InviteGet401 | InviteGet404>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
 >(
   token: string,
   options?: {
@@ -1435,7 +1437,7 @@ export function useInviteGet<
 /** @summary Preview a workspace invitation */
 export function useInviteGet<
   TData = Awaited<ReturnType<typeof inviteGet>>,
-  TError = ErrorType<InviteGet401 | InviteGet404>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
 >(
   token: string,
   options?: {
@@ -1473,7 +1475,7 @@ export const inviteAccept = async (
 export const getInviteAcceptMutationKey = () => ['inviteAccept'] as const;
 
 export const getInviteAcceptMutationOptions = <
-  TError = ErrorType<InviteAccept401 | InviteAccept403 | InviteAccept410>,
+  TError = ErrorType<InviteAccept401 | InviteAccept403 | InviteAccept404 | InviteAccept410>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1511,13 +1513,13 @@ export const getInviteAcceptMutationOptions = <
 export type InviteAcceptMutationResult = NonNullable<Awaited<ReturnType<typeof inviteAccept>>>;
 
 export type InviteAcceptMutationError = ErrorType<
-  InviteAccept401 | InviteAccept403 | InviteAccept410
+  InviteAccept401 | InviteAccept403 | InviteAccept404 | InviteAccept410
 >;
 export type InviteAcceptMutationVariables = { token: string };
 
 /** @summary Accept a workspace invitation */
 export const useInviteAccept = <
-  TError = ErrorType<InviteAccept401 | InviteAccept403 | InviteAccept410>,
+  TError = ErrorType<InviteAccept401 | InviteAccept403 | InviteAccept404 | InviteAccept410>,
   TContext = unknown,
 >(
   options?: {

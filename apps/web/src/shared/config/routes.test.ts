@@ -103,6 +103,30 @@ describe('routes', () => {
     expect(routes.afterLogin(next)).toBe('/workspaces');
   });
 
+  it('carries an invitation through registration and back to the login screen', () => {
+    expect(routes.register()).toBe('/register');
+    expect(routes.register('/invite/example-token')).toBe(
+      '/register?next=%2Finvite%2Fexample-token',
+    );
+    expect(routes.login('/invite/example-token')).toBe('/login?next=%2Finvite%2Fexample-token');
+  });
+
+  it.each([
+    'https://evil.example',
+    '//evil.example',
+    '/\\evil.example',
+    '/\t/evil.example',
+    '/a/..//evil.example',
+    '/%2e%2e//evil.example',
+    '/a/../\\evil.example',
+    ' //evil.example',
+    'javascript:alert(1)',
+    'invite/example-token',
+  ])('does not forward the return address %j to the login or the register screen', (next) => {
+    expect(routes.login(next)).toBe('/login');
+    expect(routes.register(next)).toBe('/register');
+  });
+
   it('never writes "undefined" into a query string', () => {
     expect(routes.channel('my-team', 'c1', {})).not.toContain('undefined');
   });

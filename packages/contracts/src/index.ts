@@ -22,6 +22,8 @@ export {
   WorkspaceSlugParamsSchema,
 } from './workspace.js';
 export {
+  type AcceptInviteOutcome,
+  AcceptInviteOutcomeSchema,
   type AcceptInviteResponse,
   AcceptInviteResponseSchema,
   type CreateInviteRequest,
@@ -30,6 +32,10 @@ export {
   CreateInviteResponseSchema,
   type GetInviteResponse,
   GetInviteResponseSchema,
+  type InviteGoneResponse,
+  InviteGoneResponseSchema,
+  type InviteNotFoundResponse,
+  InviteNotFoundResponseSchema,
   type InviteRole,
   InviteRoleSchema,
   type InviteTokenParams,

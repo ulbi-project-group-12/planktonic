@@ -116,8 +116,10 @@ it('keeps an invite usable across a fresh handler set (a new page load)', async 
       method: 'POST',
     });
     expect(accept.status).toBe(200);
+    expect(await accept.json()).toMatchObject({ outcome: 'joined' });
     const dead = await fetch(`http://api.example.invalid/api/invites/${token}`);
-    expect(dead.status).toBe(404);
+    expect(dead.status).toBe(410);
+    expect(await dead.json()).toMatchObject({ code: 'invite_consumed' });
   } finally {
     server.resetHandlers(...createApiHandlers());
   }

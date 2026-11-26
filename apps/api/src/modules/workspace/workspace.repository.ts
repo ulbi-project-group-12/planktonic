@@ -1,11 +1,19 @@
-import { GoneException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { CreateWorkspaceRequest, InviteRole } from '@app/contracts';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
 import { Prisma, WsRole } from '../../generated/prisma/client.js';
 
-function activeInviteConditions(now = new Date()) {
-  return { expiresAt: { gt: now }, revokedAt: null, consumedAt: null };
-}
+import { requireActiveInvite } from './invite-status.js';
+
+const inviteSelect = {
+  id: true,
+  workspaceId: true,
+  role: true,
+  expiresAt: true,
+  revokedAt: true,
+  consumedAt: true,
+  workspace: { select: { name: true, slug: true } },
+} satisfies Prisma.InviteSelect;
 
 @Injectable()
 export class WorkspaceRepository {
@@ -36,35 +44,35 @@ export class WorkspaceRepository {
     await this.prisma.invite.create({ data, select: { id: true } });
   }
 
-  findActiveInvite(tokenHash: string) {
-    return this.prisma.invite.findUnique({
-      where: { tokenHash, ...activeInviteConditions() },
-      select: { role: true, workspace: { select: { name: true, slug: true } } },
-    });
+  findInvite(tokenHash: string) {
+    return this.prisma.invite.findUnique({ where: { tokenHash }, select: inviteSelect });
   }
 
-  acceptInvite(tokenHash: string, userId: string): Promise<string> {
+  acceptInvite(tokenHash: string, userId: string) {
     return this.prisma.$transaction(async (tx) => {
-      const invite = await tx.invite.findUnique({
-        where: { tokenHash, ...activeInviteConditions() },
-        select: { id: true, workspaceId: true, role: true, workspace: { select: { slug: true } } },
-      });
-      if (!invite) throw new GoneException('Invite is no longer valid');
-
+      const invite = requireActiveInvite(
+        await tx.invite.findUnique({ where: { tokenHash }, select: inviteSelect }),
+      );
+      const workspaceSlug = invite.workspace.slug;
       const membership = await tx.workspaceMember.createMany({
         data: { workspaceId: invite.workspaceId, userId, role: invite.role },
         skipDuplicates: true,
       });
-      if (membership.count === 0) return invite.workspace.slug;
+      if (membership.count === 0) return { workspaceSlug, outcome: 'already_member' } as const;
 
       const now = new Date();
       const consumed = await tx.invite.updateMany({
-        where: { id: invite.id, ...activeInviteConditions(now) },
+        where: { id: invite.id, expiresAt: { gt: now }, revokedAt: null, consumedAt: null },
         data: { consumedAt: now },
       });
-      // Another request can consume or revoke the link first. Roll back the new membership.
-      if (consumed.count === 0) throw new GoneException('Invite is no longer valid');
-      return invite.workspace.slug;
+      if (consumed.count === 0) {
+        requireActiveInvite(
+          await tx.invite.findUnique({ where: { tokenHash }, select: inviteSelect }),
+          now,
+        );
+        throw new Error('Active invite could not be consumed');
+      }
+      return { workspaceSlug, outcome: 'joined' } as const;
     });
   }
 

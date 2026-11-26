@@ -28,6 +28,7 @@ import type {
   InviteAccept200,
   InviteAccept401,
   InviteAccept403,
+  InviteAccept404,
   InviteAccept410,
   InviteCreate201,
   InviteCreate400,
@@ -38,6 +39,7 @@ import type {
   InviteGet200,
   InviteGet401,
   InviteGet404,
+  InviteGet410,
   MessagesCreate201,
   MessagesCreate400,
   MessagesCreate404,
@@ -686,9 +688,24 @@ export const getInviteGetResponseMock401 = (
 export const getInviteGetResponseMock404 = (
   overrideResponse: Partial<Extract<InviteGet404, object>> = {},
 ): InviteGet404 => ({
-  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  statusCode: faker.helpers.arrayElement([404] as const),
   message: faker.string.alpha({ length: { min: 10, max: 20 } }),
   error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  code: faker.helpers.arrayElement(['invite_not_found'] as const),
+  ...overrideResponse,
+});
+
+export const getInviteGetResponseMock410 = (
+  overrideResponse: Partial<Extract<InviteGet410, object>> = {},
+): InviteGet410 => ({
+  statusCode: faker.helpers.arrayElement([410] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  code: faker.helpers.arrayElement([
+    'invite_expired',
+    'invite_consumed',
+    'invite_revoked',
+  ] as const),
   ...overrideResponse,
 });
 
@@ -696,6 +713,7 @@ export const getInviteAcceptResponseMock = (
   overrideResponse: Partial<Extract<InviteAccept200, object>> = {},
 ): InviteAccept200 => ({
   workspaceSlug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  outcome: faker.helpers.arrayElement(['joined', 'already_member'] as const),
   ...overrideResponse,
 });
 
@@ -703,6 +721,7 @@ export const getInviteAcceptResponseMock200 = (
   overrideResponse: Partial<Extract<InviteAccept200, object>> = {},
 ): InviteAccept200 => ({
   workspaceSlug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  outcome: faker.helpers.arrayElement(['joined', 'already_member'] as const),
   ...overrideResponse,
 });
 
@@ -723,12 +742,27 @@ export const getInviteAcceptResponseMock403 = (
   ...overrideResponse,
 });
 
+export const getInviteAcceptResponseMock404 = (
+  overrideResponse: Partial<Extract<InviteAccept404, object>> = {},
+): InviteAccept404 => ({
+  statusCode: faker.helpers.arrayElement([404] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  code: faker.helpers.arrayElement(['invite_not_found'] as const),
+  ...overrideResponse,
+});
+
 export const getInviteAcceptResponseMock410 = (
   overrideResponse: Partial<Extract<InviteAccept410, object>> = {},
 ): InviteAccept410 => ({
-  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  statusCode: faker.helpers.arrayElement([410] as const),
   message: faker.string.alpha({ length: { min: 10, max: 20 } }),
   error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  code: faker.helpers.arrayElement([
+    'invite_expired',
+    'invite_consumed',
+    'invite_revoked',
+  ] as const),
   ...overrideResponse,
 });
 
@@ -1945,6 +1979,30 @@ export const getInviteGetMockHandler404 = (
   );
 };
 
+export const getInviteGetMockHandler410 = (
+  overrideResponse?:
+    | InviteGet410
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteGet410> | InviteGet410),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ token: string }>(
+    '*/api/invites/:token',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteGetResponseMock410(),
+        { status: 410 },
+      );
+    },
+    options,
+  );
+};
+
 export const getInviteAcceptMockHandler = (
   overrideResponse?:
     | InviteAccept200
@@ -2035,6 +2093,30 @@ export const getInviteAcceptMockHandler403 = (
             : overrideResponse
           : getInviteAcceptResponseMock403(),
         { status: 403 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInviteAcceptMockHandler404 = (
+  overrideResponse?:
+    | InviteAccept404
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteAccept404> | InviteAccept404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ token: string }>(
+    '*/api/invites/:token/accept',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteAcceptResponseMock404(),
+        { status: 404 },
       );
     },
     options,

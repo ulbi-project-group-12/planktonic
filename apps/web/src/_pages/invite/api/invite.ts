@@ -14,7 +14,8 @@ export function useAcceptInvite(token: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => inviteAccept(token),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.outcome !== 'joined') return;
       queryClient.removeQueries({ queryKey: getInviteGetQueryKey(token) });
       return queryClient.invalidateQueries({ queryKey: getWorkspaceListQueryKey() });
     },

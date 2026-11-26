@@ -135,6 +135,28 @@ interface MockInvite {
   used: boolean;
 }
 
+function unavailableMockInvite(invite: MockInvite | undefined) {
+  return invite
+    ? HttpResponse.json(
+        {
+          statusCode: 410,
+          code: 'invite_consumed',
+          message: 'Invite is no longer valid',
+          error: 'Gone',
+        },
+        { status: 410 },
+      )
+    : HttpResponse.json(
+        {
+          statusCode: 404,
+          code: 'invite_not_found',
+          message: 'Invite not found',
+          error: 'Not Found',
+        },
+        { status: 404 },
+      );
+}
+
 /**
  * MSW handlers run in the page context, so plain in-memory maps reset on every full page
  * load. The invite flow crosses a navigation — the link is opened in a new page — so both
@@ -228,30 +250,19 @@ function createWorkspaceHandlers() {
     }),
     http.get('*/api/invites/:token', ({ params }) => {
       const invite = invites.get(String(params.token));
-      if (!invite || invite.used) {
-        return HttpResponse.json(
-          { statusCode: 404, message: 'Invite not found', error: 'Not Found' },
-          { status: 404 },
-        );
-      }
+      if (!invite || invite.used) return unavailableMockInvite(invite);
       return HttpResponse.json({
         workspaceName: workspaces.get(invite.workspaceSlug)?.name ?? invite.workspaceSlug,
         workspaceSlug: invite.workspaceSlug,
         role: invite.role,
       });
     }),
-    // The link is single-use: the first accept consumes the token (ADR-0002 §2).
     http.post('*/api/invites/:token/accept', ({ params }) => {
       const invite = invites.get(String(params.token));
-      if (!invite || invite.used) {
-        return HttpResponse.json(
-          { statusCode: 410, message: 'Invite is no longer valid', error: 'Gone' },
-          { status: 410 },
-        );
-      }
+      if (!invite || invite.used) return unavailableMockInvite(invite);
       invite.used = true;
       saveMap(INVITES_KEY, invites);
-      return HttpResponse.json({ workspaceSlug: invite.workspaceSlug });
+      return HttpResponse.json({ workspaceSlug: invite.workspaceSlug, outcome: 'joined' });
     }),
   ];
 }

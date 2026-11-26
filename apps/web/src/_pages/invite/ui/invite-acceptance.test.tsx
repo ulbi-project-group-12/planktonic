@@ -34,7 +34,9 @@ describe('InviteAcceptance', () => {
           role: 'MEMBER',
         }),
       ),
-      http.post('/api/invites/tok42/accept', () => HttpResponse.json({ workspaceSlug: 'demo-hq' })),
+      http.post('/api/invites/tok42/accept', () =>
+        HttpResponse.json({ workspaceSlug: 'demo-hq', outcome: 'joined' }),
+      ),
     );
     renderWithApi(<InviteAcceptance token="tok42" />);
 
@@ -53,16 +55,18 @@ describe('InviteAcceptance', () => {
     server.use(
       http.get('/api/invites/tok9', () => {
         gets += 1;
-        // First load: valid invite. The refetch after accept: consumed → 404.
+        // First load: valid invite. The refetch after accept: consumed → 410.
         return gets === 1
           ? HttpResponse.json({
               workspaceName: 'Demo HQ',
               workspaceSlug: 'demo-hq',
               role: 'MEMBER',
             })
-          : HttpResponse.json({ statusCode: 404 }, { status: 404 });
+          : HttpResponse.json({ statusCode: 410 }, { status: 410 });
       }),
-      http.post('/api/invites/tok9/accept', () => HttpResponse.json({ workspaceSlug: 'demo-hq' })),
+      http.post('/api/invites/tok9/accept', () =>
+        HttpResponse.json({ workspaceSlug: 'demo-hq', outcome: 'joined' }),
+      ),
     );
     renderWithApi(<InviteAcceptance token="tok9" />);
     await screen.findByText('Demo HQ');
@@ -85,7 +89,9 @@ describe('InviteAcceptance', () => {
       http.get('/api/invites/tok7', () =>
         HttpResponse.json({ workspaceName: 'Demo HQ', workspaceSlug: 'demo-hq', role: 'MEMBER' }),
       ),
-      http.post('/api/invites/tok7/accept', () => HttpResponse.json({ workspaceSlug: 'demo-hq' })),
+      http.post('/api/invites/tok7/accept', () =>
+        HttpResponse.json({ workspaceSlug: 'demo-hq', outcome: 'joined' }),
+      ),
     );
     const { queryClient } = renderWithApi(<InviteAcceptance token="tok7" />);
     // The list was loaded before the join and does not have the new workspace.
@@ -107,7 +113,10 @@ describe('InviteAcceptance', () => {
         HttpResponse.json({ workspaceName: 'Demo HQ', workspaceSlug: 'demo-hq', role: 'MEMBER' }),
       ),
       http.post('/api/invites/tok410/accept', () =>
-        HttpResponse.json({ statusCode: 410, message: 'Gone' }, { status: 410 }),
+        HttpResponse.json(
+          { statusCode: 410, code: 'invite_consumed', message: 'Gone', error: 'Gone' },
+          { status: 410 },
+        ),
       ),
     );
     renderWithApi(<InviteAcceptance token="tok410" />);
@@ -115,9 +124,7 @@ describe('InviteAcceptance', () => {
 
     await user.click(screen.getByRole('button', { name: 'Присоединиться' }));
 
-    expect(
-      await screen.findByText(/Ссылка недействительна или уже использована/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Ссылка уже использована/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Присоединиться' })).not.toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
@@ -167,18 +174,41 @@ describe('InviteAcceptance', () => {
     expect(gets).toBe(2);
   });
 
-  it('shows a dead-link notice for an unknown or used token', async () => {
+  it.each([
+    { status: 404, code: 'invite_not_found', title: 'Приглашение не найдено' },
+    { status: 410, code: 'invite_expired', title: 'Срок действия ссылки истёк' },
+    { status: 410, code: 'invite_revoked', title: 'Приглашение отозвано' },
+  ])('shows $title for a preview with $code', async ({ status, code, title }) => {
     server.use(
       http.get('/api/invites/dead', () =>
         HttpResponse.json(
-          { statusCode: 404, message: 'Invite not found', error: 'Not Found' },
-          { status: 404 },
+          { statusCode: status, code, message: 'Unavailable', error: 'Unavailable' },
+          { status },
         ),
       ),
     );
     renderWithApi(<InviteAcceptance token="dead" />);
-    expect(
-      await screen.findByText(/Ссылка недействительна или уже использована/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(title)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Присоединиться' })).not.toBeInTheDocument();
+  });
+
+  it('shows a link to the workspace for an existing member without navigating automatically', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('/api/invites/member', () =>
+        HttpResponse.json({ workspaceName: 'Demo HQ', workspaceSlug: 'demo-hq', role: 'MEMBER' }),
+      ),
+      http.post('/api/invites/member/accept', () =>
+        HttpResponse.json({ workspaceSlug: 'demo-hq', outcome: 'already_member' }),
+      ),
+    );
+    renderWithApi(<InviteAcceptance token="member" />);
+    await user.click(await screen.findByRole('button', { name: 'Присоединиться' }));
+    expect(await screen.findByText('Вы уже участник этого пространства')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Открыть пространство' })).toHaveAttribute(
+      'href',
+      '/workspaces/demo-hq',
+    );
+    expect(push).not.toHaveBeenCalled();
   });
 });

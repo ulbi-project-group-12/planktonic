@@ -1,12 +1,11 @@
 import { PRODUCT_DISPLAY_NAME } from '@app/config/product';
-import { Suspense } from 'react';
 import { routes } from '@/shared/config';
 import { Button } from '@/shared/ui/button';
 import { Link } from '@/shared/ui/link';
 import { Typography } from '@/shared/ui/typography';
 import { LoginForm } from './login-form';
 
-export function LoginPage() {
+export function LoginPage({ next }: { next?: string } = {}) {
   return (
     <main className="flex min-h-[calc(100svh-4rem)] items-center justify-center bg-app p-4">
       <div className="flex w-full max-w-[400px] flex-col gap-5 rounded-2xl border border-line bg-surface p-8">
@@ -29,10 +28,7 @@ export function LoginPage() {
             Мессенджер, задачи и GitHub — в одном месте
           </Typography>
         </div>
-        {/* The form reads `?next=`: without a boundary the whole page would opt out of prerendering. */}
-        <Suspense>
-          <LoginForm />
-        </Suspense>
+        <LoginForm next={next} />
         <div aria-hidden className="flex w-full items-center gap-3">
           <div className="h-px flex-1 bg-line" />
           <span className="text-body-xs leading-6 text-fg-muted">или</span>
@@ -51,7 +47,7 @@ export function LoginPage() {
         </Button>
         <Typography as="p" size="body-s" color="text-secondary" className="text-center leading-6">
           Нет аккаунта?{' '}
-          <Link href={routes.register()} className="font-bold leading-6">
+          <Link href={routes.register(next)} className="font-bold leading-6">
             Зарегистрироваться
           </Link>
         </Typography>

@@ -17,7 +17,7 @@ it('rejects member creation and lets an owner create a link that can be previewe
     .fn<AccessRepository['findWorkspaceRole']>()
     .mockResolvedValue('MEMBER');
   const createInvite = vi.fn<WorkspaceRepository['createInvite']>().mockResolvedValue(undefined);
-  const findActiveInvite = vi.fn<WorkspaceRepository['findActiveInvite']>().mockResolvedValue(null);
+  const findInvite = vi.fn<WorkspaceRepository['findInvite']>().mockResolvedValue(null);
   const moduleRef = await Test.createTestingModule({
     controllers: [WorkspaceController, InviteController],
     providers: [
@@ -29,7 +29,7 @@ it('rejects member creation and lets an owner create a link that can be previewe
         useValue: {
           findBySlug: vi.fn().mockResolvedValue(workspace),
           createInvite,
-          findActiveInvite,
+          findInvite,
         },
       },
     ],
@@ -81,7 +81,15 @@ it('rejects member creation and lets an owner create a link that can be previewe
 
     const previewUrl = `${await app.getUrl()}/invites/${token}`;
     expect((await fetch(previewUrl)).status).toBe(404);
-    findActiveInvite.mockResolvedValue({ role, workspace });
+    findInvite.mockResolvedValue({
+      id: 'invite-id',
+      workspaceId: workspace.id,
+      role,
+      workspace,
+      expiresAt: stored.expiresAt,
+      revokedAt: null,
+      consumedAt: null,
+    });
     for (let attempt = 0; attempt < 2; attempt++) {
       const preview = await fetch(previewUrl);
       expect(preview.status).toBe(200);
@@ -91,9 +99,7 @@ it('rejects member creation and lets an owner create a link that can be previewe
         role,
       });
     }
-    expect(findActiveInvite).toHaveBeenLastCalledWith(
-      createHash('sha256').update(token).digest('hex'),
-    );
+    expect(findInvite).toHaveBeenLastCalledWith(createHash('sha256').update(token).digest('hex'));
   } finally {
     await app.close();
   }

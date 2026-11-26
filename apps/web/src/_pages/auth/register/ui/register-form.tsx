@@ -50,7 +50,7 @@ function PasswordVisibilityButton({
  * The terms checkbox is client-only: the contract has no such field, so it is kept outside the
  * schema and checked on submit together with it.
  */
-export function RegisterForm() {
+export function RegisterForm({ next }: { next?: string } = {}) {
   const router = useRouter();
   const registerUser = useAuthRegister();
   const [submitError, setSubmitError] = useState<string>();
@@ -81,7 +81,7 @@ export function RegisterForm() {
       if (!termsAccepted) return;
       try {
         await registerUser.mutateAsync({ data: values });
-        router.push(routes.login());
+        router.push(routes.login(next));
       } catch (error) {
         if (hasApiStatus(error, 409)) {
           // The fields stay editable during the request: "taken" is about the address that was

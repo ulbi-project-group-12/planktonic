@@ -10,11 +10,8 @@ import { LoginForm } from './login-form';
 
 const push = vi.fn();
 
-let search = '';
-
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
-  useSearchParams: () => new URLSearchParams(search),
 }));
 
 const PASSWORD = 'correct-horse-battery';
@@ -34,7 +31,6 @@ const submit = () => screen.getByRole('button', { name: 'Войти' });
 describe('LoginForm', () => {
   beforeEach(() => {
     push.mockClear();
-    search = '';
     sessionStore.setState({ accessToken: undefined });
     setAccessTokenProvider(undefined);
   });
@@ -112,11 +108,11 @@ describe('LoginForm', () => {
   });
 
   it.each([
+    ['/invite/example-token', '/invite/example-token'],
     ['/workspaces/my-team?tab=members', '/workspaces/my-team?tab=members'],
     ['https://evil.example/', '/workspaces'],
     ['//evil.example', '/workspaces'],
   ])('after sign-in opens the return address %s as %s', async (next, expected) => {
-    search = new URLSearchParams({ next }).toString();
     server.use(
       http.post('*/api/auth/login', () => HttpResponse.json({ accessToken: 'test-access-token' })),
       http.get('*/api/workspaces', () =>
@@ -124,7 +120,7 @@ describe('LoginForm', () => {
       ),
     );
     const user = userEvent.setup();
-    renderWithApi(<LoginForm />);
+    renderWithApi(<LoginForm next={next} />);
 
     await fill(user);
     await user.click(submit());
@@ -409,4 +405,15 @@ describe('LoginPage', () => {
       '/register',
     );
   });
+});
+
+it.each([
+  { next: '/invite/example-token', destination: '/register?next=%2Finvite%2Fexample-token' },
+  { next: '//external.example/invite', destination: '/register' },
+])('links to $destination from the login page', ({ next, destination }) => {
+  renderWithApi(<LoginPage next={next} />);
+  expect(screen.getByRole('link', { name: 'Зарегистрироваться' })).toHaveAttribute(
+    'href',
+    destination,
+  );
 });

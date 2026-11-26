@@ -1,9 +1,10 @@
 'use client';
 
+import { InviteGoneResponseSchema } from '@app/contracts';
 import { useRouter } from 'next/navigation';
-import { hasApiStatus } from '@/shared/api';
+import { isApiError } from '@/shared/api';
 import { routes } from '@/shared/config';
-import { Alert, Button, Skeleton, Spinner, Typography } from '@/shared/ui';
+import { Alert, Button, Link, Skeleton, Spinner, Typography } from '@/shared/ui';
 import { WORKSPACE_ROLE_LABEL } from '@/widgets/invite-member';
 import { useAcceptInvite, useInvite } from '../api/invite';
 
@@ -11,15 +12,36 @@ interface InviteAcceptanceProps {
   token: string;
 }
 
-/**
- * «Присоединиться» screen (UL-220): shows who invites the signed-in user — workspace
- * name and the role — and drops them into the workspace on accept. Invalid or used
- * links render a dead-link notice instead.
- */
+const inviteGoneTitles = {
+  invite_expired: 'Срок действия ссылки истёк',
+  invite_consumed: 'Ссылка уже использована',
+  invite_revoked: 'Приглашение отозвано',
+} as const;
+
+function unavailableInviteTitle(error: unknown): string | undefined {
+  if (!isApiError(error)) return;
+  if (error.status === 404) return 'Приглашение не найдено';
+  if (error.status === 410) {
+    const result = InviteGoneResponseSchema.safeParse(error.body);
+    return result.success ? inviteGoneTitles[result.data.code] : 'Ссылка больше не действует';
+  }
+}
+
 export function InviteAcceptance({ token }: InviteAcceptanceProps) {
   const router = useRouter();
   const invite = useInvite(token);
   const accept = useAcceptInvite(token);
+
+  if (accept.data?.outcome === 'already_member') {
+    return (
+      <div className="flex flex-col gap-4">
+        <Typography as="h1" size="h3">
+          Вы уже участник этого пространства
+        </Typography>
+        <Link href={routes.workspace(accept.data.workspaceSlug)}>Открыть пространство</Link>
+      </div>
+    );
+  }
 
   // The accept consumed the token: the invite query refetches behind our back (its cache
   // entry was dropped) and now fails — but this screen is already leaving, so neither that
@@ -33,6 +55,18 @@ export function InviteAcceptance({ token }: InviteAcceptanceProps) {
     );
   }
 
+  const unavailableTitle =
+    unavailableInviteTitle(accept.error) ?? unavailableInviteTitle(invite.error);
+  if (unavailableTitle) {
+    return (
+      <Alert
+        palette="danger"
+        title={unavailableTitle}
+        description="Попросите отправить новое приглашение."
+      />
+    );
+  }
+
   if (invite.isPending) {
     return (
       <div className="flex flex-col gap-4" role="status" aria-label="Загрузка приглашения">
@@ -43,33 +77,18 @@ export function InviteAcceptance({ token }: InviteAcceptanceProps) {
     );
   }
 
-  // The link can die between the load and the click (used in another tab, revoked): the
-  // accept then answers 404/410, and "try again" would be a promise that cannot be kept.
-  const deadOnAccept = hasApiStatus(accept.error, 404) || hasApiStatus(accept.error, 410);
-
-  if (invite.isError || deadOnAccept) {
-    // Only a 404/410 verdict means a dead or consumed token: anything else (network,
-    // 500/503…) is transient and deserves a retry, not a "dead link" notice.
-    if (!deadOnAccept && !hasApiStatus(invite.error, 404) && !hasApiStatus(invite.error, 410)) {
-      return (
-        <Alert
-          palette="danger"
-          title="Не удалось загрузить приглашение"
-          description="Проверьте подключение и попробуйте ещё раз."
-          action={{
-            label: 'Попробовать ещё раз',
-            onClick: () => {
-              void invite.refetch();
-            },
-          }}
-        />
-      );
-    }
+  if (invite.isError) {
     return (
       <Alert
         palette="danger"
-        title="Ссылка недействительна или уже использована"
-        description="Попросите отправить новое приглашение."
+        title="Не удалось загрузить приглашение"
+        description="Проверьте подключение и попробуйте ещё раз."
+        action={{
+          label: 'Попробовать ещё раз',
+          onClick: () => {
+            void invite.refetch();
+          },
+        }}
       />
     );
   }
@@ -103,7 +122,8 @@ export function InviteAcceptance({ token }: InviteAcceptanceProps) {
           onClick={() => {
             accept.mutate(undefined, {
               onSuccess: (result) => {
-                router.push(routes.workspace(result.workspaceSlug));
+                if (result.outcome === 'joined')
+                  router.push(routes.workspace(result.workspaceSlug));
               },
             });
           }}
