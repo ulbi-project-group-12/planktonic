@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ValidationErrorResponse } from '../errors.js';
+import { UserName } from '../user.js';
 
 /** Longest address a mailbox can have (RFC 5321 path limit); also keeps `lower(email)` indexable. */
 export const EMAIL_MAX_LENGTH = 254;
@@ -12,16 +13,10 @@ export const PASSWORD_MAX_LENGTH = 128;
 
 export const RegisterRequestSchema = z
   .object({
-    name: z
-      .string()
-      .trim()
-      .min(2)
-      .max(15)
-      .refine((name) => !name.includes('\u0000'), 'Name must not contain a null character')
-      .meta({
-        description: 'Display name. Leading and trailing whitespace is trimmed.',
-        example: 'Ada',
-      }),
+    name: UserName.meta({
+      description: 'Display name. Leading and trailing whitespace is trimmed.',
+      example: 'Ada',
+    }),
     email: z.string().trim().max(EMAIL_MAX_LENGTH).pipe(z.email()).meta({
       description: 'Email address. Leading and trailing whitespace is trimmed.',
       format: 'email',

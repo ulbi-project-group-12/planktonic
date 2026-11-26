@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MessagesModule } from './modules/messages/messages.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
+import { UsersModule } from './modules/users/users.module.js';
 import { WorkspaceModule } from './modules/workspace/workspace.module.js';
 
 @Module({
@@ -30,6 +31,7 @@ import { WorkspaceModule } from './modules/workspace/workspace.module.js';
     HealthModule,
     MessagesModule,
     RealtimeModule,
+    UsersModule,
     WorkspaceModule,
   ],
 })
