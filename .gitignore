@@ -17,3 +17,4 @@ storybook-static/
 apps/web/AGENTS.md
 # Demo walk output (videos, stills): never in git.
 tools/demo-walk/out/
+.idea
