@@ -3,12 +3,14 @@ import {
   CreateInviteResponseSchema,
   CreateWorkspaceRequestSchema,
   ListWorkspacesResponseSchema,
+  LoginResponseSchema,
   ValidationErrorResponse,
   WorkspaceResponseSchema,
   WorkspaceSlugConflictResponseSchema,
 } from '@app/contracts';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { WsRole } from '../../src/generated/prisma/client.js';
+import { PasswordBreachService } from '../../src/modules/auth/register/password-breach.service.js';
 import { DEFAULT_AUTHOR_ID } from '../../src/modules/messages/default-author.js';
 import { WorkspaceRepository } from '../../src/modules/workspace/workspace.repository.js';
 import { authorization } from './support/http.js';
@@ -16,6 +18,14 @@ import { useStand } from './support/stand.js';
 
 const stand = useStand({ instances: ['test-api-1'], realtime: false });
 const request = { name: 'My team', slug: 'my-team' };
+
+// Registration asks an outside service whether the password is known to be leaked.
+const passwordBreach = vi
+  .spyOn(PasswordBreachService.prototype, 'isBlocked')
+  .mockResolvedValue(false);
+afterAll(() => {
+  passwordBreach.mockRestore();
+});
 
 it('preserves existing roles and consumes an invite for only one concurrent joiner', async () => {
   const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
@@ -104,6 +114,68 @@ it('returns 403 when a regular member tries to create an invitation', async () =
   });
   expect(response.status).toBe(403);
   expect(await stand.prisma.invite.count()).toBe(0);
+});
+
+it('lets a guest register, sign in and join through the link, which then reads as used', async () => {
+  const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
+  const app = stand.apps[0]!;
+  const base = `${await app.getUrl()}/api`;
+  const json = { 'content-type': 'application/json' };
+  const created = await fetch(`${base}/workspaces/${workspace.slug}/invites`, {
+    method: 'POST',
+    headers: { ...json, authorization: authorization(app) },
+    body: JSON.stringify({ role: 'MEMBER' }),
+  });
+  const { token } = CreateInviteResponseSchema.parse(await created.json());
+  const inviteUrl = `${base}/invites/${token}`;
+
+  // The guest sees nothing about the invitation until they have an account and a session.
+  expect((await fetch(inviteUrl)).status).toBe(401);
+  const credentials = { email: 'guest@example.com', password: 'example-passphrase' };
+  const registration = await fetch(`${base}/auth/register`, {
+    method: 'POST',
+    headers: json,
+    body: JSON.stringify({ ...credentials, name: 'Guest', confirmPassword: credentials.password }),
+  });
+  expect(registration.status).toBe(201);
+  // Registering alone neither signs the guest in nor joins the workspace.
+  expect(await stand.prisma.workspaceMember.count({ where: { workspaceId: workspace.id } })).toBe(
+    1,
+  );
+  const login = await fetch(`${base}/auth/login`, {
+    method: 'POST',
+    headers: json,
+    body: JSON.stringify(credentials),
+  });
+  expect(login.status).toBe(200);
+  const { accessToken } = LoginResponseSchema.parse(await login.json());
+  const headers = { authorization: `Bearer ${accessToken}` };
+
+  const preview = await fetch(inviteUrl, { headers });
+  expect(preview.status).toBe(200);
+  expect(await preview.json()).toEqual({
+    workspaceName: workspace.name,
+    workspaceSlug: workspace.slug,
+    role: 'MEMBER',
+  });
+  const accept = () => fetch(`${inviteUrl}/accept`, { method: 'POST', headers });
+  const joined = await accept();
+  expect(joined.status).toBe(200);
+  expect(await joined.json()).toEqual({ workspaceSlug: workspace.slug, outcome: 'joined' });
+  expect(
+    await stand.prisma.workspaceMember.findFirstOrThrow({
+      where: { workspaceId: workspace.id, user: { email: credentials.email } },
+    }),
+  ).toMatchObject({ role: WsRole.MEMBER });
+
+  // The same person reopening the spent link is told it was used, not let in a second time.
+  for (const response of [await fetch(inviteUrl, { headers }), await accept()]) {
+    expect(response.status).toBe(410);
+    expect(await response.json()).toMatchObject({ code: 'invite_consumed' });
+  }
+  expect(await stand.prisma.workspaceMember.count({ where: { workspaceId: workspace.id } })).toBe(
+    2,
+  );
 });
 
 describe('invite refusals', () => {
