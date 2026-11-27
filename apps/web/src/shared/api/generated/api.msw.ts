@@ -48,6 +48,21 @@ import type {
   MessagesList200,
   MessagesList400,
   MessagesList404,
+  ProjectCreate201,
+  ProjectCreate400,
+  ProjectCreate401,
+  ProjectCreate403,
+  ProjectCreate404,
+  ProjectCreate409,
+  ProjectCreateBody,
+  ProjectGetByKey200,
+  ProjectGetByKey400,
+  ProjectGetByKey401,
+  ProjectGetByKey404,
+  ProjectList200Item,
+  ProjectList400,
+  ProjectList401,
+  ProjectList404,
   UsersUpdateMe200,
   UsersUpdateMe400,
   UsersUpdateMe401,
@@ -607,6 +622,7 @@ export const getWorkspaceGetBySlugResponseMock = (
   name: faker.string.alpha({ length: { min: 10, max: 20 } }),
   slug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
   role: faker.helpers.arrayElement(['MEMBER', 'ADMIN', 'OWNER'] as const),
+  canCreateProject: faker.datatype.boolean(),
   ...overrideResponse,
 });
 
@@ -617,6 +633,7 @@ export const getWorkspaceGetBySlugResponseMock200 = (
   name: faker.string.alpha({ length: { min: 10, max: 20 } }),
   slug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
   role: faker.helpers.arrayElement(['MEMBER', 'ADMIN', 'OWNER'] as const),
+  canCreateProject: faker.datatype.boolean(),
   ...overrideResponse,
 });
 
@@ -645,6 +662,179 @@ export const getWorkspaceGetBySlugResponseMock401 = (
 export const getWorkspaceGetBySlugResponseMock404 = (
   overrideResponse: Partial<Extract<WorkspaceGetBySlug404, object>> = {},
 ): WorkspaceGetBySlug404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getProjectListResponseMock = (): ProjectList200Item[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.string.uuid(),
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    key: faker.helpers.fromRegExp('^[A-Z][A-Z0-9]{1,9}$'),
+    description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  }));
+
+export const getProjectListResponseMock200 = (): ProjectList200Item[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.string.uuid(),
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    key: faker.helpers.fromRegExp('^[A-Z][A-Z0-9]{1,9}$'),
+    description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  }));
+
+export const getProjectListResponseMock400 = (
+  overrideResponse: Partial<Extract<ProjectList400, object>> = {},
+): ProjectList400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getProjectListResponseMock401 = (
+  overrideResponse: Partial<Extract<ProjectList401, object>> = {},
+): ProjectList401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getProjectListResponseMock404 = (
+  overrideResponse: Partial<Extract<ProjectList404, object>> = {},
+): ProjectList404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getProjectCreateResponseMock = (
+  overrideResponse: Partial<Extract<ProjectCreate201, object>> = {},
+): ProjectCreate201 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  key: faker.helpers.fromRegExp('^[A-Z][A-Z0-9]{1,9}$'),
+  description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getProjectCreateResponseMock201 = (
+  overrideResponse: Partial<Extract<ProjectCreate201, object>> = {},
+): ProjectCreate201 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  key: faker.helpers.fromRegExp('^[A-Z][A-Z0-9]{1,9}$'),
+  description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getProjectCreateResponseMock400 = (
+  overrideResponse: Partial<Extract<ProjectCreate400, object>> = {},
+): ProjectCreate400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getProjectCreateResponseMock401 = (
+  overrideResponse: Partial<Extract<ProjectCreate401, object>> = {},
+): ProjectCreate401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getProjectCreateResponseMock403 = (
+  overrideResponse: Partial<Extract<ProjectCreate403, object>> = {},
+): ProjectCreate403 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getProjectCreateResponseMock404 = (
+  overrideResponse: Partial<Extract<ProjectCreate404, object>> = {},
+): ProjectCreate404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getProjectCreateResponseMock409 = (
+  overrideResponse: Partial<Extract<ProjectCreate409, object>> = {},
+): ProjectCreate409 => ({
+  statusCode: faker.helpers.arrayElement([409] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.helpers.arrayElement(['key'] as const),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getProjectGetByKeyResponseMock = (
+  overrideResponse: Partial<Extract<ProjectGetByKey200, object>> = {},
+): ProjectGetByKey200 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  key: faker.helpers.fromRegExp('^[A-Z][A-Z0-9]{1,9}$'),
+  description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getProjectGetByKeyResponseMock200 = (
+  overrideResponse: Partial<Extract<ProjectGetByKey200, object>> = {},
+): ProjectGetByKey200 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  key: faker.helpers.fromRegExp('^[A-Z][A-Z0-9]{1,9}$'),
+  description: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getProjectGetByKeyResponseMock400 = (
+  overrideResponse: Partial<Extract<ProjectGetByKey400, object>> = {},
+): ProjectGetByKey400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getProjectGetByKeyResponseMock401 = (
+  overrideResponse: Partial<Extract<ProjectGetByKey401, object>> = {},
+): ProjectGetByKey401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getProjectGetByKeyResponseMock404 = (
+  overrideResponse: Partial<Extract<ProjectGetByKey404, object>> = {},
+): ProjectGetByKey404 => ({
   statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
   message: faker.string.alpha({ length: { min: 10, max: 20 } }),
   error: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -1883,6 +2073,414 @@ export const getWorkspaceGetBySlugMockHandler404 = (
   );
 };
 
+export const getProjectListMockHandler = (
+  overrideResponse?:
+    | ProjectList200Item[]
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<ProjectList200Item[]> | ProjectList200Item[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug/projects',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectListResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectListMockHandler200 = (
+  overrideResponse?:
+    | ProjectList200Item[]
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<ProjectList200Item[]> | ProjectList200Item[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug/projects',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectListResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectListMockHandler400 = (
+  overrideResponse?:
+    | ProjectList400
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<ProjectList400> | ProjectList400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug/projects',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectListResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectListMockHandler401 = (
+  overrideResponse?:
+    | ProjectList401
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<ProjectList401> | ProjectList401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug/projects',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectListResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectListMockHandler404 = (
+  overrideResponse?:
+    | ProjectList404
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<ProjectList404> | ProjectList404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug/projects',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectListResponseMock404(),
+        { status: 404 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectCreateMockHandler = (
+  overrideResponse?:
+    | ProjectCreate201
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0],
+      ) => Promise<ProjectCreate201> | ProjectCreate201),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, ProjectCreateBody>(
+    '*/api/workspaces/:slug/projects',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectCreateResponseMock(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectCreateMockHandler201 = (
+  overrideResponse?:
+    | ProjectCreate201
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0],
+      ) => Promise<ProjectCreate201> | ProjectCreate201),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, ProjectCreateBody>(
+    '*/api/workspaces/:slug/projects',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectCreateResponseMock201(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectCreateMockHandler400 = (
+  overrideResponse?:
+    | ProjectCreate400
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0],
+      ) => Promise<ProjectCreate400> | ProjectCreate400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, ProjectCreateBody>(
+    '*/api/workspaces/:slug/projects',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectCreateResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectCreateMockHandler401 = (
+  overrideResponse?:
+    | ProjectCreate401
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0],
+      ) => Promise<ProjectCreate401> | ProjectCreate401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, ProjectCreateBody>(
+    '*/api/workspaces/:slug/projects',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectCreateResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectCreateMockHandler403 = (
+  overrideResponse?:
+    | ProjectCreate403
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0],
+      ) => Promise<ProjectCreate403> | ProjectCreate403),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, ProjectCreateBody>(
+    '*/api/workspaces/:slug/projects',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectCreateResponseMock403(),
+        { status: 403 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectCreateMockHandler404 = (
+  overrideResponse?:
+    | ProjectCreate404
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0],
+      ) => Promise<ProjectCreate404> | ProjectCreate404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, ProjectCreateBody>(
+    '*/api/workspaces/:slug/projects',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectCreateResponseMock404(),
+        { status: 404 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectCreateMockHandler409 = (
+  overrideResponse?:
+    | ProjectCreate409
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0],
+      ) => Promise<ProjectCreate409> | ProjectCreate409),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ slug: string }, ProjectCreateBody>(
+    '*/api/workspaces/:slug/projects',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }, ProjectCreateBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectCreateResponseMock409(),
+        { status: 409 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectGetByKeyMockHandler = (
+  overrideResponse?:
+    | ProjectGetByKey200
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string; key: string }>>[0],
+      ) => Promise<ProjectGetByKey200> | ProjectGetByKey200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string; key: string }>(
+    '*/api/workspaces/:slug/projects/:key',
+    async (info: Parameters<HttpResponseResolver<{ slug: string; key: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectGetByKeyResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectGetByKeyMockHandler200 = (
+  overrideResponse?:
+    | ProjectGetByKey200
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string; key: string }>>[0],
+      ) => Promise<ProjectGetByKey200> | ProjectGetByKey200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string; key: string }>(
+    '*/api/workspaces/:slug/projects/:key',
+    async (info: Parameters<HttpResponseResolver<{ slug: string; key: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectGetByKeyResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectGetByKeyMockHandler400 = (
+  overrideResponse?:
+    | ProjectGetByKey400
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string; key: string }>>[0],
+      ) => Promise<ProjectGetByKey400> | ProjectGetByKey400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string; key: string }>(
+    '*/api/workspaces/:slug/projects/:key',
+    async (info: Parameters<HttpResponseResolver<{ slug: string; key: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectGetByKeyResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectGetByKeyMockHandler401 = (
+  overrideResponse?:
+    | ProjectGetByKey401
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string; key: string }>>[0],
+      ) => Promise<ProjectGetByKey401> | ProjectGetByKey401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string; key: string }>(
+    '*/api/workspaces/:slug/projects/:key',
+    async (info: Parameters<HttpResponseResolver<{ slug: string; key: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectGetByKeyResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getProjectGetByKeyMockHandler404 = (
+  overrideResponse?:
+    | ProjectGetByKey404
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string; key: string }>>[0],
+      ) => Promise<ProjectGetByKey404> | ProjectGetByKey404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string; key: string }>(
+    '*/api/workspaces/:slug/projects/:key',
+    async (info: Parameters<HttpResponseResolver<{ slug: string; key: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getProjectGetByKeyResponseMock404(),
+        { status: 404 },
+      );
+    },
+    options,
+  );
+};
+
 export const getInviteCreateMockHandler = (
   overrideResponse?:
     | InviteCreate201
@@ -2302,6 +2900,9 @@ export const getApiMock = () => [
   getWorkspaceListMockHandler(),
   getWorkspaceCreateMockHandler(),
   getWorkspaceGetBySlugMockHandler(),
+  getProjectListMockHandler(),
+  getProjectCreateMockHandler(),
+  getProjectGetByKeyMockHandler(),
   getInviteCreateMockHandler(),
   getInviteGetMockHandler(),
   getInviteAcceptMockHandler(),

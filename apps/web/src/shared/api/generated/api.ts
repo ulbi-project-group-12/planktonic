@@ -60,6 +60,21 @@ import type {
   MessagesList400,
   MessagesList404,
   MessagesListParams,
+  ProjectCreate201,
+  ProjectCreate400,
+  ProjectCreate401,
+  ProjectCreate403,
+  ProjectCreate404,
+  ProjectCreate409,
+  ProjectCreateBody,
+  ProjectGetByKey200,
+  ProjectGetByKey400,
+  ProjectGetByKey401,
+  ProjectGetByKey404,
+  ProjectList200Item,
+  ProjectList400,
+  ProjectList401,
+  ProjectList404,
   UsersUpdateMe200,
   UsersUpdateMe400,
   UsersUpdateMe401,
@@ -1324,6 +1339,374 @@ export function useWorkspaceGetBySlug<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getWorkspaceGetBySlugQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getProjectListUrl = (slug: string) => {
+  return `/api/workspaces/${encodeURIComponent(String(slug))}/projects`;
+};
+
+/**
+ * @summary List accessible workspace projects
+ */
+export const projectList = async (
+  slug: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<ProjectList200Item[]> => {
+  return apiFetch<ProjectList200Item[]>(getProjectListUrl(slug), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getProjectListQueryKey = (slug: string) => {
+  return [`/api/workspaces/${slug}/projects`] as const;
+};
+
+export const getProjectListQueryOptions = <
+  TData = Awaited<ReturnType<typeof projectList>>,
+  TError = ErrorType<ProjectList400 | ProjectList401 | ProjectList404>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof projectList>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getProjectListQueryKey(slug);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof projectList>>> = ({ signal }) =>
+    projectList(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: slug !== null && slug !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof projectList>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type ProjectListQueryResult = NonNullable<Awaited<ReturnType<typeof projectList>>>;
+export type ProjectListQueryError = ErrorType<ProjectList400 | ProjectList401 | ProjectList404>;
+
+/** @summary List accessible workspace projects */
+export function useProjectList<
+  TData = Awaited<ReturnType<typeof projectList>>,
+  TError = ErrorType<ProjectList400 | ProjectList401 | ProjectList404>,
+>(
+  slug: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof projectList>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof projectList>>,
+          TError,
+          Awaited<ReturnType<typeof projectList>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List accessible workspace projects */
+export function useProjectList<
+  TData = Awaited<ReturnType<typeof projectList>>,
+  TError = ErrorType<ProjectList400 | ProjectList401 | ProjectList404>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof projectList>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof projectList>>,
+          TError,
+          Awaited<ReturnType<typeof projectList>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List accessible workspace projects */
+export function useProjectList<
+  TData = Awaited<ReturnType<typeof projectList>>,
+  TError = ErrorType<ProjectList400 | ProjectList401 | ProjectList404>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof projectList>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List accessible workspace projects */
+export function useProjectList<
+  TData = Awaited<ReturnType<typeof projectList>>,
+  TError = ErrorType<ProjectList400 | ProjectList401 | ProjectList404>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof projectList>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getProjectListQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getProjectCreateUrl = (slug: string) => {
+  return `/api/workspaces/${encodeURIComponent(String(slug))}/projects`;
+};
+
+/**
+ * @summary Create a project in a workspace
+ */
+export const projectCreate = async (
+  slug: string,
+  projectCreateBody: ProjectCreateBody,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<ProjectCreate201> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<ProjectCreate201>(getProjectCreateUrl(slug), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(projectCreateBody),
+  });
+};
+
+export const getProjectCreateMutationKey = () => ['projectCreate'] as const;
+
+export const getProjectCreateMutationOptions = <
+  TError = ErrorType<
+    ProjectCreate400 | ProjectCreate401 | ProjectCreate403 | ProjectCreate404 | ProjectCreate409
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof projectCreate>>,
+    TError,
+    ProjectCreateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof projectCreate>>,
+  TError,
+  ProjectCreateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getProjectCreateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof projectCreate>>,
+    ProjectCreateMutationVariables
+  > = (props) => {
+    const { slug, data } = props ?? {};
+
+    return projectCreate(slug, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ProjectCreateMutationResult = NonNullable<Awaited<ReturnType<typeof projectCreate>>>;
+export type ProjectCreateMutationBody = ProjectCreateBody;
+export type ProjectCreateMutationError = ErrorType<
+  ProjectCreate400 | ProjectCreate401 | ProjectCreate403 | ProjectCreate404 | ProjectCreate409
+>;
+export type ProjectCreateMutationVariables = { slug: string; data: ProjectCreateBody };
+
+/** @summary Create a project in a workspace */
+export const useProjectCreate = <
+  TError = ErrorType<
+    ProjectCreate400 | ProjectCreate401 | ProjectCreate403 | ProjectCreate404 | ProjectCreate409
+  >,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof projectCreate>>,
+      TError,
+      ProjectCreateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof projectCreate>>,
+  TError,
+  ProjectCreateMutationVariables,
+  TContext
+> => {
+  return useMutation(getProjectCreateMutationOptions(options), queryClient);
+};
+
+export const getProjectGetByKeyUrl = (slug: string, key: string) => {
+  return `/api/workspaces/${encodeURIComponent(String(slug))}/projects/${encodeURIComponent(String(key))}`;
+};
+
+/**
+ * @summary Get a workspace project by key
+ */
+export const projectGetByKey = async (
+  slug: string,
+  key: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<ProjectGetByKey200> => {
+  return apiFetch<ProjectGetByKey200>(getProjectGetByKeyUrl(slug, key), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getProjectGetByKeyQueryKey = (slug: string, key: string) => {
+  return [`/api/workspaces/${slug}/projects/${key}`] as const;
+};
+
+export const getProjectGetByKeyQueryOptions = <
+  TData = Awaited<ReturnType<typeof projectGetByKey>>,
+  TError = ErrorType<ProjectGetByKey400 | ProjectGetByKey401 | ProjectGetByKey404>,
+>(
+  slug: string,
+  key: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof projectGetByKey>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getProjectGetByKeyQueryKey(slug, key);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof projectGetByKey>>> = ({ signal }) =>
+    projectGetByKey(slug, key, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: slug !== null && slug !== undefined && key !== null && key !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof projectGetByKey>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type ProjectGetByKeyQueryResult = NonNullable<Awaited<ReturnType<typeof projectGetByKey>>>;
+export type ProjectGetByKeyQueryError = ErrorType<
+  ProjectGetByKey400 | ProjectGetByKey401 | ProjectGetByKey404
+>;
+
+/** @summary Get a workspace project by key */
+export function useProjectGetByKey<
+  TData = Awaited<ReturnType<typeof projectGetByKey>>,
+  TError = ErrorType<ProjectGetByKey400 | ProjectGetByKey401 | ProjectGetByKey404>,
+>(
+  slug: string,
+  key: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof projectGetByKey>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof projectGetByKey>>,
+          TError,
+          Awaited<ReturnType<typeof projectGetByKey>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary Get a workspace project by key */
+export function useProjectGetByKey<
+  TData = Awaited<ReturnType<typeof projectGetByKey>>,
+  TError = ErrorType<ProjectGetByKey400 | ProjectGetByKey401 | ProjectGetByKey404>,
+>(
+  slug: string,
+  key: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof projectGetByKey>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof projectGetByKey>>,
+          TError,
+          Awaited<ReturnType<typeof projectGetByKey>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary Get a workspace project by key */
+export function useProjectGetByKey<
+  TData = Awaited<ReturnType<typeof projectGetByKey>>,
+  TError = ErrorType<ProjectGetByKey400 | ProjectGetByKey401 | ProjectGetByKey404>,
+>(
+  slug: string,
+  key: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof projectGetByKey>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary Get a workspace project by key */
+export function useProjectGetByKey<
+  TData = Awaited<ReturnType<typeof projectGetByKey>>,
+  TError = ErrorType<ProjectGetByKey400 | ProjectGetByKey401 | ProjectGetByKey404>,
+>(
+  slug: string,
+  key: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof projectGetByKey>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getProjectGetByKeyQueryOptions(slug, key, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
