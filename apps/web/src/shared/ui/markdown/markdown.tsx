@@ -1,12 +1,25 @@
+import type { ReactNode } from 'react';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/shared/lib';
+import { remarkLimitDepth } from './remark-limit-depth';
 
 interface MarkdownProps {
   content: string;
   className?: string;
+}
+
+const linkClassName = 'text-primary underline break-all hover:opacity-80';
+
+/** A link that leaves the page: always a new tab, never a handle on our window. */
+function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={linkClassName}>
+      {children}
+    </a>
+  );
 }
 
 const markdownComponents: Components = {
@@ -23,18 +36,21 @@ const markdownComponents: Components = {
     </li>
   ),
   a: ({ href, id, children }) => {
-    const isAnchor = href?.startsWith('#');
+    // The sanitizer drops a URL with a scheme outside the allow-list; what is left is not a link.
+    if (!href) return <span>{children}</span>;
+    if (!href.startsWith('#')) return <ExternalLink href={href}>{children}</ExternalLink>;
     return (
-      <a
-        id={id}
-        href={href}
-        target={isAnchor ? undefined : '_blank'}
-        rel={isAnchor ? undefined : 'noopener noreferrer'}
-        className="text-primary underline break-all hover:opacity-80"
-      >
+      <a id={id} href={href} className={linkClassName}>
         {children}
       </a>
     );
+  },
+  // Remote images are not loaded: the request would tell a third-party server who read the
+  // message and when. The image stays reachable as an ordinary link.
+  img: ({ src, alt }) => {
+    const url = typeof src === 'string' ? src : '';
+    const label = alt === undefined || alt === '' ? url : alt;
+    return url ? <ExternalLink href={url}>{label}</ExternalLink> : label;
   },
   pre: ({ children }) => (
     <pre className="my-2 max-h-96 overflow-auto rounded-md bg-sunken p-3 text-xs leading-relaxed last:mb-0 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit [&>code]:break-normal">
@@ -57,8 +73,16 @@ function Markdown({ content, className }: MarkdownProps) {
   return (
     <div data-slot="markdown" className={cn('min-w-0 text-body-s leading-5', className)}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeSanitize]}
+        remarkPlugins={[remarkGfm, remarkLimitDepth]}
+        rehypePlugins={[
+          [
+            rehypeSanitize,
+            {
+              ...defaultSchema,
+              protocols: { ...defaultSchema.protocols, href: ['http', 'https', 'mailto'] },
+            },
+          ],
+        ]}
         components={markdownComponents}
       >
         {content}

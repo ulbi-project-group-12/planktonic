@@ -54,8 +54,9 @@ describe('Markdown', () => {
     const malicious = '[Нажми меня](javascript:alert(1))';
     const { container } = render(<Markdown content={malicious} />);
 
-    const link = container.querySelector('a');
-    expect(link?.getAttribute('href') ?? '').not.toContain('javascript:');
+    expect(container.querySelector('a')).toBeNull();
+    expect(container.innerHTML).not.toContain('javascript:');
+    expect(container.textContent).toBe('Нажми меня');
   });
 
   it('renders fenced code blocks without language and handles long URLs', () => {
