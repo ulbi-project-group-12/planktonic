@@ -149,6 +149,23 @@ describe('Markdown: images', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
+  it.each([
+    ['inline', '[![значок](https://img.example/a.png)](https://example.com)'],
+    ['inside emphasis', '[**![значок](https://img.example/a.png)**](https://example.com)'],
+    [
+      'reference-style',
+      '[![значок][img]][site]\n\n[img]: https://img.example/a.png\n[site]: https://example.com',
+    ],
+  ])('keeps a linked image as one link to the link target: %s', (_name, content) => {
+    const container = renderMarkdown(content);
+
+    expect(container.querySelector('a a, img')).toBeNull();
+    expect(screen.getByRole('link', { name: 'значок' })).toHaveAttribute(
+      'href',
+      'https://example.com',
+    );
+  });
+
   it('labels an image without alt text with its address', () => {
     renderMarkdown('![](https://tracker.example/p.gif)');
 

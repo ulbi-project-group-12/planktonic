@@ -6,6 +6,7 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/shared/lib';
 import { remarkLimitDepth } from './remark-limit-depth';
+import { remarkLinkedImages } from './remark-linked-images';
 
 interface MarkdownProps {
   content: string;
@@ -139,7 +140,7 @@ function Markdown({ content, className }: MarkdownProps) {
   return (
     <div data-slot="markdown" className={cn('min-w-0 text-body-s leading-5', className)}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkLimitDepth]}
+        remarkPlugins={[remarkGfm, remarkLinkedImages, remarkLimitDepth]}
         remarkRehypeOptions={{ clobberPrefix: '' }}
         rehypePlugins={[
           [
