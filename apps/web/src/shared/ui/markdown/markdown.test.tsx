@@ -73,3 +73,63 @@ describe('Markdown', () => {
     expect(link).toHaveClass('break-all');
   });
 });
+
+describe('Markdown: GFM extras', () => {
+  it('links a footnote reference and its note to each other', () => {
+    const { container } = render(<Markdown content={'Текст[^1]\n\n[^1]: Примечание'} />);
+
+    const [reference, back] = [...container.querySelectorAll<HTMLAnchorElement>('a')];
+    const note = container.querySelector('li');
+    expect(reference?.getAttribute('href')).toBe(`#${note?.id ?? ''}`);
+    expect(back?.getAttribute('href')).toBe(`#${reference?.id ?? ''}`);
+    expect(note?.id).not.toBe('');
+    expect(reference).not.toHaveAttribute('target');
+  });
+
+  it('keeps footnote ids unique across messages', () => {
+    const content = 'Текст[^1]\n\n[^1]: Примечание';
+    const { container } = render(
+      <>
+        <Markdown content={content} />
+        <Markdown content={content} />
+      </>,
+    );
+
+    const ids = [...container.querySelectorAll('[id]')].map((element) => element.id);
+    expect(ids).toHaveLength(6);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('keeps the start number of an ordered list', () => {
+    const { container } = render(<Markdown content={'3. Третий\n4. Четвёртый'} />);
+
+    expect(container.querySelector('ol')).toHaveAttribute('start', '3');
+  });
+
+  it('renders headings, quotes, tables and task lists', () => {
+    const content = [
+      '# Заголовок',
+      '',
+      '> Цитата',
+      '',
+      '| a | b |',
+      '| - | -: |',
+      '| 1 | 2 |',
+      '',
+      '- [x] сделано',
+      '- [ ] не сделано',
+    ].join('\n');
+
+    render(<Markdown content={content} />);
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Заголовок' })).toHaveClass('font-bold');
+    expect(screen.getByText('Цитата').closest('blockquote')).toHaveClass('border-l-2');
+    // A wide table scrolls inside its own box instead of stretching the message.
+    expect(screen.getByRole('table').parentElement).toHaveClass('overflow-x-auto');
+    expect(screen.getByRole('cell', { name: '2' })).toHaveStyle({ textAlign: 'right' });
+    const [done, todo] = screen.getAllByRole('checkbox');
+    expect(done).toBeChecked();
+    expect(done).toBeDisabled();
+    expect(todo).not.toBeChecked();
+  });
+});
