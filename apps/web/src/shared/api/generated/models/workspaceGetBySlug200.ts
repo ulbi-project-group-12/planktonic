@@ -13,4 +13,5 @@ export type WorkspaceGetBySlug200 = {
   /** @pattern ^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$ */
   slug: string;
   role: WorkspaceGetBySlug200Role;
+  canCreateProject: boolean;
 };

@@ -15,6 +15,7 @@ import { getThemeInitScript } from './theme-init-script';
 export const metadata: Metadata = {
   title: PRODUCT_DISPLAY_NAME,
   description: 'Work messenger for development teams.',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
 };
 
 export function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

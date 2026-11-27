@@ -12,8 +12,9 @@ model Workspace {
   slug      String   @unique
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  members WorkspaceMember[]
-  invites Invite[]
+  members  WorkspaceMember[]
+  invites  Invite[]
+  projects Project[]
 
   @@map("workspaces")
 }

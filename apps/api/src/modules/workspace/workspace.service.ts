@@ -10,6 +10,7 @@ import {
   AcceptInviteOutcomeSchema,
   type ChangeWorkspaceMemberRoleRequest,
   type CreateInviteResponse,
+  type CreateProjectRequest,
   type CreateWorkspaceRequest,
   type GetInviteResponse,
   GetInviteResponseSchema,
@@ -18,6 +19,11 @@ import {
   ListWorkspaceMembersResponseSchema,
   type ListWorkspacesResponse,
   ListWorkspacesResponseSchema,
+  type ListProjectsResponse,
+  ListProjectsResponseSchema,
+  type ProjectKeyConflictResponse,
+  type ProjectResponse,
+  ProjectResponseSchema,
   type WorkspaceDetailsResponse,
   WorkspaceDetailsResponseSchema,
   type WorkspaceMember,
@@ -58,7 +64,10 @@ export class WorkspaceService {
     }
     const role = await this.access.getWorkspaceRole({ id: userId }, workspace.id);
     if (!role) throw new NotFoundException('Workspace not found');
-    return WorkspaceDetailsResponseSchema.parse({ ...workspace, role });
+    const canCreateProject = await this.access.can({ id: userId }, 'project.create', {
+      workspaceId: workspace.id,
+    });
+    return WorkspaceDetailsResponseSchema.parse({ ...workspace, role, canCreateProject });
   }
 
   async create(input: CreateWorkspaceRequest, userId: string): Promise<WorkspaceResponse> {
@@ -132,6 +141,64 @@ export class WorkspaceService {
       name: updated.user.name,
       role: updated.role,
     });
+  }
+
+  async listProjects(slug: string, userId: string): Promise<ListProjectsResponse> {
+    const workspace = await this.repository.findBySlug(slug);
+    if (!workspace) throw new NotFoundException('Workspace not found');
+    const scope = await this.access.projectReadScope({ id: userId }, workspace.id);
+    if (!scope) throw new NotFoundException('Workspace not found');
+    const projects = await this.repository.listProjects(
+      workspace.id,
+      scope === 'member' ? userId : undefined,
+    );
+    return ListProjectsResponseSchema.parse(projects);
+  }
+
+  async getProject(slug: string, key: string, userId: string): Promise<ProjectResponse> {
+    const workspace = await this.repository.findBySlug(slug);
+    const project = workspace && (await this.repository.findProjectByKey(workspace.id, key));
+    if (
+      !workspace ||
+      !project ||
+      !(await this.access.can({ id: userId }, 'project.read', {
+        workspaceId: workspace.id,
+        projectId: project.id,
+      }))
+    ) {
+      throw new NotFoundException('Project not found');
+    }
+    return ProjectResponseSchema.parse(project);
+  }
+
+  async createProject(
+    slug: string,
+    input: CreateProjectRequest,
+    userId: string,
+  ): Promise<ProjectResponse> {
+    const workspace = await this.repository.findBySlug(slug);
+    const user = { id: userId };
+    if (
+      !workspace ||
+      !(await this.access.can(user, 'workspace.read', { workspaceId: workspace.id }))
+    ) {
+      throw new NotFoundException('Workspace not found');
+    }
+    if (!(await this.access.can(user, 'project.create', { workspaceId: workspace.id }))) {
+      throw new ForbiddenException('Project creation forbidden');
+    }
+
+    const project = await this.repository.createProjectWithAdmin(workspace.id, input, userId);
+    if (!project) {
+      const response: ProjectKeyConflictResponse = {
+        statusCode: 409,
+        message: 'Project key is already in use',
+        error: 'Conflict',
+        issues: [{ path: 'key', message: 'This key is already taken' }],
+      };
+      throw new ConflictException(response);
+    }
+    return ProjectResponseSchema.parse(project);
   }
 
   async createInvite(

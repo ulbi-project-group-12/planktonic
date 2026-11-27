@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import type { CreateWorkspaceRequest, InviteRole } from '@app/contracts';
+import type { CreateProjectRequest, CreateWorkspaceRequest, InviteRole } from '@app/contracts';
 import { PrismaService } from '../../core/prisma/prisma.service.js';
-import { Prisma, WsRole } from '../../generated/prisma/client.js';
+import { Prisma, ProjectRole, WsRole } from '../../generated/prisma/client.js';
 
 import { requireActiveInvite } from './invite-status.js';
 
@@ -14,6 +14,13 @@ const inviteSelect = {
   consumedAt: true,
   workspace: { select: { name: true, slug: true } },
 } satisfies Prisma.InviteSelect;
+
+const projectSelect = {
+  id: true,
+  name: true,
+  key: true,
+  description: true,
+} satisfies Prisma.ProjectSelect;
 
 @Injectable()
 export class WorkspaceRepository {
@@ -54,6 +61,49 @@ export class WorkspaceRepository {
       select: { userId: true, role: true, user: { select: { name: true } } },
     });
     return updated;
+  }
+
+  async createProjectWithAdmin(
+    workspaceId: string,
+    { name, key, description }: CreateProjectRequest,
+    userId: string,
+  ) {
+    try {
+      return await this.prisma.project.create({
+        data: {
+          workspaceId,
+          name,
+          key,
+          description,
+          members: { create: { userId, role: ProjectRole.ADMIN } },
+        },
+        select: projectSelect,
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const existing = await this.prisma.project.findUnique({
+          where: { workspaceId_key: { workspaceId, key } },
+          select: { id: true },
+        });
+        if (existing) return null;
+      }
+      throw error;
+    }
+  }
+
+  listProjects(workspaceId: string, memberId?: string) {
+    return this.prisma.project.findMany({
+      where: { workspaceId, ...(memberId ? { members: { some: { userId: memberId } } } : {}) },
+      select: projectSelect,
+      orderBy: { key: 'asc' },
+    });
+  }
+
+  findProjectByKey(workspaceId: string, key: string) {
+    return this.prisma.project.findUnique({
+      where: { workspaceId_key: { workspaceId, key } },
+      select: projectSelect,
+    });
   }
 
   async createInvite(data: {
