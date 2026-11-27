@@ -46,6 +46,8 @@ describe('pnpm openapi:export', () => {
       'get /api/invites/{token} Invite_get',
       'get /api/workspaces Workspace_list',
       'get /api/workspaces/{slug} Workspace_getBySlug',
+      'get /api/workspaces/{slug}/projects Project_list',
+      'get /api/workspaces/{slug}/projects/{key} Project_getByKey',
       'patch /api/users/me Users_updateMe',
       'post /api/auth/login Auth_login',
       'post /api/auth/register Auth_register',
@@ -53,6 +55,7 @@ describe('pnpm openapi:export', () => {
       'post /api/invites/{token}/accept Invite_accept',
       'post /api/workspaces Workspace_create',
       'post /api/workspaces/{slug}/invites Invite_create',
+      'post /api/workspaces/{slug}/projects Project_create',
     ]);
   });
 

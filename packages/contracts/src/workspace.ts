@@ -47,6 +47,7 @@ export type WorkspaceResponse = z.infer<typeof WorkspaceResponseSchema>;
 
 export const WorkspaceDetailsResponseSchema = WorkspaceResponseSchema.extend({
   role: WorkspaceRoleSchema,
+  canCreateProject: z.boolean(),
 });
 
 export type WorkspaceDetailsResponse = z.infer<typeof WorkspaceDetailsResponseSchema>;

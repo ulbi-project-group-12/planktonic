@@ -22,10 +22,12 @@ const workspaceRoles = {
 
 type WorkspacePermission = keyof typeof workspaceRoles;
 
-export type Permission = WorkspacePermission | 'workspace.create' | 'workspace.invite.accept';
+export type Permission =
+  WorkspacePermission | 'workspace.create' | 'workspace.invite.accept' | 'project.read';
 
 export interface AccessScope {
   workspaceId?: string;
+  projectId?: string;
   targetRole?: WsRole;
   newRole?: WsRole;
   targetUserId?: string;
@@ -45,7 +47,27 @@ export class AccessService {
     return this.repository.findWorkspaceRole(user.id, workspaceId);
   }
 
+  async projectReadScope(
+    user: { id: string },
+    workspaceId: string,
+  ): Promise<'all' | 'member' | null> {
+    const role = await this.getWorkspaceRole(user, workspaceId);
+    if (role === OWNER || role === ADMIN) return 'all';
+    return role === MEMBER ? 'member' : null;
+  }
+
   async can(user: { id: string }, permission: string, scope: AccessScope = {}): Promise<boolean> {
+    if (permission === 'project.read') {
+      const { workspaceId, projectId } = scope;
+      if (!workspaceId || !projectId) return false;
+      const visibility = await this.projectReadScope(user, workspaceId);
+      return (
+        visibility === 'all' ||
+        (visibility === 'member' &&
+          (await this.repository.findProjectRole(user.id, workspaceId, projectId)) !== null)
+      );
+    }
+
     if (permission === 'workspace.create') {
       return this.repository.isActiveUser(user.id);
     }

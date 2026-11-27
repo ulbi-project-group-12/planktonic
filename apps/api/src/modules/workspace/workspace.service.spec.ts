@@ -51,9 +51,13 @@ describe('WorkspaceService.getBySlugForUser', () => {
     await expect(service.getBySlugForUser(input.slug, userId)).resolves.toEqual({
       ...workspace,
       role: 'OWNER',
+      canCreateProject: true,
     });
     expect(findBySlug).toHaveBeenCalledExactlyOnceWith(input.slug);
-    expect(can).toHaveBeenCalledExactlyOnceWith({ id: userId }, 'workspace.read', {
+    expect(can).toHaveBeenNthCalledWith(1, { id: userId }, 'workspace.read', {
+      workspaceId: workspace.id,
+    });
+    expect(can).toHaveBeenNthCalledWith(2, { id: userId }, 'project.create', {
       workspaceId: workspace.id,
     });
     expect(getWorkspaceRole).toHaveBeenCalledExactlyOnceWith({ id: userId }, workspace.id);
