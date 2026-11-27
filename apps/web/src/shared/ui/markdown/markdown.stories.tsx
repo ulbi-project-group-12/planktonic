@@ -32,6 +32,38 @@ const xssSample = [
   'Картинка с обработчиком: <img src="x" onerror="alert(1)" />',
   '',
   'Опасная ссылка: [нажми сюда](javascript:alert(1))',
+  '',
+  'Картинка с чужого сервера (не загружается, остаётся ссылкой): ![пиксель](https://example.com/pixel.gif)',
+  '',
+  'Цитата глубиной 500 (разметкой остаются первые уровни, остальное — текст):',
+  '',
+  `${'>'.repeat(500)} текст`,
+].join('\n');
+
+const gfmSample = [
+  '# Заголовок первого уровня',
+  '## Заголовок второго уровня',
+  '### Заголовок третьего уровня',
+  '',
+  '> Цитата: «сначала тесты на вредный ввод, потом красота».',
+  '> > Вложенная цитата.',
+  '',
+  '3. Список продолжается с тройки',
+  '4. Четвёртый пункт',
+  '   - вложенный пункт',
+  '',
+  '- [x] тесты написаны',
+  '- [ ] ревью пройдено',
+  '',
+  '| Колонка | Значение | Очень длинная колонка, которая не помещается в узкое сообщение |',
+  '| :-- | --: | :-- |',
+  '| `rehype-sanitize` | 6.0.0 | ~~зачёркнутый~~ текст и ссылка https://example.com |',
+  '',
+  '---',
+  '',
+  'Текст со сноской[^1].',
+  '',
+  '[^1]: Текст сноски со ссылкой назад.',
 ].join('\n');
 
 const meta = {
@@ -64,6 +96,9 @@ export const ThemesAndEdgeCases: Story = {
             </h3>
             <div className="rounded-xl border border-line bg-app p-4">
               <Markdown content={basicSample} />
+            </div>
+            <div className="rounded-xl border border-line bg-app p-4">
+              <Markdown content={gfmSample} />
             </div>
             <div className="rounded-xl border border-line bg-app p-4">
               <Markdown content={longLinkSample} />
