@@ -160,6 +160,190 @@ it('denies the next admin-only request after demotion with the same access token
   expect((await createInvite()).status).toBe(201);
 });
 
+describe('workspace members', () => {
+  const json = { 'content-type': 'application/json' };
+
+  /** A workspace owned by the fixture user, plus active users added with the given roles. */
+  async function setupMembers(roles: Readonly<Record<string, WsRole | null>>) {
+    const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
+    const users: Record<string, string> = {};
+    for (const [name, role] of Object.entries(roles)) {
+      const user = await stand.prisma.user.create({
+        data: { name, email: `${name.toLowerCase()}@users.invalid`, passwordHash: '!' },
+      });
+      users[name] = user.id;
+      if (role) {
+        await stand.prisma.workspaceMember.create({
+          data: { workspaceId: workspace.id, userId: user.id, role },
+        });
+      }
+    }
+    const app = stand.apps[0]!;
+    const base = `${await app.getUrl()}/api/workspaces/${workspace.slug}/members`;
+    const changeRole = (actorId: string, targetId: string, role: string) =>
+      fetch(`${base}/${targetId}/role`, {
+        method: 'PATCH',
+        headers: { ...json, authorization: authorization(app, actorId) },
+        body: JSON.stringify({ role }),
+      });
+    const roleOf = async (userId: string, workspaceId = workspace.id) =>
+      (
+        await stand.prisma.workspaceMember.findUnique({
+          where: { workspaceId_userId: { workspaceId, userId } },
+        })
+      )?.role;
+    return { workspace, users: (name: string) => users[name]!, app, base, changeRole, roleOf };
+  }
+
+  it('lists active members by name with only their ID, name and role', async () => {
+    const { users, app, base } = await setupMembers({
+      Zoe: WsRole.MEMBER,
+      Bob: WsRole.ADMIN,
+      Gone: WsRole.MEMBER,
+      Outsider: null,
+    });
+    await stand.prisma.user.update({
+      where: { id: users('Gone') },
+      data: { deactivatedAt: new Date() },
+    });
+    await stand.prisma.user.update({ where: { id: DEFAULT_AUTHOR_ID }, data: { name: 'Owner' } });
+
+    const expected = [
+      { userId: users('Bob'), name: 'Bob', role: WsRole.ADMIN },
+      { userId: DEFAULT_AUTHOR_ID, name: 'Owner', role: WsRole.OWNER },
+      { userId: users('Zoe'), name: 'Zoe', role: WsRole.MEMBER },
+    ];
+    for (const reader of [DEFAULT_AUTHOR_ID, users('Bob'), users('Zoe')]) {
+      const list = await fetch(base, { headers: { authorization: authorization(app, reader) } });
+      expect(list.status).toBe(200);
+      // Exact equality: no email, password hash or other user column may reach the list.
+      expect(await list.json()).toEqual(expected);
+    }
+
+    // A stranger gets the same answer as for an absent workspace; a deactivated member has no session.
+    const as = (userId: string) => ({ headers: { authorization: authorization(app, userId) } });
+    expect((await fetch(base, as(users('Outsider')))).status).toBe(404);
+    expect((await fetch(base, as(users('Gone')))).status).toBe(401);
+    expect((await fetch(base)).status).toBe(401);
+  });
+
+  it('refuses role changes from anyone but the owner without changing a role', async () => {
+    const { users, base, changeRole, roleOf } = await setupMembers({
+      Admin: WsRole.ADMIN,
+      Peer: WsRole.ADMIN,
+      Member: WsRole.MEMBER,
+      Other: WsRole.MEMBER,
+      Outsider: null,
+    });
+
+    // A stranger learns nothing, not even whether the target is a member.
+    expect((await changeRole(users('Outsider'), users('Member'), 'ADMIN')).status).toBe(404);
+    expect((await changeRole(users('Outsider'), users('Outsider'), 'ADMIN')).status).toBe(404);
+
+    // A member cannot promote themselves or anyone else, nor demote an admin.
+    expect((await changeRole(users('Member'), users('Member'), 'ADMIN')).status).toBe(403);
+    expect((await changeRole(users('Member'), users('Other'), 'ADMIN')).status).toBe(403);
+    expect((await changeRole(users('Member'), users('Admin'), 'MEMBER')).status).toBe(403);
+
+    // An admin cannot promote a member, demote a fellow admin or step down through this route.
+    expect((await changeRole(users('Admin'), users('Member'), 'ADMIN')).status).toBe(403);
+    expect((await changeRole(users('Admin'), users('Peer'), 'MEMBER')).status).toBe(403);
+    expect((await changeRole(users('Admin'), users('Admin'), 'MEMBER')).status).toBe(403);
+    expect((await changeRole(users('Admin'), DEFAULT_AUTHOR_ID, 'ADMIN')).status).toBe(403);
+
+    const anonymous = await fetch(`${base}/${users('Member')}/role`, {
+      method: 'PATCH',
+      headers: json,
+      body: JSON.stringify({ role: 'ADMIN' }),
+    });
+    expect(anonymous.status).toBe(401);
+
+    expect(await roleOf(DEFAULT_AUTHOR_ID)).toBe(WsRole.OWNER);
+    expect(await roleOf(users('Admin'))).toBe(WsRole.ADMIN);
+    expect(await roleOf(users('Peer'))).toBe(WsRole.ADMIN);
+    expect(await roleOf(users('Member'))).toBe(WsRole.MEMBER);
+    expect(await roleOf(users('Other'))).toBe(WsRole.MEMBER);
+  });
+
+  it('keeps the owner in place and rejects OWNER as a requested role', async () => {
+    const { workspace, users, changeRole, roleOf } = await setupMembers({ Admin: WsRole.ADMIN });
+    const owner = DEFAULT_AUTHOR_ID;
+
+    // The only owner can be neither demoted nor replaced: ownership moves by a separate action.
+    expect((await changeRole(owner, owner, 'ADMIN')).status).toBe(403);
+    expect((await changeRole(owner, owner, 'MEMBER')).status).toBe(403);
+    for (const target of [owner, users('Admin')]) {
+      const refused = await changeRole(owner, target, 'OWNER');
+      expect(refused.status).toBe(400);
+      expect(ValidationErrorResponse.parse(await refused.json()).issues).toMatchObject([
+        { path: 'role' },
+      ]);
+    }
+    expect((await changeRole(owner, 'not-a-uuid', 'ADMIN')).status).toBe(400);
+    // The requested role must differ from the current one.
+    expect((await changeRole(owner, users('Admin'), 'ADMIN')).status).toBe(403);
+
+    expect(await roleOf(owner)).toBe(WsRole.OWNER);
+    expect(await roleOf(users('Admin'))).toBe(WsRole.ADMIN);
+    expect(
+      await stand.prisma.workspaceMember.count({
+        where: { workspaceId: workspace.id, role: WsRole.OWNER },
+      }),
+    ).toBe(1);
+  });
+
+  it('returns 404 for a target outside this workspace and leaves other workspaces alone', async () => {
+    const { users, changeRole, roleOf } = await setupMembers({
+      Foreign: null,
+      Gone: WsRole.MEMBER,
+    });
+    const owner = DEFAULT_AUTHOR_ID;
+    // The fixture owner is only a member of the second workspace, where Foreign is an admin.
+    const other = await stand.prisma.workspace.create({
+      data: {
+        name: 'Other team',
+        slug: 'other-team',
+        members: {
+          create: [
+            { userId: users('Foreign'), role: WsRole.ADMIN },
+            { userId: owner, role: WsRole.MEMBER },
+          ],
+        },
+      },
+    });
+    await stand.prisma.user.update({
+      where: { id: users('Gone') },
+      data: { deactivatedAt: new Date() },
+    });
+
+    expect((await changeRole(owner, users('Foreign'), 'MEMBER')).status).toBe(404);
+    expect((await changeRole(owner, randomUUID(), 'ADMIN')).status).toBe(404);
+    expect((await changeRole(owner, users('Gone'), 'ADMIN')).status).toBe(404);
+
+    expect(await roleOf(users('Foreign'), other.id)).toBe(WsRole.ADMIN);
+    expect(await roleOf(owner, other.id)).toBe(WsRole.MEMBER);
+    expect(await roleOf(users('Gone'))).toBe(WsRole.MEMBER);
+  });
+
+  it('applies one of two concurrent changes of the same member and refuses the other', async () => {
+    const { users, changeRole, roleOf } = await setupMembers({ Member: WsRole.MEMBER });
+    const owner = DEFAULT_AUTHOR_ID;
+
+    const statuses = (
+      await Promise.all([
+        changeRole(owner, users('Member'), 'ADMIN'),
+        changeRole(owner, users('Member'), 'ADMIN'),
+      ])
+    ).map((response) => response.status);
+
+    // The loser either lost the conditional update (409) or already saw the new role (403).
+    expect(statuses.filter((status) => status === 200)).toHaveLength(1);
+    expect(statuses.filter((status) => status === 403 || status === 409)).toHaveLength(1);
+    expect(await roleOf(users('Member'))).toBe(WsRole.ADMIN);
+    expect(await roleOf(owner)).toBe(WsRole.OWNER);
+  });
+});
+
 it('returns 403 when a regular member tries to create an invitation', async () => {
   const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
   const member = await stand.prisma.user.create({
