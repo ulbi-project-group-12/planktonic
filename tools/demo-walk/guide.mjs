@@ -6,16 +6,20 @@
 //   node tools/demo-walk/walk.mjs --out <dir> --stills
 //   node tools/demo-walk/guide.mjs --out <dir>
 //
-// Each step names a still as `<beat>:<tag>` (beats.mjs GUIDE); the walk saves stills as
+// The steps come from the script of the walk that made the stills (stills.json names it; `--walk`
+// overrides): beats.mjs for the UL-135 prototype, beats-<walk>.mjs otherwise.
+//
+// Each step names a still as `<beat>:<tag>` (the script's GUIDE); the walk saves stills as
 // `NNN-<beat>-<tag>.png`, where the tag is `open`, `done` or `before-click` (`#n` = the n-th).
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { GUIDE } from './beats.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const { values: argv } = parseArgs({ options: { out: { type: 'string' } } });
+const { values: argv } = parseArgs({
+  options: { out: { type: 'string' }, walk: { type: 'string' } },
+});
 const OUT = resolve(argv.out ?? join(HERE, 'out'));
 const STILLS = join(OUT, 'stills');
 if (!existsSync(STILLS)) throw new Error(`no stills in ${STILLS}: run walk.mjs --stills first`);
@@ -26,6 +30,9 @@ const files = readdirSync(STILLS)
 const meta = existsSync(join(OUT, 'stills.json'))
   ? JSON.parse(readFileSync(join(OUT, 'stills.json'), 'utf8'))
   : {};
+const WALK = argv.walk ?? meta.walk ?? 'prototype';
+if (!/^[a-z][a-z0-9-]*$/.test(WALK)) throw new Error(`--walk ${WALK}: not a walk name`);
+const { GUIDE } = await import(WALK === 'prototype' ? './beats.mjs' : `./beats-${WALK}.mjs`);
 
 function still(ref) {
   const [beat, rawTag = 'open'] = ref.split(':');
@@ -55,7 +62,7 @@ const html = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Прототип фазы 2</title>
+<title>${esc(GUIDE.title)}</title>
 <style>
   :root { --bg: #f8fafc; --fg: #0f172a; --muted: #475569; --card: #fff; --line: #e2e8f0; --accent: #2563eb; --on-accent: #fff; }
   @media (prefers-color-scheme: dark) { :root { --bg: #0b1120; --fg: #e2e8f0; --muted: #94a3b8; --card: #111827; --line: #1e293b; --accent: #60a5fa; --on-accent: #0b1120; } }

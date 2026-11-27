@@ -67,9 +67,10 @@ export class Cdp {
 
 /**
  * Starts headless Chrome on a free port with a fresh profile.
- * @param {{ args?: string[] }} options
+ * `env` adds to Chrome's environment (a walk sets `TZ` so pages do not show this machine's zone).
+ * @param {{ args?: string[], env?: Record<string, string> }} options
  */
-export async function launchChrome({ args = [] } = {}) {
+export async function launchChrome({ args = [], env = {} } = {}) {
   const bin = CHROME_PATHS.find((p) => existsSync(p));
   if (!bin) throw new Error('no Chrome found: set CHROME_PATH');
   const profile = mkdtempSync(join(tmpdir(), 'demo-walk-chrome-'));
@@ -91,7 +92,7 @@ export async function launchChrome({ args = [] } = {}) {
       ...args,
       'about:blank',
     ],
-    { stdio: 'ignore' },
+    { stdio: 'ignore', env: { ...process.env, ...env } },
   );
   let closed = false;
   const close = async () => {
