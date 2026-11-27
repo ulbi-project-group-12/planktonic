@@ -181,7 +181,8 @@ function createWorkspaceHandlers() {
     http.get('*/api/workspaces', () => HttpResponse.json([...workspaces.values()])),
     http.get<{ slug: string }>('*/api/workspaces/:slug', ({ params }) => {
       const workspace = workspaces.get(params.slug);
-      if (workspace) return HttpResponse.json({ ...workspace, role: 'OWNER' });
+      if (workspace)
+        return HttpResponse.json({ ...workspace, role: 'OWNER', canCreateProject: true });
       return HttpResponse.json(
         { statusCode: 404, message: 'Workspace not found', error: 'Not Found' },
         { status: 404 },

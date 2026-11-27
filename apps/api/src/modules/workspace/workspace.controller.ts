@@ -5,11 +5,20 @@ import {
   CreateInviteRequestSchema,
   type CreateInviteResponse,
   CreateInviteResponseSchema,
+  type CreateProjectRequest,
+  CreateProjectRequestSchema,
   type CreateWorkspaceRequest,
   CreateWorkspaceRequestSchema,
   HttpErrorResponse,
+  type ListProjectsResponse,
+  ListProjectsResponseSchema,
   type ListWorkspacesResponse,
   ListWorkspacesResponseSchema,
+  ProjectKeyConflictResponseSchema,
+  type ProjectKeyParams,
+  ProjectKeyParamsSchema,
+  type ProjectResponse,
+  ProjectResponseSchema,
   ValidationErrorResponse,
   type WorkspaceDetailsResponse,
   WorkspaceDetailsResponseSchema,
@@ -59,6 +68,63 @@ export class WorkspaceController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<WorkspaceDetailsResponse> {
     return this.workspaceService.getBySlugForUser(slug, user.id);
+  }
+
+  @Get(':slug/projects')
+  @RequireAccess({ kind: 'authenticated' })
+  @ApiOperation({ summary: 'List accessible workspace projects', operationId: 'Project_list' })
+  @ApiZodResponse(200, 'Projects', ListProjectsResponseSchema)
+  @ApiZodResponse(400, 'Invalid workspace slug', ValidationErrorResponse)
+  @ApiZodResponse(
+    401,
+    'Authentication required',
+    HttpErrorResponse.pick({ statusCode: true, message: true }),
+  )
+  @ApiZodResponse(404, 'Workspace not found', HttpErrorResponse)
+  listProjects(
+    @Param({ schema: WorkspaceSlugParamsSchema }) { slug }: WorkspaceSlugParams,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ListProjectsResponse> {
+    return this.workspaceService.listProjects(slug, user.id);
+  }
+
+  @Get(':slug/projects/:key')
+  @RequireAccess({ kind: 'authenticated' })
+  @ApiOperation({ summary: 'Get a workspace project by key', operationId: 'Project_getByKey' })
+  @ApiZodResponse(200, 'Project', ProjectResponseSchema)
+  @ApiZodResponse(400, 'Invalid workspace slug or project key', ValidationErrorResponse)
+  @ApiZodResponse(
+    401,
+    'Authentication required',
+    HttpErrorResponse.pick({ statusCode: true, message: true }),
+  )
+  @ApiZodResponse(404, 'Project not found', HttpErrorResponse)
+  getProject(
+    @Param({ schema: ProjectKeyParamsSchema }) { slug, key }: ProjectKeyParams,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ProjectResponse> {
+    return this.workspaceService.getProject(slug, key, user.id);
+  }
+
+  @Post(':slug/projects')
+  @RequireAccess({ kind: 'authenticated' })
+  @ApiOperation({ summary: 'Create a project in a workspace', operationId: 'Project_create' })
+  @ApiZodResponse(201, 'Project created', ProjectResponseSchema)
+  @ApiZodResponse(400, 'Invalid project fields or workspace slug', ValidationErrorResponse)
+  @ApiZodResponse(
+    401,
+    'Authentication required',
+    HttpErrorResponse.pick({ statusCode: true, message: true }),
+  )
+  @ApiZodResponse(403, 'Project creation forbidden', HttpErrorResponse)
+  @ApiZodResponse(404, 'Workspace not found', HttpErrorResponse)
+  @ApiZodResponse(409, 'Project key is already in use', ProjectKeyConflictResponseSchema)
+  createProject(
+    @Param({ schema: WorkspaceSlugParamsSchema }) { slug }: WorkspaceSlugParams,
+    @Body({ schema: CreateProjectRequestSchema }) body: CreateProjectRequest,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ProjectResponse> {
+    return this.workspaceService.createProject(slug, body, user.id);
   }
 
   @Post(':slug/invites')

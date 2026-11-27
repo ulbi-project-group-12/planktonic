@@ -1,6 +1,21 @@
 export { TICKET_KEY_PATTERN, TicketKey } from './ticket-key.js';
 export { ChannelId } from './channel.js';
-export { PROJECT_KEY_PATTERN, ProjectKey } from './project.js';
+export {
+  type CreateProjectRequest,
+  CreateProjectRequestSchema,
+  type ListProjectsResponse,
+  ListProjectsResponseSchema,
+  PROJECT_DESCRIPTION_MAX_LENGTH,
+  PROJECT_KEY_PATTERN,
+  PROJECT_NAME_MAX_LENGTH,
+  ProjectKey,
+  type ProjectKeyConflictResponse,
+  ProjectKeyConflictResponseSchema,
+  type ProjectKeyParams,
+  ProjectKeyParamsSchema,
+  type ProjectResponse,
+  ProjectResponseSchema,
+} from './project.js';
 export {
   type CreateWorkspaceRequest,
   CreateWorkspaceRequestSchema,

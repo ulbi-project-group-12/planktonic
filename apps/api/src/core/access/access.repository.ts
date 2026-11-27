@@ -20,4 +20,12 @@ export class AccessRepository {
     });
     return user !== null;
   }
+
+  async findProjectRole(userId: string, workspaceId: string, projectId: string) {
+    const membership = await this.prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId }, project: { workspaceId } },
+      select: { role: true },
+    });
+    return membership?.role ?? null;
+  }
 }

@@ -2,14 +2,17 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   CreateInviteResponseSchema,
   CreateWorkspaceRequestSchema,
+  ListProjectsResponseSchema,
   ListWorkspacesResponseSchema,
   LoginResponseSchema,
+  ProjectKeyConflictResponseSchema,
+  ProjectResponseSchema,
   ValidationErrorResponse,
   WorkspaceResponseSchema,
   WorkspaceSlugConflictResponseSchema,
 } from '@app/contracts';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { WsRole } from '../../src/generated/prisma/client.js';
+import { ProjectRole, WsRole } from '../../src/generated/prisma/client.js';
 import { PasswordBreachService } from '../../src/modules/auth/register/password-breach.service.js';
 import { DEFAULT_AUTHOR_ID } from '../../src/modules/messages/default-author.js';
 import { WorkspaceRepository } from '../../src/modules/workspace/workspace.repository.js';
@@ -25,6 +28,260 @@ const passwordBreach = vi
   .mockResolvedValue(false);
 afterAll(() => {
   passwordBreach.mockRestore();
+});
+
+describe('POST /api/workspaces/:slug/projects', () => {
+  async function postProject(userId: string) {
+    const app = stand.apps[0]!;
+    return fetch(`${await app.getUrl()}/api/workspaces/${request.slug}/projects`, {
+      method: 'POST',
+      headers: { authorization: authorization(app, userId), 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Website', key: 'WEB' }),
+    });
+  }
+
+  it('creates one project with its creator as admin and reports a concurrent key conflict', async () => {
+    const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
+    const responses = await Promise.all([
+      postProject(DEFAULT_AUTHOR_ID),
+      postProject(DEFAULT_AUTHOR_ID),
+    ]);
+    expect(responses.map(({ status }) => status).sort()).toEqual([201, 409]);
+    const project = ProjectResponseSchema.parse(
+      await responses.find(({ status }) => status === 201)!.json(),
+    );
+    expect(project).toMatchObject({ name: 'Website', key: 'WEB', description: '' });
+    const conflict = ProjectKeyConflictResponseSchema.parse(
+      await responses.find(({ status }) => status === 409)!.json(),
+    );
+    expect(conflict.issues[0]?.path).toBe('key');
+    expect(await stand.prisma.project.count({ where: { workspaceId: workspace.id } })).toBe(1);
+    expect(await stand.prisma.projectMember.findMany()).toEqual([
+      { projectId: project.id, userId: DEFAULT_AUTHOR_ID, role: ProjectRole.ADMIN },
+    ]);
+  });
+
+  it('returns 403 to a regular workspace member', async () => {
+    const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
+    const user = await stand.prisma.user.create({
+      data: { name: 'Member', email: 'member@users.invalid', passwordHash: '!' },
+    });
+    await stand.prisma.workspaceMember.create({
+      data: { workspaceId: workspace.id, userId: user.id, role: WsRole.MEMBER },
+    });
+    expect((await postProject(user.id)).status).toBe(403);
+    expect(await stand.prisma.project.count()).toBe(0);
+  });
+});
+
+it('lists and opens only projects visible to the current workspace member', async () => {
+  const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
+  const member = await stand.prisma.user.create({
+    data: { name: 'Member', email: 'project-reader@users.invalid', passwordHash: '!' },
+  });
+  await stand.prisma.workspaceMember.create({
+    data: { workspaceId: workspace.id, userId: member.id, role: WsRole.MEMBER },
+  });
+  const visible = await stand.prisma.project.create({
+    data: {
+      workspaceId: workspace.id,
+      key: 'WEB',
+      name: 'Website',
+      description: 'Company website',
+      members: { create: { userId: member.id, role: ProjectRole.MEMBER } },
+    },
+  });
+  await stand.prisma.project.create({
+    data: { workspaceId: workspace.id, key: 'MOBILE', name: 'Mobile app' },
+  });
+
+  const app = stand.apps[0]!;
+  const url = `${await app.getUrl()}/api/workspaces/${workspace.slug}/projects`;
+  const get = (userId: string, path = '') =>
+    fetch(`${url}${path}`, { headers: { authorization: authorization(app, userId) } });
+  const ownerList = await get(DEFAULT_AUTHOR_ID);
+  expect(ownerList.status).toBe(200);
+  expect(ListProjectsResponseSchema.parse(await ownerList.json()).map(({ key }) => key)).toEqual([
+    'MOBILE',
+    'WEB',
+  ]);
+  const memberList = await get(member.id);
+  expect(memberList.status).toBe(200);
+  expect(ListProjectsResponseSchema.parse(await memberList.json()).map(({ key }) => key)).toEqual([
+    'WEB',
+  ]);
+  const details = await get(member.id, '/WEB');
+  expect(details.status).toBe(200);
+  expect(ProjectResponseSchema.parse(await details.json())).toEqual({
+    id: visible.id,
+    key: 'WEB',
+    name: 'Website',
+    description: 'Company website',
+  });
+  expect((await get(member.id, '/MOBILE')).status).toBe(404);
+  expect((await get(member.id, '/MISSING')).status).toBe(404);
+});
+
+describe('project refusals', () => {
+  const otherSlug = 'other-team';
+
+  async function projects(
+    userId: string | null,
+    path = '',
+    init: { slug?: string; body?: unknown } = {},
+  ): Promise<Response> {
+    const app = stand.apps[0]!;
+    const url = `${await app.getUrl()}/api/workspaces/${init.slug ?? request.slug}/projects${path}`;
+    return fetch(url, {
+      method: 'body' in init ? 'POST' : 'GET',
+      headers: {
+        ...(userId ? { authorization: authorization(app, userId) } : {}),
+        ...('body' in init ? { 'content-type': 'application/json' } : {}),
+      },
+      ...('body' in init ? { body: JSON.stringify(init.body) } : {}),
+    });
+  }
+
+  async function setupProject() {
+    const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
+    const user = await stand.prisma.user.create({
+      data: { name: 'Other', email: 'project-other@users.invalid', passwordHash: '!' },
+    });
+    const project = await stand.prisma.project.create({
+      data: { workspaceId: workspace.id, key: 'WEB', name: 'Website' },
+    });
+    return { workspace, user, project };
+  }
+
+  it('requires authentication on every project route', async () => {
+    await setupProject();
+    const responses = await Promise.all([
+      projects(null),
+      projects(null, '/WEB'),
+      projects(null, '', { body: { name: 'Mobile', key: 'MOBILE' } }),
+    ]);
+    expect(responses.map(({ status }) => status)).toEqual([401, 401, 401]);
+    expect(await stand.prisma.project.count()).toBe(1);
+  });
+
+  it('answers a workspace outsider with 404, even one left in project_members', async () => {
+    const { user, project } = await setupProject();
+    await stand.prisma.projectMember.create({
+      data: { projectId: project.id, userId: user.id, role: ProjectRole.ADMIN },
+    });
+    const responses = await Promise.all([
+      projects(user.id),
+      projects(user.id, '/WEB'),
+      projects(user.id, '', { body: { name: 'Mobile', key: 'MOBILE' } }),
+    ]);
+    expect(responses.map(({ status }) => status)).toEqual([404, 404, 404]);
+    expect(await stand.prisma.project.count()).toBe(1);
+  });
+
+  it('rejects a deactivated workspace admin at authentication', async () => {
+    const { workspace, user } = await setupProject();
+    await stand.prisma.workspaceMember.create({
+      data: { workspaceId: workspace.id, userId: user.id, role: WsRole.ADMIN },
+    });
+    await stand.prisma.user.update({ where: { id: user.id }, data: { deactivatedAt: new Date() } });
+    const responses = await Promise.all([
+      projects(user.id),
+      projects(user.id, '/WEB'),
+      projects(user.id, '', { body: { name: 'Mobile', key: 'MOBILE' } }),
+    ]);
+    expect(responses.map(({ status }) => status)).toEqual([401, 401, 401]);
+    expect(await stand.prisma.project.count()).toBe(1);
+  });
+
+  it('keeps projects inside their workspace and lets two workspaces share a key', async () => {
+    const { workspace, user, project } = await setupProject();
+    // The other user owns a second workspace and is a plain member of the first one.
+    const other = await stand.prisma.workspace.create({
+      data: {
+        name: 'Other team',
+        slug: otherSlug,
+        members: { create: { userId: user.id, role: WsRole.OWNER } },
+      },
+    });
+    await stand.prisma.workspaceMember.create({
+      data: { workspaceId: workspace.id, userId: user.id, role: WsRole.MEMBER },
+    });
+
+    // Owning another workspace opens nothing in this one.
+    expect((await projects(user.id, '/WEB')).status).toBe(404);
+    expect(await (await projects(user.id)).json()).toEqual([]);
+    // The key of a project from the first workspace does not resolve under the second slug.
+    expect((await projects(user.id, '/WEB', { slug: otherSlug })).status).toBe(404);
+    expect(await (await projects(user.id, '', { slug: otherSlug })).json()).toEqual([]);
+
+    const created = await projects(user.id, '', {
+      slug: otherSlug,
+      body: { name: 'Their website', key: 'WEB' },
+    });
+    expect(created.status).toBe(201);
+    const theirs = ProjectResponseSchema.parse(await created.json());
+    expect(theirs.id).not.toBe(project.id);
+    expect(
+      await stand.prisma.project.findUniqueOrThrow({ where: { id: theirs.id } }),
+    ).toMatchObject({ workspaceId: other.id, key: 'WEB' });
+    // The first workspace's owner is not a member of the second one.
+    expect((await projects(DEFAULT_AUTHOR_ID, '/WEB', { slug: otherSlug })).status).toBe(404);
+  });
+
+  it('lets a workspace admin create a project and ignores fields outside the contract', async () => {
+    const { workspace, user } = await setupProject();
+    await stand.prisma.workspaceMember.create({
+      data: { workspaceId: workspace.id, userId: user.id, role: WsRole.ADMIN },
+    });
+    const foreignId = randomUUID();
+    const response = await projects(user.id, '', {
+      body: {
+        name: '  Mobile app  ',
+        key: 'MOBILE',
+        description: '  iOS and Android  ',
+        id: foreignId,
+        workspaceId: foreignId,
+        members: [{ userId: DEFAULT_AUTHOR_ID, role: 'ADMIN' }],
+      },
+    });
+    expect(response.status).toBe(201);
+    const project = ProjectResponseSchema.parse(await response.json());
+    expect(project).toMatchObject({
+      name: 'Mobile app',
+      key: 'MOBILE',
+      description: 'iOS and Android',
+    });
+    expect(project.id).not.toBe(foreignId);
+    expect(
+      await stand.prisma.project.findUniqueOrThrow({ where: { id: project.id } }),
+    ).toMatchObject({ workspaceId: workspace.id });
+    expect(await stand.prisma.projectMember.findMany({ where: { projectId: project.id } })).toEqual(
+      [{ projectId: project.id, userId: user.id, role: ProjectRole.ADMIN }],
+    );
+  });
+
+  it('answers 409 for a key taken earlier and 400 for invalid fields', async () => {
+    await setupProject();
+    const taken = await projects(DEFAULT_AUTHOR_ID, '', { body: { name: 'Again', key: 'WEB' } });
+    expect(taken.status).toBe(409);
+    expect(ProjectKeyConflictResponseSchema.parse(await taken.json()).issues[0]?.path).toBe('key');
+
+    const invalid = [
+      { name: 'Mobile', key: 'mobile' },
+      { name: '   ', key: 'MOBILE' },
+      { name: 'x'.repeat(81), key: 'MOBILE' },
+      { name: 'Mobile', key: 'MOBILE', description: 'x'.repeat(1001) },
+      { name: 'Mobile\u0000', key: 'MOBILE' },
+      { key: 'MOBILE' },
+    ];
+    for (const body of invalid) {
+      const response = await projects(DEFAULT_AUTHOR_ID, '', { body });
+      expect(response.status).toBe(400);
+      expect(ValidationErrorResponse.safeParse(await response.json()).success).toBe(true);
+    }
+    expect((await projects(DEFAULT_AUTHOR_ID, '/web')).status).toBe(400);
+    expect(await stand.prisma.project.count()).toBe(1);
+  });
 });
 
 it('preserves existing roles and consumes an invite for only one concurrent joiner', async () => {
@@ -376,7 +633,11 @@ describe('GET /api/workspaces/:slug', () => {
 
     const owner = await fetch(url, { headers: { authorization: authorization(app) } });
     expect(owner.status).toBe(200);
-    expect(await owner.json()).toEqual({ ...workspace, role: WsRole.OWNER });
+    expect(await owner.json()).toEqual({
+      ...workspace,
+      role: WsRole.OWNER,
+      canCreateProject: true,
+    });
 
     const foreign = await fetch(url, { headers: otherHeaders });
     const missing = await fetch(`${baseUrl}/missing-workspace`, { headers: otherHeaders });
@@ -392,6 +653,10 @@ describe('GET /api/workspaces/:slug', () => {
     });
     const member = await fetch(url, { headers: otherHeaders });
     expect(member.status).toBe(200);
-    expect(await member.json()).toEqual({ ...workspace, role: WsRole.MEMBER });
+    expect(await member.json()).toEqual({
+      ...workspace,
+      role: WsRole.MEMBER,
+      canCreateProject: false,
+    });
   });
 });
