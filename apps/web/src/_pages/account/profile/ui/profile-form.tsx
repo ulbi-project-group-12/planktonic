@@ -10,7 +10,7 @@ import { toast } from '@/shared/ui/toast';
 import { useUpdateProfile, type ProfileMe } from '../api/profile';
 import { TIMEZONE_OPTIONS, getBrowserTimeZone } from '../model/timezones';
 
-// Client-side validation only — the PATCH contract lands in packages/contracts with UL-155.
+// Client-side validation only, with Russian messages; the API re-checks against the contract.
 // The name limits repeat RegisterRequestSchema (2–15 after trimming): a name the registration
 // form refuses must not be reachable through the profile.
 const ProfileFormSchema = z.object({
@@ -53,8 +53,8 @@ export function ProfileForm({ initial }: { initial: ProfileMe }) {
       // The saved answer becomes the new baseline: the submit goes disabled again. A plain
       // reset() inherits resetOptions and would leave the saved fields marked as edited, so
       // the next refetch could no longer update them.
-      const saved = await updateProfile.mutateAsync(values);
-      reset({ name: saved.name, tz: saved.tz ?? values.tz }, { keepDirtyValues: false });
+      const saved = await updateProfile.mutateAsync({ data: values });
+      reset({ name: saved.name, tz: saved.tz }, { keepDirtyValues: false });
       toast({ title: 'Профиль обновлён' });
     } catch (error) {
       if (isApiError(error)) {

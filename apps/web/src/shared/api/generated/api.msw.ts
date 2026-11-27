@@ -28,6 +28,7 @@ import type {
   InviteAccept200,
   InviteAccept401,
   InviteAccept403,
+  InviteAccept404,
   InviteAccept410,
   InviteCreate201,
   InviteCreate400,
@@ -38,6 +39,7 @@ import type {
   InviteGet200,
   InviteGet401,
   InviteGet404,
+  InviteGet410,
   MessagesCreate201,
   MessagesCreate400,
   MessagesCreate404,
@@ -46,6 +48,10 @@ import type {
   MessagesList200,
   MessagesList400,
   MessagesList404,
+  UsersUpdateMe200,
+  UsersUpdateMe400,
+  UsersUpdateMe401,
+  UsersUpdateMeBody,
   WorkspaceCreate201,
   WorkspaceCreate400,
   WorkspaceCreate401,
@@ -167,6 +173,7 @@ export const getAuthMeResponseMock = (
   id: faker.string.uuid(),
   name: faker.string.alpha({ length: { min: 10, max: 20 } }),
   email: faker.internet.email(),
+  tz: faker.string.alpha({ length: { min: 10, max: 64 } }),
   ...overrideResponse,
 });
 
@@ -176,6 +183,7 @@ export const getAuthMeResponseMock200 = (
   id: faker.string.uuid(),
   name: faker.string.alpha({ length: { min: 10, max: 20 } }),
   email: faker.internet.email(),
+  tz: faker.string.alpha({ length: { min: 10, max: 64 } }),
   ...overrideResponse,
 });
 
@@ -464,6 +472,48 @@ export const getMessagesListResponseMock404 = (
   ...overrideResponse,
 });
 
+export const getUsersUpdateMeResponseMock = (
+  overrideResponse: Partial<Extract<UsersUpdateMe200, object>> = {},
+): UsersUpdateMe200 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  email: faker.internet.email(),
+  tz: faker.string.alpha({ length: { min: 10, max: 64 } }),
+  ...overrideResponse,
+});
+
+export const getUsersUpdateMeResponseMock200 = (
+  overrideResponse: Partial<Extract<UsersUpdateMe200, object>> = {},
+): UsersUpdateMe200 => ({
+  id: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  email: faker.internet.email(),
+  tz: faker.string.alpha({ length: { min: 10, max: 64 } }),
+  ...overrideResponse,
+});
+
+export const getUsersUpdateMeResponseMock400 = (
+  overrideResponse: Partial<Extract<UsersUpdateMe400, object>> = {},
+): UsersUpdateMe400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getUsersUpdateMeResponseMock401 = (
+  overrideResponse: Partial<Extract<UsersUpdateMe401, object>> = {},
+): UsersUpdateMe401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
 export const getWorkspaceListResponseMock = (): WorkspaceList200Item[] =>
   Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.string.uuid(),
@@ -686,9 +736,24 @@ export const getInviteGetResponseMock401 = (
 export const getInviteGetResponseMock404 = (
   overrideResponse: Partial<Extract<InviteGet404, object>> = {},
 ): InviteGet404 => ({
-  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  statusCode: faker.helpers.arrayElement([404] as const),
   message: faker.string.alpha({ length: { min: 10, max: 20 } }),
   error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  code: faker.helpers.arrayElement(['invite_not_found'] as const),
+  ...overrideResponse,
+});
+
+export const getInviteGetResponseMock410 = (
+  overrideResponse: Partial<Extract<InviteGet410, object>> = {},
+): InviteGet410 => ({
+  statusCode: faker.helpers.arrayElement([410] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  code: faker.helpers.arrayElement([
+    'invite_expired',
+    'invite_consumed',
+    'invite_revoked',
+  ] as const),
   ...overrideResponse,
 });
 
@@ -696,6 +761,7 @@ export const getInviteAcceptResponseMock = (
   overrideResponse: Partial<Extract<InviteAccept200, object>> = {},
 ): InviteAccept200 => ({
   workspaceSlug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  outcome: faker.helpers.arrayElement(['joined', 'already_member'] as const),
   ...overrideResponse,
 });
 
@@ -703,6 +769,7 @@ export const getInviteAcceptResponseMock200 = (
   overrideResponse: Partial<Extract<InviteAccept200, object>> = {},
 ): InviteAccept200 => ({
   workspaceSlug: faker.helpers.fromRegExp('^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$'),
+  outcome: faker.helpers.arrayElement(['joined', 'already_member'] as const),
   ...overrideResponse,
 });
 
@@ -723,12 +790,27 @@ export const getInviteAcceptResponseMock403 = (
   ...overrideResponse,
 });
 
+export const getInviteAcceptResponseMock404 = (
+  overrideResponse: Partial<Extract<InviteAccept404, object>> = {},
+): InviteAccept404 => ({
+  statusCode: faker.helpers.arrayElement([404] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  code: faker.helpers.arrayElement(['invite_not_found'] as const),
+  ...overrideResponse,
+});
+
 export const getInviteAcceptResponseMock410 = (
   overrideResponse: Partial<Extract<InviteAccept410, object>> = {},
 ): InviteAccept410 => ({
-  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  statusCode: faker.helpers.arrayElement([410] as const),
   message: faker.string.alpha({ length: { min: 10, max: 20 } }),
   error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  code: faker.helpers.arrayElement([
+    'invite_expired',
+    'invite_consumed',
+    'invite_revoked',
+  ] as const),
   ...overrideResponse,
 });
 
@@ -1371,6 +1453,102 @@ export const getMessagesListMockHandler404 = (
   );
 };
 
+export const getUsersUpdateMeMockHandler = (
+  overrideResponse?:
+    | UsersUpdateMe200
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, UsersUpdateMeBody>>[0],
+      ) => Promise<UsersUpdateMe200> | UsersUpdateMe200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch<PathParams, UsersUpdateMeBody>(
+    '*/api/users/me',
+    async (info: Parameters<HttpResponseResolver<PathParams, UsersUpdateMeBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getUsersUpdateMeResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getUsersUpdateMeMockHandler200 = (
+  overrideResponse?:
+    | UsersUpdateMe200
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, UsersUpdateMeBody>>[0],
+      ) => Promise<UsersUpdateMe200> | UsersUpdateMe200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch<PathParams, UsersUpdateMeBody>(
+    '*/api/users/me',
+    async (info: Parameters<HttpResponseResolver<PathParams, UsersUpdateMeBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getUsersUpdateMeResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getUsersUpdateMeMockHandler400 = (
+  overrideResponse?:
+    | UsersUpdateMe400
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, UsersUpdateMeBody>>[0],
+      ) => Promise<UsersUpdateMe400> | UsersUpdateMe400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch<PathParams, UsersUpdateMeBody>(
+    '*/api/users/me',
+    async (info: Parameters<HttpResponseResolver<PathParams, UsersUpdateMeBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getUsersUpdateMeResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getUsersUpdateMeMockHandler401 = (
+  overrideResponse?:
+    | UsersUpdateMe401
+    | ((
+        info: Parameters<HttpResponseResolver<PathParams, UsersUpdateMeBody>>[0],
+      ) => Promise<UsersUpdateMe401> | UsersUpdateMe401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch<PathParams, UsersUpdateMeBody>(
+    '*/api/users/me',
+    async (info: Parameters<HttpResponseResolver<PathParams, UsersUpdateMeBody>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getUsersUpdateMeResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
 export const getWorkspaceListMockHandler = (
   overrideResponse?:
     | WorkspaceList200Item[]
@@ -1945,6 +2123,30 @@ export const getInviteGetMockHandler404 = (
   );
 };
 
+export const getInviteGetMockHandler410 = (
+  overrideResponse?:
+    | InviteGet410
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteGet410> | InviteGet410),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ token: string }>(
+    '*/api/invites/:token',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteGetResponseMock410(),
+        { status: 410 },
+      );
+    },
+    options,
+  );
+};
+
 export const getInviteAcceptMockHandler = (
   overrideResponse?:
     | InviteAccept200
@@ -2041,6 +2243,30 @@ export const getInviteAcceptMockHandler403 = (
   );
 };
 
+export const getInviteAcceptMockHandler404 = (
+  overrideResponse?:
+    | InviteAccept404
+    | ((
+        info: Parameters<HttpResponseResolver<{ token: string }>>[0],
+      ) => Promise<InviteAccept404> | InviteAccept404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post<{ token: string }>(
+    '*/api/invites/:token/accept',
+    async (info: Parameters<HttpResponseResolver<{ token: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInviteAcceptResponseMock404(),
+        { status: 404 },
+      );
+    },
+    options,
+  );
+};
+
 export const getInviteAcceptMockHandler410 = (
   overrideResponse?:
     | InviteAccept410
@@ -2072,6 +2298,7 @@ export const getApiMock = () => [
   getHealthReadyMockHandler(),
   getMessagesCreateMockHandler(),
   getMessagesListMockHandler(),
+  getUsersUpdateMeMockHandler(),
   getWorkspaceListMockHandler(),
   getWorkspaceCreateMockHandler(),
   getWorkspaceGetBySlugMockHandler(),

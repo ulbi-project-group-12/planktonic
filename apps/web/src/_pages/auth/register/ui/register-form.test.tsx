@@ -48,7 +48,11 @@ describe('RegisterForm', () => {
     push.mockClear();
   });
 
-  it('registers and goes to the login screen', async () => {
+  it.each([
+    { next: undefined, destination: '/login' },
+    { next: '/invite/example-token', destination: '/login?next=%2Finvite%2Fexample-token' },
+    { next: '//external.example/invite', destination: '/login' },
+  ])('registers and goes to $destination', async ({ next, destination }) => {
     let posted: unknown;
     server.use(
       http.post('*/api/auth/register', async ({ request }) => {
@@ -60,13 +64,13 @@ describe('RegisterForm', () => {
       }),
     );
     const user = userEvent.setup();
-    renderWithApi(<RegisterForm />);
+    renderWithApi(<RegisterForm next={next} />);
 
     await fill(user);
     await user.click(submit());
 
     await waitFor(() => {
-      expect(push).toHaveBeenCalledWith('/login');
+      expect(push).toHaveBeenCalledWith(destination);
     });
     expect(posted).toEqual({
       name: 'Ada',

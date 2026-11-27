@@ -4,8 +4,10 @@
  * API
  * OpenAPI spec version: 1.0.0
  */
+import type { InviteAccept200Outcome } from './inviteAccept200Outcome';
 
 export type InviteAccept200 = {
   /** @pattern ^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$ */
   workspaceSlug: string;
+  outcome: InviteAccept200Outcome;
 };

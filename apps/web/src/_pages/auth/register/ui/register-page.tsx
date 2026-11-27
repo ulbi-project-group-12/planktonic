@@ -8,7 +8,7 @@ import { RegisterForm } from './register-form';
  * Registration screen per the Figma mockup (card.register): a 400 px card, 32 px padding,
  * 20 px between every block — logo, heading, the form's fields and the footer link.
  */
-export function RegisterPage() {
+export function RegisterPage({ next }: { next?: string } = {}) {
   return (
     <main className="flex min-h-[calc(100svh-4rem)] items-center justify-center bg-app p-4">
       <div className="flex w-full max-w-[400px] flex-col gap-5 rounded-xl border border-line bg-surface p-8">
@@ -31,10 +31,10 @@ export function RegisterPage() {
             Мессенджер, задачи и GitHub — в одном месте
           </Typography>
         </div>
-        <RegisterForm />
+        <RegisterForm next={next} />
         <Typography as="p" size="body-s" color="text-secondary" className="text-center leading-6">
           Уже есть аккаунт?{' '}
-          <Link href={routes.login()} className="font-bold">
+          <Link href={routes.login(next)} className="font-bold">
             Войти
           </Link>
         </Typography>

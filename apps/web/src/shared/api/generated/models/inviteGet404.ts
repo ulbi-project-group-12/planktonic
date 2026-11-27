@@ -4,13 +4,12 @@
  * API
  * OpenAPI spec version: 1.0.0
  */
+import type { InviteGet404Code } from './inviteGet404Code';
+import type { InviteGet404StatusCode } from './inviteGet404StatusCode';
 
 export type InviteGet404 = {
-  /**
-   * @minimum -9007199254740991
-   * @maximum 9007199254740991
-   */
-  statusCode: number;
+  statusCode: InviteGet404StatusCode;
   message: string;
   error: string;
+  code: InviteGet404Code;
 };

@@ -116,8 +116,10 @@ it('keeps an invite usable across a fresh handler set (a new page load)', async 
       method: 'POST',
     });
     expect(accept.status).toBe(200);
+    expect(await accept.json()).toMatchObject({ outcome: 'joined' });
     const dead = await fetch(`http://api.example.invalid/api/invites/${token}`);
-    expect(dead.status).toBe(404);
+    expect(dead.status).toBe(410);
+    expect(await dead.json()).toMatchObject({ code: 'invite_consumed' });
   } finally {
     server.resetHandlers(...createApiHandlers());
   }
@@ -140,7 +142,7 @@ it('returns the current user', async () => {
   });
 });
 
-// PATCH /api/users/me is mocked by hand until UL-155 adds it to the OpenAPI schema.
+// PATCH /api/users/me is mocked by hand: the handler must update the user the me route serves.
 it('updates the current user and refuses a zone outside the IANA list', async () => {
   const patch = (body: unknown) =>
     fetch('http://api.example.invalid/api/users/me', {

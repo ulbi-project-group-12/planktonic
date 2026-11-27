@@ -3,6 +3,7 @@ import {
   CreateInviteRequestSchema,
   CreateWorkspaceRequestSchema,
   type InviteRole,
+  UpdateMeRequestSchema,
 } from '@app/contracts';
 import { HttpResponse, http } from 'msw';
 import { z } from 'zod';
@@ -15,17 +16,6 @@ import {
   getMessagesCreateMockHandler,
   getMessagesListMockHandler,
 } from '../api/generated/api.msw';
-
-// supportedValuesOf omits 'UTC' (a valid IANA id), so it is added explicitly.
-const IANA_TIMEZONES = new Set(['UTC', ...Intl.supportedValuesOf('timeZone')]);
-// Name limits as in RegisterRequestSchema, so the mock refuses what the real API will refuse.
-const UpdateMeRequest = z.object({
-  name: z.string().trim().min(2).max(15).optional(),
-  tz: z
-    .string()
-    .refine((tz) => IANA_TIMEZONES.has(tz), { message: 'Invalid timezone' })
-    .optional(),
-});
 
 interface MockWorkspace {
   id: string;
@@ -135,6 +125,28 @@ interface MockInvite {
   used: boolean;
 }
 
+function unavailableMockInvite(invite: MockInvite | undefined) {
+  return invite
+    ? HttpResponse.json(
+        {
+          statusCode: 410,
+          code: 'invite_consumed',
+          message: 'Invite is no longer valid',
+          error: 'Gone',
+        },
+        { status: 410 },
+      )
+    : HttpResponse.json(
+        {
+          statusCode: 404,
+          code: 'invite_not_found',
+          message: 'Invite not found',
+          error: 'Not Found',
+        },
+        { status: 404 },
+      );
+}
+
 /**
  * MSW handlers run in the page context, so plain in-memory maps reset on every full page
  * load. The invite flow crosses a navigation — the link is opened in a new page — so both
@@ -228,30 +240,19 @@ function createWorkspaceHandlers() {
     }),
     http.get('*/api/invites/:token', ({ params }) => {
       const invite = invites.get(String(params.token));
-      if (!invite || invite.used) {
-        return HttpResponse.json(
-          { statusCode: 404, message: 'Invite not found', error: 'Not Found' },
-          { status: 404 },
-        );
-      }
+      if (!invite || invite.used) return unavailableMockInvite(invite);
       return HttpResponse.json({
         workspaceName: workspaces.get(invite.workspaceSlug)?.name ?? invite.workspaceSlug,
         workspaceSlug: invite.workspaceSlug,
         role: invite.role,
       });
     }),
-    // The link is single-use: the first accept consumes the token (ADR-0002 §2).
     http.post('*/api/invites/:token/accept', ({ params }) => {
       const invite = invites.get(String(params.token));
-      if (!invite || invite.used) {
-        return HttpResponse.json(
-          { statusCode: 410, message: 'Invite is no longer valid', error: 'Gone' },
-          { status: 410 },
-        );
-      }
+      if (!invite || invite.used) return unavailableMockInvite(invite);
       invite.used = true;
       saveMap(INVITES_KEY, invites);
-      return HttpResponse.json({ workspaceSlug: invite.workspaceSlug });
+      return HttpResponse.json({ workspaceSlug: invite.workspaceSlug, outcome: 'joined' });
     }),
   ];
 }
@@ -370,13 +371,14 @@ export function createApiHandlers() {
 }
 
 /**
- * PATCH /api/users/me lives here until UL-155 lands the real contracts and the OpenAPI schema
- * gains the endpoint — then Orval regenerates the handlers and this block goes.
+ * PATCH /api/users/me stays hand-written because the mock must be stateful (the generated
+ * handler answers faker data and the header would never show the saved name). The body is
+ * checked against the same contract schema the real API applies.
  */
 function createUserHandlers(user: typeof currentUser) {
   return [
     http.patch('*/api/users/me', async ({ request }) => {
-      const parsed = UpdateMeRequest.safeParse(await request.json());
+      const parsed = UpdateMeRequestSchema.safeParse(await request.json());
       if (!parsed.success) {
         return HttpResponse.json(
           {

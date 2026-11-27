@@ -60,8 +60,8 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
 
-    const { id, name, email } = user;
-    request.user = { id, name, email };
+    const { id, name, email, tz } = user;
+    request.user = { id, name, email, tz };
     return true;
   }
 }

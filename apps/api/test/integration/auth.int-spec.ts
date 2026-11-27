@@ -96,7 +96,7 @@ it('signs in a registered user across API instances with a case-insensitive emai
     headers: { authorization: `Bearer ${accessToken}` },
   });
   expect(me.status).toBe(200);
-  expect(await me.json()).toEqual(user);
+  expect(await me.json()).toEqual({ ...user, tz: 'Europe/Moscow' });
 });
 
 it('returns the authenticated profile and rejects the token after account deactivation', async () => {
@@ -119,8 +119,9 @@ it('returns the authenticated profile and rejects the token after account deacti
   });
   expect(me.status).toBe(200);
   const profile: unknown = await me.json();
-  expect(MeResponseSchema.parse(profile)).toEqual(user);
-  expect(profile).toEqual(user);
+  const expected = { ...user, tz: 'Europe/Moscow' };
+  expect(MeResponseSchema.parse(profile)).toEqual(expected);
+  expect(profile).toEqual(expected);
 
   await stand.prisma.user.update({
     where: { id: user.id },

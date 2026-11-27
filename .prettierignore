@@ -5,3 +5,4 @@ apps/web/public/mockServiceWorker.js
 dist/
 coverage/
 .turbo/
+.devin/

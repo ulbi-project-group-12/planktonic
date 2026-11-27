@@ -39,6 +39,7 @@ import type {
   InviteAccept200,
   InviteAccept401,
   InviteAccept403,
+  InviteAccept404,
   InviteAccept410,
   InviteCreate201,
   InviteCreate400,
@@ -49,6 +50,7 @@ import type {
   InviteGet200,
   InviteGet401,
   InviteGet404,
+  InviteGet410,
   MessagesCreate201,
   MessagesCreate400,
   MessagesCreate404,
@@ -58,6 +60,10 @@ import type {
   MessagesList400,
   MessagesList404,
   MessagesListParams,
+  UsersUpdateMe200,
+  UsersUpdateMe400,
+  UsersUpdateMe401,
+  UsersUpdateMeBody,
   WorkspaceCreate201,
   WorkspaceCreate400,
   WorkspaceCreate401,
@@ -865,6 +871,111 @@ export function useMessagesList<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export const getUsersUpdateMeUrl = () => {
+  return `/api/users/me`;
+};
+
+/**
+ * @summary Update the current user profile
+ */
+export const usersUpdateMe = async (
+  usersUpdateMeBody: UsersUpdateMeBody,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<UsersUpdateMe200> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<UsersUpdateMe200>(getUsersUpdateMeUrl(), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(usersUpdateMeBody),
+  });
+};
+
+export const getUsersUpdateMeMutationKey = () => ['usersUpdateMe'] as const;
+
+export const getUsersUpdateMeMutationOptions = <
+  TError = ErrorType<UsersUpdateMe400 | UsersUpdateMe401>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof usersUpdateMe>>,
+    TError,
+    UsersUpdateMeMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof usersUpdateMe>>,
+  TError,
+  UsersUpdateMeMutationVariables,
+  TContext
+> => {
+  const mutationKey = getUsersUpdateMeMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof usersUpdateMe>>,
+    UsersUpdateMeMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return usersUpdateMe(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UsersUpdateMeMutationResult = NonNullable<Awaited<ReturnType<typeof usersUpdateMe>>>;
+export type UsersUpdateMeMutationBody = UsersUpdateMeBody;
+export type UsersUpdateMeMutationError = ErrorType<UsersUpdateMe400 | UsersUpdateMe401>;
+export type UsersUpdateMeMutationVariables = { data: UsersUpdateMeBody };
+
+/** @summary Update the current user profile */
+export const useUsersUpdateMe = <
+  TError = ErrorType<UsersUpdateMe400 | UsersUpdateMe401>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof usersUpdateMe>>,
+      TError,
+      UsersUpdateMeMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof usersUpdateMe>>,
+  TError,
+  UsersUpdateMeMutationVariables,
+  TContext
+> => {
+  return useMutation(getUsersUpdateMeMutationOptions(options), queryClient);
+};
+
 export const getWorkspaceListUrl = () => {
   return `/api/workspaces`;
 };
@@ -1352,7 +1463,7 @@ export const getInviteGetQueryKey = (token: string) => {
 
 export const getInviteGetQueryOptions = <
   TData = Awaited<ReturnType<typeof inviteGet>>,
-  TError = ErrorType<InviteGet401 | InviteGet404>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
 >(
   token: string,
   options?: {
@@ -1378,12 +1489,12 @@ export const getInviteGetQueryOptions = <
 };
 
 export type InviteGetQueryResult = NonNullable<Awaited<ReturnType<typeof inviteGet>>>;
-export type InviteGetQueryError = ErrorType<InviteGet401 | InviteGet404>;
+export type InviteGetQueryError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>;
 
 /** @summary Preview a workspace invitation */
 export function useInviteGet<
   TData = Awaited<ReturnType<typeof inviteGet>>,
-  TError = ErrorType<InviteGet401 | InviteGet404>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
 >(
   token: string,
   options: {
@@ -1403,7 +1514,7 @@ export function useInviteGet<
 /** @summary Preview a workspace invitation */
 export function useInviteGet<
   TData = Awaited<ReturnType<typeof inviteGet>>,
-  TError = ErrorType<InviteGet401 | InviteGet404>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
 >(
   token: string,
   options?: {
@@ -1423,7 +1534,7 @@ export function useInviteGet<
 /** @summary Preview a workspace invitation */
 export function useInviteGet<
   TData = Awaited<ReturnType<typeof inviteGet>>,
-  TError = ErrorType<InviteGet401 | InviteGet404>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
 >(
   token: string,
   options?: {
@@ -1435,7 +1546,7 @@ export function useInviteGet<
 /** @summary Preview a workspace invitation */
 export function useInviteGet<
   TData = Awaited<ReturnType<typeof inviteGet>>,
-  TError = ErrorType<InviteGet401 | InviteGet404>,
+  TError = ErrorType<InviteGet401 | InviteGet404 | InviteGet410>,
 >(
   token: string,
   options?: {
@@ -1473,7 +1584,7 @@ export const inviteAccept = async (
 export const getInviteAcceptMutationKey = () => ['inviteAccept'] as const;
 
 export const getInviteAcceptMutationOptions = <
-  TError = ErrorType<InviteAccept401 | InviteAccept403 | InviteAccept410>,
+  TError = ErrorType<InviteAccept401 | InviteAccept403 | InviteAccept404 | InviteAccept410>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1511,13 +1622,13 @@ export const getInviteAcceptMutationOptions = <
 export type InviteAcceptMutationResult = NonNullable<Awaited<ReturnType<typeof inviteAccept>>>;
 
 export type InviteAcceptMutationError = ErrorType<
-  InviteAccept401 | InviteAccept403 | InviteAccept410
+  InviteAccept401 | InviteAccept403 | InviteAccept404 | InviteAccept410
 >;
 export type InviteAcceptMutationVariables = { token: string };
 
 /** @summary Accept a workspace invitation */
 export const useInviteAccept = <
-  TError = ErrorType<InviteAccept401 | InviteAccept403 | InviteAccept410>,
+  TError = ErrorType<InviteAccept401 | InviteAccept403 | InviteAccept404 | InviteAccept410>,
   TContext = unknown,
 >(
   options?: {

@@ -46,7 +46,7 @@ export const routes = {
 
   // Auth
   /** `next`: the in-app address to return to after signing in (see `afterLogin`). */
-  login: (next?: string) => withQuery('/login', { next }),
+  login: (next?: string) => withQuery('/login', { next: inAppPath(next) }),
   /**
    * Where the login form goes after a successful sign-in: `next` from the query when it is an
    * address of this app, the workspace list otherwise. An absolute or protocol-relative URL is
@@ -56,7 +56,7 @@ export const routes = {
     const path = inAppPath(next);
     return path && !path.startsWith('/login') ? path : '/workspaces';
   },
-  register: () => '/register',
+  register: (next?: string) => withQuery('/register', { next: inAppPath(next) }),
   forgotPassword: () => '/forgot-password',
   resetPassword: (token?: string) => withQuery('/reset-password', { token }),
 

@@ -46,6 +46,7 @@ describe('pnpm openapi:export', () => {
       'get /api/invites/{token} Invite_get',
       'get /api/workspaces Workspace_list',
       'get /api/workspaces/{slug} Workspace_getBySlug',
+      'patch /api/users/me Users_updateMe',
       'post /api/auth/login Auth_login',
       'post /api/auth/register Auth_register',
       'post /api/channels/{channelId}/messages Messages_create',
