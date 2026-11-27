@@ -46,6 +46,7 @@ export { Field, type FieldProps } from './field';
 export { Input } from './input';
 export { Label, type LabelProps } from './label';
 export { Link, linkVariants, type LinkProps, type LinkVariant } from './link';
+export { Markdown, type MarkdownProps } from './markdown';
 export {
   LoadMore,
   Pagination,
