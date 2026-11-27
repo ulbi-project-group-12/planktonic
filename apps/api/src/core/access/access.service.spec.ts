@@ -12,12 +12,14 @@ describe('AccessService', () => {
   const repository = {
     findWorkspaceRole: vi.fn<AccessRepository['findWorkspaceRole']>(),
     isActiveUser: vi.fn<AccessRepository['isActiveUser']>(),
+    findProjectRole: vi.fn<AccessRepository['findProjectRole']>(),
   };
   const service = new AccessService(repository as unknown as AccessRepository);
 
   beforeEach(() => {
     repository.findWorkspaceRole.mockReset().mockResolvedValue(null);
     repository.isActiveUser.mockReset().mockResolvedValue(true);
+    repository.findProjectRole.mockReset().mockResolvedValue(null);
   });
 
   it('looks up the role for the given user and workspace', async () => {
@@ -110,6 +112,36 @@ describe('AccessService', () => {
     await expect(service.can(user, 'workspace.update')).resolves.toBe(false);
     await expect(service.can(user, 'workspace.member.remove', scope)).resolves.toBe(false);
     await expect(service.can(user, 'toString', scope)).resolves.toBe(false);
+  });
+
+  it.each([
+    [OWNER, null, 'all', true],
+    [ADMIN, null, 'all', true],
+    [MEMBER, 'ADMIN', 'member', true],
+    [MEMBER, 'MEMBER', 'member', true],
+    [MEMBER, null, 'member', false],
+    // A project_members row left behind does not outlive the workspace membership.
+    [null, 'ADMIN', null, false],
+  ] as const)(
+    'project.read for workspace role %s and project role %s: scope %s, allowed %s',
+    async (role, projectRole, visibility, allowed) => {
+      repository.findWorkspaceRole.mockResolvedValue(role);
+      repository.findProjectRole.mockResolvedValue(projectRole);
+      const projectScope = { ...scope, projectId: 'project' };
+
+      await expect(service.projectReadScope(user, workspaceId)).resolves.toBe(visibility);
+      await expect(service.can(user, 'project.read', projectScope)).resolves.toBe(allowed);
+      if (role === MEMBER) {
+        expect(repository.findProjectRole).toHaveBeenCalledWith(user.id, workspaceId, 'project');
+      }
+    },
+  );
+
+  it('denies project.read without both the workspace and the project', async () => {
+    repository.findWorkspaceRole.mockResolvedValue(OWNER);
+    await expect(service.can(user, 'project.read', scope)).resolves.toBe(false);
+    await expect(service.can(user, 'project.read', { projectId: 'project' })).resolves.toBe(false);
+    expect(repository.findWorkspaceRole).not.toHaveBeenCalled();
   });
 
   it('allows active users to create a workspace before joining one', async () => {
