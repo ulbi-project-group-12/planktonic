@@ -37,6 +37,16 @@ export {
   WorkspaceSlugParamsSchema,
 } from './workspace.js';
 export {
+  type ChangeWorkspaceMemberRoleRequest,
+  ChangeWorkspaceMemberRoleRequestSchema,
+  type ListWorkspaceMembersResponse,
+  ListWorkspaceMembersResponseSchema,
+  type WorkspaceMember,
+  type WorkspaceMemberParams,
+  WorkspaceMemberParamsSchema,
+  WorkspaceMemberSchema,
+} from './workspace-member.js';
+export {
   type AcceptInviteOutcome,
   AcceptInviteOutcomeSchema,
   type AcceptInviteResponse,

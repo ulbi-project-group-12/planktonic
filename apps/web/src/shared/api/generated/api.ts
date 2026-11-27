@@ -79,6 +79,13 @@ import type {
   UsersUpdateMe400,
   UsersUpdateMe401,
   UsersUpdateMeBody,
+  WorkspaceChangeMemberRole200,
+  WorkspaceChangeMemberRole400,
+  WorkspaceChangeMemberRole401,
+  WorkspaceChangeMemberRole403,
+  WorkspaceChangeMemberRole404,
+  WorkspaceChangeMemberRole409,
+  WorkspaceChangeMemberRoleBody,
   WorkspaceCreate201,
   WorkspaceCreate400,
   WorkspaceCreate401,
@@ -91,6 +98,10 @@ import type {
   WorkspaceGetBySlug404,
   WorkspaceList200Item,
   WorkspaceList401,
+  WorkspaceListMembers200Item,
+  WorkspaceListMembers400,
+  WorkspaceListMembers401,
+  WorkspaceListMembers404,
 } from './models';
 
 import { apiFetch } from '../http-client';
@@ -1346,6 +1357,275 @@ export function useWorkspaceGetBySlug<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export const getWorkspaceListMembersUrl = (slug: string) => {
+  return `/api/workspaces/${encodeURIComponent(String(slug))}/members`;
+};
+
+/**
+ * @summary List workspace members
+ */
+export const workspaceListMembers = async (
+  slug: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<WorkspaceListMembers200Item[]> => {
+  return apiFetch<WorkspaceListMembers200Item[]>(getWorkspaceListMembersUrl(slug), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getWorkspaceListMembersQueryKey = (slug: string) => {
+  return [`/api/workspaces/${slug}/members`] as const;
+};
+
+export const getWorkspaceListMembersQueryOptions = <
+  TData = Awaited<ReturnType<typeof workspaceListMembers>>,
+  TError = ErrorType<WorkspaceListMembers400 | WorkspaceListMembers401 | WorkspaceListMembers404>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof workspaceListMembers>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getWorkspaceListMembersQueryKey(slug);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof workspaceListMembers>>> = ({ signal }) =>
+    workspaceListMembers(slug, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: slug !== null && slug !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof workspaceListMembers>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type WorkspaceListMembersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof workspaceListMembers>>
+>;
+export type WorkspaceListMembersQueryError = ErrorType<
+  WorkspaceListMembers400 | WorkspaceListMembers401 | WorkspaceListMembers404
+>;
+
+/** @summary List workspace members */
+export function useWorkspaceListMembers<
+  TData = Awaited<ReturnType<typeof workspaceListMembers>>,
+  TError = ErrorType<WorkspaceListMembers400 | WorkspaceListMembers401 | WorkspaceListMembers404>,
+>(
+  slug: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof workspaceListMembers>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof workspaceListMembers>>,
+          TError,
+          Awaited<ReturnType<typeof workspaceListMembers>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List workspace members */
+export function useWorkspaceListMembers<
+  TData = Awaited<ReturnType<typeof workspaceListMembers>>,
+  TError = ErrorType<WorkspaceListMembers400 | WorkspaceListMembers401 | WorkspaceListMembers404>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof workspaceListMembers>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof workspaceListMembers>>,
+          TError,
+          Awaited<ReturnType<typeof workspaceListMembers>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List workspace members */
+export function useWorkspaceListMembers<
+  TData = Awaited<ReturnType<typeof workspaceListMembers>>,
+  TError = ErrorType<WorkspaceListMembers400 | WorkspaceListMembers401 | WorkspaceListMembers404>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof workspaceListMembers>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/** @summary List workspace members */
+export function useWorkspaceListMembers<
+  TData = Awaited<ReturnType<typeof workspaceListMembers>>,
+  TError = ErrorType<WorkspaceListMembers400 | WorkspaceListMembers401 | WorkspaceListMembers404>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof workspaceListMembers>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getWorkspaceListMembersQueryOptions(slug, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getWorkspaceChangeMemberRoleUrl = (slug: string, userId: string) => {
+  return `/api/workspaces/${encodeURIComponent(String(slug))}/members/${encodeURIComponent(String(userId))}/role`;
+};
+
+/**
+ * @summary Change a workspace member role
+ */
+export const workspaceChangeMemberRole = async (
+  slug: string,
+  userId: string,
+  workspaceChangeMemberRoleBody: WorkspaceChangeMemberRoleBody,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<WorkspaceChangeMemberRole200> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<WorkspaceChangeMemberRole200>(getWorkspaceChangeMemberRoleUrl(slug, userId), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(workspaceChangeMemberRoleBody),
+  });
+};
+
+export const getWorkspaceChangeMemberRoleMutationKey = () => ['workspaceChangeMemberRole'] as const;
+
+export const getWorkspaceChangeMemberRoleMutationOptions = <
+  TError = ErrorType<
+    | WorkspaceChangeMemberRole400
+    | WorkspaceChangeMemberRole401
+    | WorkspaceChangeMemberRole403
+    | WorkspaceChangeMemberRole404
+    | WorkspaceChangeMemberRole409
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof workspaceChangeMemberRole>>,
+    TError,
+    WorkspaceChangeMemberRoleMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof workspaceChangeMemberRole>>,
+  TError,
+  WorkspaceChangeMemberRoleMutationVariables,
+  TContext
+> => {
+  const mutationKey = getWorkspaceChangeMemberRoleMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof workspaceChangeMemberRole>>,
+    WorkspaceChangeMemberRoleMutationVariables
+  > = (props) => {
+    const { slug, userId, data } = props ?? {};
+
+    return workspaceChangeMemberRole(slug, userId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type WorkspaceChangeMemberRoleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof workspaceChangeMemberRole>>
+>;
+export type WorkspaceChangeMemberRoleMutationBody = WorkspaceChangeMemberRoleBody;
+export type WorkspaceChangeMemberRoleMutationError = ErrorType<
+  | WorkspaceChangeMemberRole400
+  | WorkspaceChangeMemberRole401
+  | WorkspaceChangeMemberRole403
+  | WorkspaceChangeMemberRole404
+  | WorkspaceChangeMemberRole409
+>;
+export type WorkspaceChangeMemberRoleMutationVariables = {
+  slug: string;
+  userId: string;
+  data: WorkspaceChangeMemberRoleBody;
+};
+
+/** @summary Change a workspace member role */
+export const useWorkspaceChangeMemberRole = <
+  TError = ErrorType<
+    | WorkspaceChangeMemberRole400
+    | WorkspaceChangeMemberRole401
+    | WorkspaceChangeMemberRole403
+    | WorkspaceChangeMemberRole404
+    | WorkspaceChangeMemberRole409
+  >,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof workspaceChangeMemberRole>>,
+      TError,
+      WorkspaceChangeMemberRoleMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof workspaceChangeMemberRole>>,
+  TError,
+  WorkspaceChangeMemberRoleMutationVariables,
+  TContext
+> => {
+  return useMutation(getWorkspaceChangeMemberRoleMutationOptions(options), queryClient);
+};
 
 export const getProjectListUrl = (slug: string) => {
   return `/api/workspaces/${encodeURIComponent(String(slug))}/projects`;
