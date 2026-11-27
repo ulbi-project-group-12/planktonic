@@ -98,6 +98,68 @@ it('preserves existing roles and consumes an invite for only one concurrent join
   expect(await consumed.json()).toMatchObject({ code: 'invite_consumed' });
 });
 
+it('denies the next admin-only request after demotion with the same access token', async () => {
+  const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
+  const admin = await stand.prisma.user.create({
+    data: { name: 'Admin', email: 'demoted-admin@users.invalid', passwordHash: '!' },
+  });
+  await stand.prisma.workspaceMember.create({
+    data: { workspaceId: workspace.id, userId: admin.id, role: WsRole.ADMIN },
+  });
+  const app = stand.apps[0]!;
+  const base = `${await app.getUrl()}/api/workspaces/${workspace.slug}`;
+  const adminAuthorization = authorization(app, admin.id);
+  const createInvite = () =>
+    fetch(`${base}/invites`, {
+      method: 'POST',
+      headers: { authorization: adminAuthorization, 'content-type': 'application/json' },
+      body: JSON.stringify({ role: WsRole.MEMBER }),
+    });
+
+  expect((await createInvite()).status).toBe(201);
+
+  const changeRole = (
+    targetId: string,
+    authorizationHeader: string,
+    role: WsRole = WsRole.MEMBER,
+  ) =>
+    fetch(`${base}/members/${targetId}/role`, {
+      method: 'PATCH',
+      headers: { authorization: authorizationHeader, 'content-type': 'application/json' },
+      body: JSON.stringify({ role }),
+    });
+  const ownerAuthorization = authorization(app);
+  expect((await changeRole(admin.id, adminAuthorization)).status).toBe(403);
+  expect((await changeRole(DEFAULT_AUTHOR_ID, adminAuthorization)).status).toBe(403);
+  expect((await changeRole(DEFAULT_AUTHOR_ID, ownerAuthorization)).status).toBe(403);
+
+  const demotion = await changeRole(admin.id, ownerAuthorization);
+  expect(demotion.status).toBe(200);
+  expect(await demotion.json()).toEqual({
+    userId: admin.id,
+    name: admin.name,
+    role: WsRole.MEMBER,
+  });
+  expect((await createInvite()).status).toBe(403);
+  const list = await fetch(`${base}/members`, { headers: { authorization: adminAuthorization } });
+  expect(list.status).toBe(200);
+  expect(await list.json()).toMatchObject([
+    { userId: admin.id, name: admin.name, role: WsRole.MEMBER },
+    { userId: DEFAULT_AUTHOR_ID, role: WsRole.OWNER },
+  ]);
+  expect((await changeRole(admin.id, adminAuthorization, WsRole.ADMIN)).status).toBe(403);
+  expect(await stand.prisma.invite.count({ where: { workspaceId: workspace.id } })).toBe(1);
+
+  const promotion = await changeRole(admin.id, ownerAuthorization, WsRole.ADMIN);
+  expect(promotion.status).toBe(200);
+  expect(await promotion.json()).toEqual({
+    userId: admin.id,
+    name: admin.name,
+    role: WsRole.ADMIN,
+  });
+  expect((await createInvite()).status).toBe(201);
+});
+
 it('returns 403 when a regular member tries to create an invitation', async () => {
   const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
   const member = await stand.prisma.user.create({

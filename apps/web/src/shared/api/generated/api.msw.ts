@@ -52,6 +52,13 @@ import type {
   UsersUpdateMe400,
   UsersUpdateMe401,
   UsersUpdateMeBody,
+  WorkspaceChangeMemberRole200,
+  WorkspaceChangeMemberRole400,
+  WorkspaceChangeMemberRole401,
+  WorkspaceChangeMemberRole403,
+  WorkspaceChangeMemberRole404,
+  WorkspaceChangeMemberRole409,
+  WorkspaceChangeMemberRoleBody,
   WorkspaceCreate201,
   WorkspaceCreate400,
   WorkspaceCreate401,
@@ -64,6 +71,10 @@ import type {
   WorkspaceGetBySlug404,
   WorkspaceList200Item,
   WorkspaceList401,
+  WorkspaceListMembers200Item,
+  WorkspaceListMembers400,
+  WorkspaceListMembers401,
+  WorkspaceListMembers404,
 } from './models';
 
 export const getAuthRegisterResponseMock = (
@@ -645,6 +656,118 @@ export const getWorkspaceGetBySlugResponseMock401 = (
 export const getWorkspaceGetBySlugResponseMock404 = (
   overrideResponse: Partial<Extract<WorkspaceGetBySlug404, object>> = {},
 ): WorkspaceGetBySlug404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceListMembersResponseMock = (): WorkspaceListMembers200Item[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    userId: faker.string.uuid(),
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    role: faker.helpers.arrayElement(['MEMBER', 'ADMIN', 'OWNER'] as const),
+  }));
+
+export const getWorkspaceListMembersResponseMock200 = (): WorkspaceListMembers200Item[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    userId: faker.string.uuid(),
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    role: faker.helpers.arrayElement(['MEMBER', 'ADMIN', 'OWNER'] as const),
+  }));
+
+export const getWorkspaceListMembersResponseMock400 = (
+  overrideResponse: Partial<Extract<WorkspaceListMembers400, object>> = {},
+): WorkspaceListMembers400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getWorkspaceListMembersResponseMock401 = (
+  overrideResponse: Partial<Extract<WorkspaceListMembers401, object>> = {},
+): WorkspaceListMembers401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceListMembersResponseMock404 = (
+  overrideResponse: Partial<Extract<WorkspaceListMembers404, object>> = {},
+): WorkspaceListMembers404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceChangeMemberRoleResponseMock = (
+  overrideResponse: Partial<Extract<WorkspaceChangeMemberRole200, object>> = {},
+): WorkspaceChangeMemberRole200 => ({
+  userId: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  role: faker.helpers.arrayElement(['MEMBER', 'ADMIN', 'OWNER'] as const),
+  ...overrideResponse,
+});
+
+export const getWorkspaceChangeMemberRoleResponseMock200 = (
+  overrideResponse: Partial<Extract<WorkspaceChangeMemberRole200, object>> = {},
+): WorkspaceChangeMemberRole200 => ({
+  userId: faker.string.uuid(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  role: faker.helpers.arrayElement(['MEMBER', 'ADMIN', 'OWNER'] as const),
+  ...overrideResponse,
+});
+
+export const getWorkspaceChangeMemberRoleResponseMock400 = (
+  overrideResponse: Partial<Extract<WorkspaceChangeMemberRole400, object>> = {},
+): WorkspaceChangeMemberRole400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getWorkspaceChangeMemberRoleResponseMock401 = (
+  overrideResponse: Partial<Extract<WorkspaceChangeMemberRole401, object>> = {},
+): WorkspaceChangeMemberRole401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceChangeMemberRoleResponseMock403 = (
+  overrideResponse: Partial<Extract<WorkspaceChangeMemberRole403, object>> = {},
+): WorkspaceChangeMemberRole403 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceChangeMemberRoleResponseMock404 = (
+  overrideResponse: Partial<Extract<WorkspaceChangeMemberRole404, object>> = {},
+): WorkspaceChangeMemberRole404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceChangeMemberRoleResponseMock409 = (
+  overrideResponse: Partial<Extract<WorkspaceChangeMemberRole409, object>> = {},
+): WorkspaceChangeMemberRole409 => ({
   statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
   message: faker.string.alpha({ length: { min: 10, max: 20 } }),
   error: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -1883,6 +2006,336 @@ export const getWorkspaceGetBySlugMockHandler404 = (
   );
 };
 
+export const getWorkspaceListMembersMockHandler = (
+  overrideResponse?:
+    | WorkspaceListMembers200Item[]
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<WorkspaceListMembers200Item[]> | WorkspaceListMembers200Item[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug/members',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceListMembersResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceListMembersMockHandler200 = (
+  overrideResponse?:
+    | WorkspaceListMembers200Item[]
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<WorkspaceListMembers200Item[]> | WorkspaceListMembers200Item[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug/members',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceListMembersResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceListMembersMockHandler400 = (
+  overrideResponse?:
+    | WorkspaceListMembers400
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<WorkspaceListMembers400> | WorkspaceListMembers400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug/members',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceListMembersResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceListMembersMockHandler401 = (
+  overrideResponse?:
+    | WorkspaceListMembers401
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<WorkspaceListMembers401> | WorkspaceListMembers401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug/members',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceListMembersResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceListMembersMockHandler404 = (
+  overrideResponse?:
+    | WorkspaceListMembers404
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string }>>[0],
+      ) => Promise<WorkspaceListMembers404> | WorkspaceListMembers404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get<{ slug: string }>(
+    '*/api/workspaces/:slug/members',
+    async (info: Parameters<HttpResponseResolver<{ slug: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceListMembersResponseMock404(),
+        { status: 404 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceChangeMemberRoleMockHandler = (
+  overrideResponse?:
+    | WorkspaceChangeMemberRole200
+    | ((
+        info: Parameters<
+          HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+        >[0],
+      ) => Promise<WorkspaceChangeMemberRole200> | WorkspaceChangeMemberRole200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>(
+    '*/api/workspaces/:slug/members/:userId/role',
+    async (
+      info: Parameters<
+        HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+      >[0],
+    ) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceChangeMemberRoleResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceChangeMemberRoleMockHandler200 = (
+  overrideResponse?:
+    | WorkspaceChangeMemberRole200
+    | ((
+        info: Parameters<
+          HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+        >[0],
+      ) => Promise<WorkspaceChangeMemberRole200> | WorkspaceChangeMemberRole200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>(
+    '*/api/workspaces/:slug/members/:userId/role',
+    async (
+      info: Parameters<
+        HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+      >[0],
+    ) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceChangeMemberRoleResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceChangeMemberRoleMockHandler400 = (
+  overrideResponse?:
+    | WorkspaceChangeMemberRole400
+    | ((
+        info: Parameters<
+          HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+        >[0],
+      ) => Promise<WorkspaceChangeMemberRole400> | WorkspaceChangeMemberRole400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>(
+    '*/api/workspaces/:slug/members/:userId/role',
+    async (
+      info: Parameters<
+        HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+      >[0],
+    ) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceChangeMemberRoleResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceChangeMemberRoleMockHandler401 = (
+  overrideResponse?:
+    | WorkspaceChangeMemberRole401
+    | ((
+        info: Parameters<
+          HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+        >[0],
+      ) => Promise<WorkspaceChangeMemberRole401> | WorkspaceChangeMemberRole401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>(
+    '*/api/workspaces/:slug/members/:userId/role',
+    async (
+      info: Parameters<
+        HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+      >[0],
+    ) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceChangeMemberRoleResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceChangeMemberRoleMockHandler403 = (
+  overrideResponse?:
+    | WorkspaceChangeMemberRole403
+    | ((
+        info: Parameters<
+          HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+        >[0],
+      ) => Promise<WorkspaceChangeMemberRole403> | WorkspaceChangeMemberRole403),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>(
+    '*/api/workspaces/:slug/members/:userId/role',
+    async (
+      info: Parameters<
+        HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+      >[0],
+    ) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceChangeMemberRoleResponseMock403(),
+        { status: 403 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceChangeMemberRoleMockHandler404 = (
+  overrideResponse?:
+    | WorkspaceChangeMemberRole404
+    | ((
+        info: Parameters<
+          HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+        >[0],
+      ) => Promise<WorkspaceChangeMemberRole404> | WorkspaceChangeMemberRole404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>(
+    '*/api/workspaces/:slug/members/:userId/role',
+    async (
+      info: Parameters<
+        HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+      >[0],
+    ) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceChangeMemberRoleResponseMock404(),
+        { status: 404 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceChangeMemberRoleMockHandler409 = (
+  overrideResponse?:
+    | WorkspaceChangeMemberRole409
+    | ((
+        info: Parameters<
+          HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+        >[0],
+      ) => Promise<WorkspaceChangeMemberRole409> | WorkspaceChangeMemberRole409),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>(
+    '*/api/workspaces/:slug/members/:userId/role',
+    async (
+      info: Parameters<
+        HttpResponseResolver<{ slug: string; userId: string }, WorkspaceChangeMemberRoleBody>
+      >[0],
+    ) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceChangeMemberRoleResponseMock409(),
+        { status: 409 },
+      );
+    },
+    options,
+  );
+};
+
 export const getInviteCreateMockHandler = (
   overrideResponse?:
     | InviteCreate201
@@ -2302,6 +2755,8 @@ export const getApiMock = () => [
   getWorkspaceListMockHandler(),
   getWorkspaceCreateMockHandler(),
   getWorkspaceGetBySlugMockHandler(),
+  getWorkspaceListMembersMockHandler(),
+  getWorkspaceChangeMemberRoleMockHandler(),
   getInviteCreateMockHandler(),
   getInviteGetMockHandler(),
   getInviteAcceptMockHandler(),

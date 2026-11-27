@@ -1,6 +1,8 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import {
+  type ChangeWorkspaceMemberRoleRequest,
+  ChangeWorkspaceMemberRoleRequestSchema,
   type CreateInviteRequest,
   CreateInviteRequestSchema,
   type CreateInviteResponse,
@@ -8,11 +10,17 @@ import {
   type CreateWorkspaceRequest,
   CreateWorkspaceRequestSchema,
   HttpErrorResponse,
+  type ListWorkspaceMembersResponse,
+  ListWorkspaceMembersResponseSchema,
   type ListWorkspacesResponse,
   ListWorkspacesResponseSchema,
   ValidationErrorResponse,
   type WorkspaceDetailsResponse,
   WorkspaceDetailsResponseSchema,
+  type WorkspaceMember,
+  type WorkspaceMemberParams,
+  WorkspaceMemberParamsSchema,
+  WorkspaceMemberSchema,
   type WorkspaceResponse,
   WorkspaceResponseSchema,
   WorkspaceSlugConflictResponseSchema,
@@ -59,6 +67,49 @@ export class WorkspaceController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<WorkspaceDetailsResponse> {
     return this.workspaceService.getBySlugForUser(slug, user.id);
+  }
+
+  @Get(':slug/members')
+  @RequireAccess({ kind: 'authenticated' })
+  @ApiOperation({ summary: 'List workspace members', operationId: 'Workspace_listMembers' })
+  @ApiZodResponse(200, 'Workspace members', ListWorkspaceMembersResponseSchema)
+  @ApiZodResponse(400, 'Invalid workspace slug', ValidationErrorResponse)
+  @ApiZodResponse(
+    401,
+    'Authentication required',
+    HttpErrorResponse.pick({ statusCode: true, message: true }),
+  )
+  @ApiZodResponse(404, 'Workspace not found', HttpErrorResponse)
+  listMembers(
+    @Param({ schema: WorkspaceSlugParamsSchema }) { slug }: WorkspaceSlugParams,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ListWorkspaceMembersResponse> {
+    return this.workspaceService.listMembers(slug, user.id);
+  }
+
+  @Patch(':slug/members/:userId/role')
+  @RequireAccess({ kind: 'authenticated' })
+  @ApiOperation({
+    summary: 'Change a workspace member role',
+    operationId: 'Workspace_changeMemberRole',
+  })
+  @ApiZodResponse(200, 'Updated member', WorkspaceMemberSchema)
+  @ApiZodResponse(400, 'Invalid workspace slug, user ID or role', ValidationErrorResponse)
+  @ApiZodResponse(
+    401,
+    'Authentication required',
+    HttpErrorResponse.pick({ statusCode: true, message: true }),
+  )
+  @ApiZodResponse(403, 'Role change forbidden', HttpErrorResponse)
+  @ApiZodResponse(404, 'Workspace or member not found', HttpErrorResponse)
+  @ApiZodResponse(409, 'Member role changed concurrently', HttpErrorResponse)
+  changeMemberRole(
+    @Param({ schema: WorkspaceMemberParamsSchema }) { slug, userId }: WorkspaceMemberParams,
+    @Body({ schema: ChangeWorkspaceMemberRoleRequestSchema })
+    { role }: ChangeWorkspaceMemberRoleRequest,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<WorkspaceMember> {
+    return this.workspaceService.changeMemberRole(slug, user.id, userId, role);
   }
 
   @Post(':slug/invites')

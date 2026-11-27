@@ -8,15 +8,20 @@ import {
 import {
   type AcceptInviteOutcome,
   AcceptInviteOutcomeSchema,
+  type ChangeWorkspaceMemberRoleRequest,
   type CreateInviteResponse,
   type CreateWorkspaceRequest,
   type GetInviteResponse,
   GetInviteResponseSchema,
   type InviteRole,
+  type ListWorkspaceMembersResponse,
+  ListWorkspaceMembersResponseSchema,
   type ListWorkspacesResponse,
   ListWorkspacesResponseSchema,
   type WorkspaceDetailsResponse,
   WorkspaceDetailsResponseSchema,
+  type WorkspaceMember,
+  WorkspaceMemberSchema,
   type WorkspaceResponse,
   WorkspaceResponseSchema,
   type WorkspaceSlugConflictResponse,
@@ -68,6 +73,65 @@ export class WorkspaceService {
       throw new ConflictException(response);
     }
     return WorkspaceResponseSchema.parse(workspace);
+  }
+
+  async listMembers(slug: string, userId: string): Promise<ListWorkspaceMembersResponse> {
+    const workspace = await this.repository.findBySlug(slug);
+    if (
+      !workspace ||
+      !(await this.access.can({ id: userId }, 'workspace.member.list', {
+        workspaceId: workspace.id,
+      }))
+    ) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const members = await this.repository.listMembers(workspace.id);
+    return ListWorkspaceMembersResponseSchema.parse(
+      members.map(({ userId, role, user }) => ({ userId, role, name: user.name })),
+    );
+  }
+
+  async changeMemberRole(
+    slug: string,
+    actorId: string,
+    targetUserId: string,
+    newRole: ChangeWorkspaceMemberRoleRequest['role'],
+  ): Promise<WorkspaceMember> {
+    const workspace = await this.repository.findBySlug(slug);
+    const actor = { id: actorId };
+    if (
+      !workspace ||
+      !(await this.access.can(actor, 'workspace.read', { workspaceId: workspace.id }))
+    ) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const workspaceId = workspace.id;
+    const targetRole = await this.access.getWorkspaceRole({ id: targetUserId }, workspaceId);
+    if (!targetRole) throw new NotFoundException('Workspace member not found');
+    if (
+      !(await this.access.can(actor, 'workspace.member.role.change', {
+        workspaceId,
+        targetRole,
+        newRole,
+      }))
+    ) {
+      throw new ForbiddenException('Role change forbidden');
+    }
+
+    const updated = await this.repository.changeMemberRole(
+      workspaceId,
+      targetUserId,
+      targetRole,
+      newRole,
+    );
+    if (!updated) throw new ConflictException('Workspace member changed concurrently');
+    return WorkspaceMemberSchema.parse({
+      userId: updated.userId,
+      name: updated.user.name,
+      role: updated.role,
+    });
   }
 
   async createInvite(

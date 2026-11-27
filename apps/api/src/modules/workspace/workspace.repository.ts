@@ -34,6 +34,28 @@ export class WorkspaceRepository {
     });
   }
 
+  listMembers(workspaceId: string) {
+    return this.prisma.workspaceMember.findMany({
+      where: { workspaceId, user: { deactivatedAt: null } },
+      select: { userId: true, role: true, user: { select: { name: true } } },
+      orderBy: [{ user: { name: 'asc' } }, { userId: 'asc' }],
+    });
+  }
+
+  async changeMemberRole(
+    workspaceId: string,
+    userId: string,
+    currentRole: WsRole,
+    newRole: WsRole,
+  ) {
+    const [updated] = await this.prisma.workspaceMember.updateManyAndReturn({
+      where: { workspaceId, userId, role: currentRole, user: { deactivatedAt: null } },
+      data: { role: newRole },
+      select: { userId: true, role: true, user: { select: { name: true } } },
+    });
+    return updated;
+  }
+
   async createInvite(data: {
     workspaceId: string;
     createdById: string;
