@@ -12,3 +12,9 @@ services:
       - --entrypoints.web.address=:80
       - --entrypoints.web.transport.respondingtimeouts.idletimeout=60s
       - --accesslog=true
+  # The stand makes no outside calls: the registration's breached-password lookup (a k-anonymity
+  # range request) gets a closed local port, and the service then falls back to its built-in
+  # list, as it does on any network error. No application code changes for this.
+  api:
+    extra_hosts:
+      - api.pwnedpasswords.com:127.0.0.1
