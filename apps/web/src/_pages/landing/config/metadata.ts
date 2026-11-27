@@ -15,5 +15,13 @@ export const landingMetadata: Metadata = {
     siteName: PRODUCT_DISPLAY_NAME,
     title,
     description,
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: title,
+      },
+    ],
   },
 };
