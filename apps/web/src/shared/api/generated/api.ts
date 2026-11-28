@@ -102,6 +102,11 @@ import type {
   WorkspaceListMembers400,
   WorkspaceListMembers401,
   WorkspaceListMembers404,
+  WorkspaceRemoveMember400,
+  WorkspaceRemoveMember401,
+  WorkspaceRemoveMember403,
+  WorkspaceRemoveMember404,
+  WorkspaceRemoveMember409,
 } from './models';
 
 import { apiFetch } from '../http-client';
@@ -1495,6 +1500,111 @@ export function useWorkspaceListMembers<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export const getWorkspaceRemoveMemberUrl = (slug: string, userId: string) => {
+  return `/api/workspaces/${encodeURIComponent(String(slug))}/members/${encodeURIComponent(String(userId))}`;
+};
+
+/**
+ * @summary Remove a workspace member
+ */
+export const workspaceRemoveMember = async (
+  slug: string,
+  userId: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<void> => {
+  return apiFetch<void>(getWorkspaceRemoveMemberUrl(slug, userId), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getWorkspaceRemoveMemberMutationKey = () => ['workspaceRemoveMember'] as const;
+
+export const getWorkspaceRemoveMemberMutationOptions = <
+  TError = ErrorType<
+    | WorkspaceRemoveMember400
+    | WorkspaceRemoveMember401
+    | WorkspaceRemoveMember403
+    | WorkspaceRemoveMember404
+    | WorkspaceRemoveMember409
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof workspaceRemoveMember>>,
+    TError,
+    WorkspaceRemoveMemberMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof workspaceRemoveMember>>,
+  TError,
+  WorkspaceRemoveMemberMutationVariables,
+  TContext
+> => {
+  const mutationKey = getWorkspaceRemoveMemberMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof workspaceRemoveMember>>,
+    WorkspaceRemoveMemberMutationVariables
+  > = (props) => {
+    const { slug, userId } = props ?? {};
+
+    return workspaceRemoveMember(slug, userId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type WorkspaceRemoveMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof workspaceRemoveMember>>
+>;
+
+export type WorkspaceRemoveMemberMutationError = ErrorType<
+  | WorkspaceRemoveMember400
+  | WorkspaceRemoveMember401
+  | WorkspaceRemoveMember403
+  | WorkspaceRemoveMember404
+  | WorkspaceRemoveMember409
+>;
+export type WorkspaceRemoveMemberMutationVariables = { slug: string; userId: string };
+
+/** @summary Remove a workspace member */
+export const useWorkspaceRemoveMember = <
+  TError = ErrorType<
+    | WorkspaceRemoveMember400
+    | WorkspaceRemoveMember401
+    | WorkspaceRemoveMember403
+    | WorkspaceRemoveMember404
+    | WorkspaceRemoveMember409
+  >,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof workspaceRemoveMember>>,
+      TError,
+      WorkspaceRemoveMemberMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof workspaceRemoveMember>>,
+  TError,
+  WorkspaceRemoveMemberMutationVariables,
+  TContext
+> => {
+  return useMutation(getWorkspaceRemoveMemberMutationOptions(options), queryClient);
+};
 
 export const getWorkspaceChangeMemberRoleUrl = (slug: string, userId: string) => {
   return `/api/workspaces/${encodeURIComponent(String(slug))}/members/${encodeURIComponent(String(userId))}/role`;

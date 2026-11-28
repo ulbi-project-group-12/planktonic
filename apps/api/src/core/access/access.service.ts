@@ -91,7 +91,7 @@ export class AccessService {
 
     switch (permission) {
       case 'workspace.member.remove':
-        return targetRole === MEMBER || (role === OWNER && targetRole === ADMIN);
+        return this.canRemoveWorkspaceMember(role, targetRole);
       case 'workspace.member.role.change':
         return (
           (targetRole === ADMIN && newRole === MEMBER) ||
@@ -109,5 +109,13 @@ export class AccessService {
       default:
         return true;
     }
+  }
+
+  canRemoveWorkspaceMember(actorRole: WsRole | null, targetRole: WsRole | undefined): boolean {
+    return (
+      actorRole !== null &&
+      workspaceRoles['workspace.member.remove'].some((role) => role === actorRole) &&
+      (targetRole === MEMBER || (actorRole === OWNER && targetRole === ADMIN))
+    );
   }
 }

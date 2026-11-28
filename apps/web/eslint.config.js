@@ -8,6 +8,8 @@ export default [
     rules: {
       '@typescript-eslint/consistent-indexed-object-style': 'off',
       '@typescript-eslint/consistent-type-definitions': 'off',
+      // Orval uses void in generated client and mock types for HTTP 204 responses.
+      '@typescript-eslint/no-invalid-void-type': 'off',
       '@typescript-eslint/no-unnecessary-condition': 'off',
       '@typescript-eslint/no-unnecessary-type-conversion': 'off',
       '@typescript-eslint/prefer-nullish-coalescing': 'off',

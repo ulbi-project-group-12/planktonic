@@ -39,6 +39,7 @@ describe('pnpm openapi:export', () => {
       ),
     );
     expect(operations.sort()).toEqual([
+      'delete /api/workspaces/{slug}/members/{userId} Workspace_removeMember',
       'get /api/auth/me Auth_me',
       'get /api/channels/{channelId}/messages Messages_list',
       'get /api/health Health_live',

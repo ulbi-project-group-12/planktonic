@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import { ApiBearerAuth, ApiNoContentResponse, ApiOperation } from '@nestjs/swagger';
 import {
   type ChangeWorkspaceMemberRoleRequest,
   ChangeWorkspaceMemberRoleRequestSchema,
@@ -94,6 +94,27 @@ export class WorkspaceController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<ListWorkspaceMembersResponse> {
     return this.workspaceService.listMembers(slug, user.id);
+  }
+
+  @Delete(':slug/members/:userId')
+  @HttpCode(204)
+  @RequireAccess({ kind: 'authenticated' })
+  @ApiOperation({ summary: 'Remove a workspace member', operationId: 'Workspace_removeMember' })
+  @ApiNoContentResponse({ description: 'Member removed' })
+  @ApiZodResponse(400, 'Invalid workspace slug or user ID', ValidationErrorResponse)
+  @ApiZodResponse(
+    401,
+    'Authentication required',
+    HttpErrorResponse.pick({ statusCode: true, message: true }),
+  )
+  @ApiZodResponse(403, 'Member removal forbidden', HttpErrorResponse)
+  @ApiZodResponse(404, 'Workspace or member not found', HttpErrorResponse)
+  @ApiZodResponse(409, 'Workspace membership changed concurrently', HttpErrorResponse)
+  removeMember(
+    @Param({ schema: WorkspaceMemberParamsSchema }) { slug, userId }: WorkspaceMemberParams,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    return this.workspaceService.removeMember(slug, user.id, userId);
   }
 
   @Patch(':slug/members/:userId/role')

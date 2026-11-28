@@ -90,6 +90,11 @@ import type {
   WorkspaceListMembers400,
   WorkspaceListMembers401,
   WorkspaceListMembers404,
+  WorkspaceRemoveMember400,
+  WorkspaceRemoveMember401,
+  WorkspaceRemoveMember403,
+  WorkspaceRemoveMember404,
+  WorkspaceRemoveMember409,
 } from './models';
 
 export const getAuthRegisterResponseMock = (
@@ -718,6 +723,55 @@ export const getWorkspaceListMembersResponseMock401 = (
 export const getWorkspaceListMembersResponseMock404 = (
   overrideResponse: Partial<Extract<WorkspaceListMembers404, object>> = {},
 ): WorkspaceListMembers404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceRemoveMemberResponseMock400 = (
+  overrideResponse: Partial<Extract<WorkspaceRemoveMember400, object>> = {},
+): WorkspaceRemoveMember400 => ({
+  statusCode: faker.helpers.arrayElement([400] as const),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  issues: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      path: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getWorkspaceRemoveMemberResponseMock401 = (
+  overrideResponse: Partial<Extract<WorkspaceRemoveMember401, object>> = {},
+): WorkspaceRemoveMember401 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceRemoveMemberResponseMock403 = (
+  overrideResponse: Partial<Extract<WorkspaceRemoveMember403, object>> = {},
+): WorkspaceRemoveMember403 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceRemoveMemberResponseMock404 = (
+  overrideResponse: Partial<Extract<WorkspaceRemoveMember404, object>> = {},
+): WorkspaceRemoveMember404 => ({
+  statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
+  message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  error: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getWorkspaceRemoveMemberResponseMock409 = (
+  overrideResponse: Partial<Extract<WorkspaceRemoveMember409, object>> = {},
+): WorkspaceRemoveMember409 => ({
   statusCode: faker.number.int({ min: -9007199254740991, max: 9007199254740991 }),
   message: faker.string.alpha({ length: { min: 10, max: 20 } }),
   error: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -2316,6 +2370,168 @@ export const getWorkspaceListMembersMockHandler404 = (
   );
 };
 
+export const getWorkspaceRemoveMemberMockHandler = (
+  overrideResponse?:
+    | void
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0],
+      ) => Promise<void> | void),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete<{ slug: string; userId: string }>(
+    '*/api/workspaces/:slug/members/:userId',
+    async (info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0]) => {
+      if (typeof overrideResponse === 'function') {
+        await overrideResponse(info);
+      }
+
+      return new HttpResponse(null, { status: 204 });
+    },
+    options,
+  );
+};
+
+export const getWorkspaceRemoveMemberMockHandler204 = (
+  overrideResponse?:
+    | void
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0],
+      ) => Promise<void> | void),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete<{ slug: string; userId: string }>(
+    '*/api/workspaces/:slug/members/:userId',
+    async (info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0]) => {
+      if (typeof overrideResponse === 'function') {
+        await overrideResponse(info);
+      }
+
+      return new HttpResponse(null, { status: 204 });
+    },
+    options,
+  );
+};
+
+export const getWorkspaceRemoveMemberMockHandler400 = (
+  overrideResponse?:
+    | WorkspaceRemoveMember400
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0],
+      ) => Promise<WorkspaceRemoveMember400> | WorkspaceRemoveMember400),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete<{ slug: string; userId: string }>(
+    '*/api/workspaces/:slug/members/:userId',
+    async (info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceRemoveMemberResponseMock400(),
+        { status: 400 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceRemoveMemberMockHandler401 = (
+  overrideResponse?:
+    | WorkspaceRemoveMember401
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0],
+      ) => Promise<WorkspaceRemoveMember401> | WorkspaceRemoveMember401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete<{ slug: string; userId: string }>(
+    '*/api/workspaces/:slug/members/:userId',
+    async (info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceRemoveMemberResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceRemoveMemberMockHandler403 = (
+  overrideResponse?:
+    | WorkspaceRemoveMember403
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0],
+      ) => Promise<WorkspaceRemoveMember403> | WorkspaceRemoveMember403),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete<{ slug: string; userId: string }>(
+    '*/api/workspaces/:slug/members/:userId',
+    async (info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceRemoveMemberResponseMock403(),
+        { status: 403 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceRemoveMemberMockHandler404 = (
+  overrideResponse?:
+    | WorkspaceRemoveMember404
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0],
+      ) => Promise<WorkspaceRemoveMember404> | WorkspaceRemoveMember404),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete<{ slug: string; userId: string }>(
+    '*/api/workspaces/:slug/members/:userId',
+    async (info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceRemoveMemberResponseMock404(),
+        { status: 404 },
+      );
+    },
+    options,
+  );
+};
+
+export const getWorkspaceRemoveMemberMockHandler409 = (
+  overrideResponse?:
+    | WorkspaceRemoveMember409
+    | ((
+        info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0],
+      ) => Promise<WorkspaceRemoveMember409> | WorkspaceRemoveMember409),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete<{ slug: string; userId: string }>(
+    '*/api/workspaces/:slug/members/:userId',
+    async (info: Parameters<HttpResponseResolver<{ slug: string; userId: string }>>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getWorkspaceRemoveMemberResponseMock409(),
+        { status: 409 },
+      );
+    },
+    options,
+  );
+};
+
 export const getWorkspaceChangeMemberRoleMockHandler = (
   overrideResponse?:
     | WorkspaceChangeMemberRole200
@@ -3354,6 +3570,7 @@ export const getApiMock = () => [
   getWorkspaceCreateMockHandler(),
   getWorkspaceGetBySlugMockHandler(),
   getWorkspaceListMembersMockHandler(),
+  getWorkspaceRemoveMemberMockHandler(),
   getWorkspaceChangeMemberRoleMockHandler(),
   getProjectListMockHandler(),
   getProjectCreateMockHandler(),
