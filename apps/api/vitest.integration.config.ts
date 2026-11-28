@@ -34,6 +34,7 @@ export default defineConfig({
       DATABASE_URL: required('DATABASE_URL'),
       REDIS_URL: required('REDIS_URL'),
       JWT_ACCESS_SECRET: 'integration-test-only-access-token-secret',
+      JWT_REFRESH_SECRET: 'integration-test-only-refresh-token-secret',
     },
   },
 });

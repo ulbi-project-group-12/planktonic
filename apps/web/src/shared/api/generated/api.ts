@@ -29,6 +29,9 @@ import type {
   AuthLoginBody,
   AuthMe200,
   AuthMe401,
+  AuthRefresh200,
+  AuthRefresh401,
+  AuthRefresh503,
   AuthRegister201,
   AuthRegister400,
   AuthRegister409,
@@ -445,6 +448,63 @@ export function useAuthMe<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export const getAuthRefreshUrl = () => {
+  return `/api/auth/refresh`;
+};
+
+/**
+ * @summary Refresh the access token
+ */
+export const authRefresh = async (
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<AuthRefresh200> => {
+  return apiFetch<AuthRefresh200>(getAuthRefreshUrl(), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getAuthRefreshMutationKey = () => ['authRefresh'] as const;
+
+export const getAuthRefreshMutationOptions = <
+  TError = ErrorType<AuthRefresh401 | AuthRefresh503>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof authRefresh>>, TError, void, TContext>;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof authRefresh>>, TError, void, TContext> => {
+  const mutationKey = getAuthRefreshMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof authRefresh>>, void> = () => {
+    return authRefresh(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AuthRefreshMutationResult = NonNullable<Awaited<ReturnType<typeof authRefresh>>>;
+
+export type AuthRefreshMutationError = ErrorType<AuthRefresh401 | AuthRefresh503>;
+
+/** @summary Refresh the access token */
+export const useAuthRefresh = <
+  TError = ErrorType<AuthRefresh401 | AuthRefresh503>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof authRefresh>>, TError, void, TContext>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof authRefresh>>, TError, void, TContext> => {
+  return useMutation(getAuthRefreshMutationOptions(options), queryClient);
+};
 
 export const getHealthLiveUrl = () => {
   return `/api/health`;

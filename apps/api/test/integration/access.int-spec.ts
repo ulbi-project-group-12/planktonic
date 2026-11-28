@@ -91,8 +91,8 @@ describe('GET /api/workspaces/:slug', () => {
       [member!.id]: WsRole.MEMBER,
     });
     const url = `${await app.getUrl()}/api/workspaces/${workspace.slug}`;
-    const open = (userId: string) =>
-      fetch(url, { headers: { authorization: authorization(app, userId) } });
+    const open = async (userId: string) =>
+      fetch(url, { headers: { authorization: await authorization(app, userId) } });
 
     for (const user of [owner!, admin!, member!]) {
       expect((await open(user.id)).status).toBe(200);

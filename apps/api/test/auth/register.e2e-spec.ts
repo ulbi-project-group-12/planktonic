@@ -8,6 +8,7 @@ import { AuthRepository } from '../../src/modules/auth/auth.repository.js';
 import { LoginRepository } from '../../src/modules/auth/login/login.repository.js';
 import { PasswordBreachService } from '../../src/modules/auth/register/password-breach.service.js';
 import { RegisterRepository } from '../../src/modules/auth/register/register.repository.js';
+import { SessionRepository } from '../../src/modules/auth/session/session.repository.js';
 
 const request: RegisterRequest = {
   name: 'Ada',
@@ -33,6 +34,8 @@ beforeAll(async () => {
     .overrideProvider(RegisterRepository)
     .useValue({ create })
     .overrideProvider(LoginRepository)
+    .useValue({})
+    .overrideProvider(SessionRepository)
     .useValue({})
     .overrideProvider(AuthRepository)
     .useValue({})

@@ -1,6 +1,11 @@
 'use client';
 
-import { type LoginRequest, LoginResponseSchema, LogoutResponseSchema } from '@app/contracts';
+import {
+  type LoginRequest,
+  LoginResponseSchema,
+  LogoutResponseSchema,
+  RefreshResponseSchema,
+} from '@app/contracts';
 import { PRODUCT_SLUG } from '@app/config/product';
 import { createStore } from 'zustand/vanilla';
 import { authLogin } from './generated/api';
@@ -27,28 +32,49 @@ export const sessionStore = createStore<SessionState>()(() => ({
 
 let refreshPromise: Promise<RefreshResult> | undefined;
 let refreshPromiseGeneration: number | undefined;
+let sessionQueue: Promise<void> | undefined;
+const SESSION_LOCK_NAME = `__${PRODUCT_SLUG}_session`;
 const LOGOUT_TIMEOUT_MS = 5_000;
 // Refresh answers that mean "there is no session to continue". 401: the refresh credentials are
-// missing, expired or revoked. 404 and 405: this api has no refresh endpoint at all (it arrives
-// with UL-141), so nothing can be restored and waiting or retrying would only keep the visitor
-// away from the login screen. Anything else (network failure, 5xx) is temporary.
+// missing, expired or revoked. 404 and 405: this api has no refresh endpoint at all, so nothing
+// can be restored and waiting or retrying would only keep the visitor away from the login screen.
+// Anything else (network failure, 5xx, 503) is temporary.
 const NO_SESSION_STATUSES: ReadonlySet<number> = new Set([401, 404, 405]);
 export const SIGNED_OUT_FLAG_KEY = `__${PRODUCT_SLUG}_signed_out`;
 
 function setSignedOutFlag(): void {
   try {
-    localStorage.setItem(SIGNED_OUT_FLAG_KEY, '1');
+    localStorage.setItem(SIGNED_OUT_FLAG_KEY, crypto.randomUUID());
   } catch {
     // Ignore storage failures (e.g. private mode).
   }
 }
 
-function hasSignedOutFlag(): boolean {
+function getSignedOutFlag(): string | null {
   try {
-    return localStorage.getItem(SIGNED_OUT_FLAG_KEY) === '1';
+    return localStorage.getItem(SIGNED_OUT_FLAG_KEY);
   } catch {
     // Ignore storage failures.
-    return false;
+    return null;
+  }
+}
+
+function hasSignedOutFlag(): boolean {
+  return getSignedOutFlag() !== null;
+}
+
+function hasNewerSignedOutFlag(previous: string | null): boolean {
+  const current = getSignedOutFlag();
+  return current !== null && current !== previous;
+}
+
+function clearSignedOutFlagIfMatch(expected: string | null): void {
+  try {
+    if (localStorage.getItem(SIGNED_OUT_FLAG_KEY) === expected) {
+      localStorage.removeItem(SIGNED_OUT_FLAG_KEY);
+    }
+  } catch {
+    // Ignore storage failures.
   }
 }
 
@@ -60,6 +86,23 @@ export function clearSignedOutFlag(): void {
   }
 }
 
+function withSessionLock<T>(operation: () => Promise<T>): Promise<T> {
+  if (typeof navigator !== 'undefined' && 'locks' in navigator) {
+    return navigator.locks.request(SESSION_LOCK_NAME, operation);
+  }
+
+  const result = sessionQueue ? sessionQueue.then(operation, operation) : operation();
+  const tail = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  sessionQueue = tail;
+  void tail.then(() => {
+    if (sessionQueue === tail) sessionQueue = undefined;
+  });
+  return result;
+}
+
 export async function refreshAccessToken(): Promise<RefreshResult> {
   const { accessToken, restoreStatus } = sessionStore.getState();
   if (restoreStatus === 'done' && accessToken === undefined) return 'unavailable';
@@ -68,9 +111,9 @@ export async function refreshAccessToken(): Promise<RefreshResult> {
   if (refreshPromise && refreshPromiseGeneration === generation) return refreshPromise;
 
   refreshPromiseGeneration = generation;
-  refreshPromise = (async () => {
+  refreshPromise = withSessionLock(async () => {
     try {
-      const { accessToken } = LoginResponseSchema.parse(
+      const { accessToken } = RefreshResponseSchema.parse(
         await apiFetch('/api/auth/refresh', { method: 'POST' }),
       );
       // signIn/signOut happened while the refresh was in flight: do not touch the new session.
@@ -89,7 +132,7 @@ export async function refreshAccessToken(): Promise<RefreshResult> {
         refreshPromiseGeneration = undefined;
       }
     }
-  })();
+  });
 
   return refreshPromise;
 }
@@ -133,11 +176,34 @@ export function ensureSessionHandlers(): void {
 }
 
 export async function signIn(credentials: LoginRequest): Promise<void> {
-  const { accessToken } = LoginResponseSchema.parse(await authLogin(credentials));
-  ensureSessionHandlers();
-  bumpSessionGeneration();
-  clearSignedOutFlag();
-  sessionStore.setState({ accessToken, signedOut: false, restoreStatus: 'done' });
+  const signedOutFlag = getSignedOutFlag();
+  const generation = bumpSessionGeneration();
+  await withSessionLock(async () => {
+    if (getSessionGeneration() !== generation) return;
+    if (hasNewerSignedOutFlag(signedOutFlag)) {
+      sessionStore.setState({ accessToken: undefined, signedOut: true, restoreStatus: 'done' });
+      return;
+    }
+    try {
+      const { accessToken } = LoginResponseSchema.parse(await authLogin(credentials));
+      if (getSessionGeneration() !== generation) return;
+      if (hasNewerSignedOutFlag(signedOutFlag)) {
+        sessionStore.setState({ accessToken: undefined, signedOut: true, restoreStatus: 'done' });
+        return;
+      }
+      ensureSessionHandlers();
+      clearSignedOutFlagIfMatch(signedOutFlag);
+      bumpSessionGeneration();
+      sessionStore.setState({ accessToken, signedOut: false, restoreStatus: 'done' });
+    } catch (error) {
+      if (hasNewerSignedOutFlag(signedOutFlag)) {
+        sessionStore.setState({ accessToken: undefined, signedOut: true, restoreStatus: 'done' });
+      } else if (getSessionGeneration() === generation) {
+        sessionStore.setState({ restoreStatus: 'done' });
+      }
+      throw error;
+    }
+  });
 }
 
 /**
@@ -146,31 +212,46 @@ export async function signIn(credentials: LoginRequest): Promise<void> {
  * fails, so the user is not trapped on a broken network.
  */
 export async function signOut(): Promise<void> {
-  bumpSessionGeneration();
-  const generation = getSessionGeneration();
+  const generation = bumpSessionGeneration();
+  const clearLocalSession = () => {
+    if (getSessionGeneration() !== generation) return;
+    // Discard refreshes that started while logout was in flight.
+    bumpSessionGeneration();
+    sessionStore.setState({ accessToken: undefined, signedOut: true, restoreStatus: 'done' });
+  };
   // Mark the browser as explicitly signed out even before the server request, so a failed
   // revocation cannot be recovered by simply reloading the page.
   setSignedOutFlag();
-  const controller = new AbortController();
-  const timeout = setTimeout(() => {
-    controller.abort();
-  }, LOGOUT_TIMEOUT_MS);
+  let localTimeout: ReturnType<typeof setTimeout> | undefined;
+  const localCleanup = new Promise<void>((resolve) => {
+    localTimeout = setTimeout(() => {
+      clearLocalSession();
+      resolve();
+    }, LOGOUT_TIMEOUT_MS);
+  });
+  const serverLogout = withSessionLock(async () => {
+    const controller = new AbortController();
+    const requestTimeout = setTimeout(() => {
+      controller.abort();
+    }, LOGOUT_TIMEOUT_MS);
+    try {
+      // Logout uses the refresh cookie. A 401 here must not trigger a token refresh.
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+        signal: controller.signal,
+      });
+      if (response.ok) LogoutResponseSchema.parse(await response.json());
+    } finally {
+      clearTimeout(requestTimeout);
+    }
+  });
   try {
-    // Logout uses the refresh cookie. A 401 here must not trigger a token refresh.
-    const response = await fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'same-origin',
-      signal: controller.signal,
-    });
-    if (response.ok) LogoutResponseSchema.parse(await response.json());
+    await Promise.race([serverLogout, localCleanup]);
   } catch {
     // Best-effort: the server cookie may already be expired or the network may be down.
   } finally {
-    clearTimeout(timeout);
-    if (getSessionGeneration() === generation) {
-      // Discard refreshes that started while logout was in flight.
-      bumpSessionGeneration();
-      sessionStore.setState({ accessToken: undefined, signedOut: true, restoreStatus: 'done' });
-    }
+    clearTimeout(localTimeout);
+    clearLocalSession();
   }
 }

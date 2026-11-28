@@ -21,6 +21,7 @@ afterEach(() => {
   clearSignedOutFlag();
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 it('passes the token from login to the next API request', async () => {
@@ -168,6 +169,26 @@ it('keeps the session empty when login is rejected', async () => {
   expect(sessionStore.getState().accessToken).toBeUndefined();
 });
 
+it('finishes restoring when a sign-in during refresh is rejected', async () => {
+  const refresh = Promise.withResolvers<Response>();
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockReturnValueOnce(refresh.promise)
+    .mockResolvedValueOnce(Response.json({ message: 'Invalid credentials' }, { status: 401 }));
+
+  const restoring = restoreSession();
+  const signingIn = signIn(credentials);
+  refresh.resolve(Response.json({ accessToken: 'stale-token' }));
+
+  await restoring;
+  await expect(signingIn).rejects.toMatchObject({ status: 401 });
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+  });
+});
+
 it('restoreSession saves the token on 200', async () => {
   vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
     Response.json({ accessToken: 'restored-token' }),
@@ -262,8 +283,9 @@ it('ignores a pending restore after sign-out and does not start another restore'
     .mockResolvedValueOnce(Response.json({}));
 
   const pendingRestore = restoreSession();
-  await signOut();
+  const signingOut = signOut();
   resolve(Response.json({ accessToken: 'old-session-token' }));
+  await signingOut;
   await pendingRestore;
   await restoreSession();
 
@@ -308,23 +330,197 @@ it('discards a refresh started during sign-out and stays signed out until sign-i
   expect(sessionStore.getState().accessToken).toBe('new-token');
 });
 
+it('cancels a queued sign-in when sign-out happens first', async () => {
+  const refresh = Promise.withResolvers<Response>();
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockReturnValueOnce(refresh.promise)
+    .mockResolvedValueOnce(Response.json({}));
+
+  const restoring = restoreSession();
+  const signingIn = signIn(credentials);
+  const signingOut = signOut();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+
+  refresh.resolve(Response.json({ accessToken: 'stale-token' }));
+  await restoring;
+  await signingIn;
+  await signingOut;
+
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(fetcher).toHaveBeenNthCalledWith(
+    2,
+    '/api/auth/logout',
+    expect.objectContaining({ method: 'POST' }),
+  );
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
+});
+
+it('logs out the session created by an in-flight sign-in when sign-out happens first', async () => {
+  const login = Promise.withResolvers<Response>();
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockReturnValueOnce(login.promise)
+    .mockResolvedValueOnce(Response.json({}));
+
+  const signingIn = signIn(credentials);
+  const signingOut = signOut();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+
+  login.resolve(Response.json({ accessToken: 'cancelled-login-token' }));
+  await signingIn;
+  await signingOut;
+
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(fetcher).toHaveBeenNthCalledWith(
+    2,
+    '/api/auth/logout',
+    expect.objectContaining({ method: 'POST' }),
+  );
+  expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).not.toBeNull();
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
+});
+
 it('keeps a new sign-in when an older logout completes', async () => {
   const logout = Promise.withResolvers<Response>();
-  vi.spyOn(globalThis, 'fetch')
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
     .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
     .mockReturnValueOnce(logout.promise)
     .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }));
 
   await signIn(credentials);
   const signingOut = signOut();
-  expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).toBe('1');
-  await signIn(credentials);
+  expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).not.toBeNull();
+  const signingIn = signIn(credentials);
+  expect(fetcher).toHaveBeenCalledTimes(2);
   logout.resolve(Response.json({}));
   await signingOut;
+  await signingIn;
 
   expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).toBeNull();
   expect(sessionStore.getState()).toMatchObject({
     accessToken: 'new-token',
+    restoreStatus: 'done',
+    signedOut: false,
+  });
+});
+
+it('rejects a request started before a successful sign-in instead of retrying it', async () => {
+  const oldRequest = Promise.withResolvers<Response>();
+  const newLogin = Promise.withResolvers<Response>();
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockReturnValueOnce(oldRequest.promise)
+    .mockReturnValueOnce(newLogin.promise);
+
+  await signIn(credentials);
+  const lateRequest = apiFetch('/api/workspaces');
+  const signingIn = signIn({ email: 'new@example.com', password: 'new-password' });
+  newLogin.resolve(Response.json({ accessToken: 'new-token' }));
+  await signingIn;
+
+  oldRequest.resolve(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+  await expect(lateRequest).rejects.toMatchObject({ status: 401 });
+
+  expect(fetcher).toHaveBeenCalledTimes(3);
+  expect(sessionStore.getState().accessToken).toBe('new-token');
+});
+
+it('keeps a newer cross-tab sign-out flag when an older login succeeds', async () => {
+  const login = Promise.withResolvers<Response>();
+  vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(login.promise);
+
+  const signingIn = signIn(credentials);
+  localStorage.setItem(SIGNED_OUT_FLAG_KEY, 'another-tab-sign-out');
+  login.resolve(Response.json({ accessToken: 'stale-token' }));
+  await signingIn;
+
+  expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).toBe('another-tab-sign-out');
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
+});
+
+it('finishes a queued sign-in as signed out after a cross-tab sign-out', async () => {
+  const refresh = Promise.withResolvers<Response>();
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(refresh.promise);
+
+  const restoring = restoreSession();
+  const signingIn = signIn(credentials);
+  localStorage.setItem(SIGNED_OUT_FLAG_KEY, 'another-tab-sign-out');
+  refresh.resolve(Response.json({ accessToken: 'stale-token' }));
+
+  await restoring;
+  await signingIn;
+
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
+});
+
+it('clears an old session when login fails after a newer sign-out', async () => {
+  const firstLogin = Promise.withResolvers<Response>();
+  const secondLogin = Promise.withResolvers<Response>();
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockReturnValueOnce(firstLogin.promise)
+    .mockResolvedValueOnce(Response.json({}))
+    .mockReturnValueOnce(secondLogin.promise);
+  sessionStore.setState({ accessToken: 'old-token', restoreStatus: 'done', signedOut: false });
+
+  const firstSignIn = signIn(credentials);
+  const signingOut = signOut();
+  const secondSignIn = signIn({ email: 'new@example.com', password: 'new-password' });
+  firstLogin.resolve(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+
+  await expect(firstSignIn).rejects.toMatchObject({ status: 401 });
+  await signingOut;
+  await vi.waitFor(() => {
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
+
+  secondLogin.resolve(Response.json({ accessToken: 'new-token' }));
+  await secondSignIn;
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: 'new-token',
+    restoreStatus: 'done',
+    signedOut: false,
+  });
+});
+
+it('keeps a failed repeated sign-in from clearing an existing session', async () => {
+  const firstLogin = Promise.withResolvers<Response>();
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
+    .mockReturnValueOnce(firstLogin.promise);
+
+  await signIn(credentials);
+  const repeatedSignIn = signIn({ email: 'new@example.com', password: 'wrong-password' });
+  firstLogin.resolve(Response.json({ message: 'Unauthorized' }, { status: 401 }));
+
+  await expect(repeatedSignIn).rejects.toMatchObject({ status: 401 });
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: 'old-token',
     restoreStatus: 'done',
     signedOut: false,
   });
@@ -354,6 +550,34 @@ it('aborts an unanswered logout and clears the local session', async () => {
   });
 });
 
+it('clears the local session on timeout while refresh holds the session lock', async () => {
+  vi.useFakeTimers();
+  const refresh = Promise.withResolvers<Response>();
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockReturnValueOnce(refresh.promise)
+    .mockResolvedValueOnce(Response.json({}));
+  sessionStore.setState({ accessToken: 'old-token', restoreStatus: 'done' });
+
+  const refreshing = refreshAccessToken();
+  const signingOut = signOut();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+
+  await vi.advanceTimersByTimeAsync(5_000);
+  await signingOut;
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
+
+  refresh.resolve(Response.json({ accessToken: 'stale-token' }));
+  await expect(refreshing).resolves.toBe('unavailable');
+  await vi.advanceTimersByTimeAsync(0);
+  expect(fetcher).toHaveBeenCalledTimes(2);
+});
+
 it('refreshAccessToken shares one inflight promise across parallel callers', async () => {
   const fetcher = vi
     .spyOn(globalThis, 'fetch')
@@ -367,9 +591,10 @@ it('refreshAccessToken shares one inflight promise across parallel callers', asy
   expect(sessionStore.getState().accessToken).toBe('refreshed-token');
 });
 
-it('does not overwrite a newer session with a stale refresh answer', async () => {
+it.each([200, 401])('orders a %i refresh response before a newer sign-in', async (status) => {
   let answerRefresh: (response: Response) => void = () => undefined;
-  vi.spyOn(globalThis, 'fetch')
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
     .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
     .mockReturnValueOnce(
       new Promise<Response>((resolve) => {
@@ -381,11 +606,19 @@ it('does not overwrite a newer session with a stale refresh answer', async () =>
   await signIn(credentials);
   sessionStore.setState({ restoreStatus: 'idle' });
   const late = restoreSession();
-  // A new sign-in replaces the session while the stale refresh is in flight.
-  await signIn({ email: 'new@example.com', password: 'new-password' });
-  answerRefresh(Response.json({ accessToken: 'stale-refreshed-token' }));
-  await late;
+  const signingIn = signIn({ email: 'new@example.com', password: 'new-password' });
+  expect(fetcher).toHaveBeenCalledTimes(2);
 
+  answerRefresh(
+    Response.json(
+      status === 200 ? { accessToken: 'stale-refreshed-token' } : { message: 'Unauthorized' },
+      { status },
+    ),
+  );
+  await late;
+  await signingIn;
+
+  expect(fetcher).toHaveBeenCalledTimes(3);
   expect(sessionStore.getState().accessToken).toBe('new-token');
 });
 
@@ -417,4 +650,18 @@ it('keeps a newer refresh promise when an older refresh finishes', async () => {
   await newRefresh;
 
   expect(sessionStore.getState().accessToken).toBe('new-refreshed-token');
+});
+
+it('uses the same cross-tab lock for signIn and refresh', async () => {
+  const request = vi.fn((_name: string, operation: () => Promise<unknown>) => operation());
+  vi.stubGlobal('navigator', { locks: { request } });
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'signed-in-token' }))
+    .mockResolvedValueOnce(Response.json({ accessToken: 'refreshed-token' }));
+
+  await signIn(credentials);
+  await refreshAccessToken();
+
+  expect(request).toHaveBeenCalledTimes(2);
+  expect(request.mock.calls[0]?.[0]).toBe(request.mock.calls[1]?.[0]);
 });

@@ -5,12 +5,24 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { Env } from '../../../src/core/config/env.js';
 import type { PrismaClient } from '../../../src/generated/prisma/client.js';
+import { SessionRepository } from '../../../src/modules/auth/session/session.repository.js';
 import { DEFAULT_AUTHOR_ID } from '../../../src/modules/messages/default-author.js';
 
 /** Authenticate as an active fixture user, defaulting to the one seeded by resetData. */
-export function authorization(app: INestApplication, userId = DEFAULT_AUTHOR_ID): string {
+export async function authorization(app: INestApplication, userId = DEFAULT_AUTHOR_ID) {
+  const sessionId = randomUUID();
+  await app.get(SessionRepository).create({
+    id: sessionId,
+    userId,
+    browser: null,
+    os: null,
+    refreshTokenHash: 'integration-test',
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+  });
   const secret = app.get(ConfigService<Env, true>).get('JWT_ACCESS_SECRET', { infer: true });
-  const token = app.get(JwtService).sign({ sub: userId }, { secret, expiresIn: '15m' });
+  const token = app
+    .get(JwtService)
+    .sign({ sub: userId, sid: sessionId }, { secret, expiresIn: '15m' });
   return `Bearer ${token}`;
 }
 
@@ -29,7 +41,7 @@ export async function postMessage(
 ): Promise<Response> {
   return fetch(`${await app.getUrl()}/api/channels/${channelId}/messages`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: authorization(app) },
+    headers: { 'content-type': 'application/json', authorization: await authorization(app) },
     body: JSON.stringify({ clientMsgId, body }),
   });
 }
@@ -49,6 +61,6 @@ export async function getMessages(
   const search = new URLSearchParams(entries).toString();
   const suffix = search === '' ? '' : `?${search}`;
   return fetch(`${await app.getUrl()}/api/channels/${channelId}/messages${suffix}`, {
-    headers: { authorization: authorization(app) },
+    headers: { authorization: await authorization(app) },
   });
 }

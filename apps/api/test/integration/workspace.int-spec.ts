@@ -35,7 +35,10 @@ describe('POST /api/workspaces/:slug/projects', () => {
     const app = stand.apps[0]!;
     return fetch(`${await app.getUrl()}/api/workspaces/${request.slug}/projects`, {
       method: 'POST',
-      headers: { authorization: authorization(app, userId), 'content-type': 'application/json' },
+      headers: {
+        authorization: await authorization(app, userId),
+        'content-type': 'application/json',
+      },
       body: JSON.stringify({ name: 'Website', key: 'WEB' }),
     });
   }
@@ -97,8 +100,8 @@ it('lists and opens only projects visible to the current workspace member', asyn
 
   const app = stand.apps[0]!;
   const url = `${await app.getUrl()}/api/workspaces/${workspace.slug}/projects`;
-  const get = (userId: string, path = '') =>
-    fetch(`${url}${path}`, { headers: { authorization: authorization(app, userId) } });
+  const get = async (userId: string, path = '') =>
+    fetch(`${url}${path}`, { headers: { authorization: await authorization(app, userId) } });
   const ownerList = await get(DEFAULT_AUTHOR_ID);
   expect(ownerList.status).toBe(200);
   expect(ListProjectsResponseSchema.parse(await ownerList.json()).map(({ key }) => key)).toEqual([
@@ -135,7 +138,7 @@ describe('project refusals', () => {
     return fetch(url, {
       method: 'body' in init ? 'POST' : 'GET',
       headers: {
-        ...(userId ? { authorization: authorization(app, userId) } : {}),
+        ...(userId ? { authorization: await authorization(app, userId) } : {}),
         ...('body' in init ? { 'content-type': 'application/json' } : {}),
       },
       ...('body' in init ? { body: JSON.stringify(init.body) } : {}),
@@ -290,7 +293,7 @@ it('preserves existing roles and consumes an invite for only one concurrent join
   const base = `${await app.getUrl()}/api`;
   const created = await fetch(`${base}/workspaces/${workspace.slug}/invites`, {
     method: 'POST',
-    headers: { authorization: authorization(app), 'content-type': 'application/json' },
+    headers: { authorization: await authorization(app), 'content-type': 'application/json' },
     body: JSON.stringify({ role: 'ADMIN' }),
   });
   expect(created.status).toBe(201);
@@ -298,10 +301,10 @@ it('preserves existing roles and consumes an invite for only one concurrent join
   expect(await stand.prisma.invite.findFirstOrThrow()).toMatchObject({
     tokenHash: createHash('sha256').update(token).digest('hex'),
   });
-  const accept = (userId: string) =>
+  const accept = async (userId: string) =>
     fetch(`${base}/invites/${token}/accept`, {
       method: 'POST',
-      headers: { authorization: authorization(app, userId) },
+      headers: { authorization: await authorization(app, userId) },
     });
 
   const alreadyMember = await accept(DEFAULT_AUTHOR_ID);
@@ -319,9 +322,9 @@ it('preserves existing roles and consumes an invite for only one concurrent join
       passwordHash: '!',
     })),
   });
-  const preview = () =>
+  const preview = async () =>
     fetch(`${base}/invites/${token}`, {
-      headers: { authorization: authorization(app, users[0]!.id) },
+      headers: { authorization: await authorization(app, users[0]!.id) },
     });
   const details = await preview();
   expect(details.status).toBe(200);
@@ -365,7 +368,7 @@ it('denies the next admin-only request after demotion with the same access token
   });
   const app = stand.apps[0]!;
   const base = `${await app.getUrl()}/api/workspaces/${workspace.slug}`;
-  const adminAuthorization = authorization(app, admin.id);
+  const adminAuthorization = await authorization(app, admin.id);
   const createInvite = () =>
     fetch(`${base}/invites`, {
       method: 'POST',
@@ -385,7 +388,7 @@ it('denies the next admin-only request after demotion with the same access token
       headers: { authorization: authorizationHeader, 'content-type': 'application/json' },
       body: JSON.stringify({ role }),
     });
-  const ownerAuthorization = authorization(app);
+  const ownerAuthorization = await authorization(app);
   expect((await changeRole(admin.id, adminAuthorization)).status).toBe(403);
   expect((await changeRole(DEFAULT_AUTHOR_ID, adminAuthorization)).status).toBe(403);
   expect((await changeRole(DEFAULT_AUTHOR_ID, ownerAuthorization)).status).toBe(403);
@@ -437,10 +440,10 @@ describe('workspace members', () => {
     }
     const app = stand.apps[0]!;
     const base = `${await app.getUrl()}/api/workspaces/${workspace.slug}/members`;
-    const changeRole = (actorId: string, targetId: string, role: string) =>
+    const changeRole = async (actorId: string, targetId: string, role: string) =>
       fetch(`${base}/${targetId}/role`, {
         method: 'PATCH',
-        headers: { ...json, authorization: authorization(app, actorId) },
+        headers: { ...json, authorization: await authorization(app, actorId) },
         body: JSON.stringify({ role }),
       });
     const roleOf = async (userId: string, workspaceId = workspace.id) =>
@@ -471,16 +474,20 @@ describe('workspace members', () => {
       { userId: users('Zoe'), name: 'Zoe', role: WsRole.MEMBER },
     ];
     for (const reader of [DEFAULT_AUTHOR_ID, users('Bob'), users('Zoe')]) {
-      const list = await fetch(base, { headers: { authorization: authorization(app, reader) } });
+      const list = await fetch(base, {
+        headers: { authorization: await authorization(app, reader) },
+      });
       expect(list.status).toBe(200);
       // Exact equality: no email, password hash or other user column may reach the list.
       expect(await list.json()).toEqual(expected);
     }
 
     // A stranger gets the same answer as for an absent workspace; a deactivated member has no session.
-    const as = (userId: string) => ({ headers: { authorization: authorization(app, userId) } });
-    expect((await fetch(base, as(users('Outsider')))).status).toBe(404);
-    expect((await fetch(base, as(users('Gone')))).status).toBe(401);
+    const as = async (userId: string) => ({
+      headers: { authorization: await authorization(app, userId) },
+    });
+    expect((await fetch(base, await as(users('Outsider')))).status).toBe(404);
+    expect((await fetch(base, await as(users('Gone')))).status).toBe(401);
     expect((await fetch(base)).status).toBe(401);
   });
 
@@ -612,7 +619,10 @@ it('returns 403 when a regular member tries to create an invitation', async () =
   const app = stand.apps[0]!;
   const response = await fetch(`${await app.getUrl()}/api/workspaces/${workspace.slug}/invites`, {
     method: 'POST',
-    headers: { authorization: authorization(app, member.id), 'content-type': 'application/json' },
+    headers: {
+      authorization: await authorization(app, member.id),
+      'content-type': 'application/json',
+    },
     body: JSON.stringify({ role: 'MEMBER' }),
   });
   expect(response.status).toBe(403);
@@ -626,7 +636,7 @@ it('lets a guest register, sign in and join through the link, which then reads a
   const json = { 'content-type': 'application/json' };
   const created = await fetch(`${base}/workspaces/${workspace.slug}/invites`, {
     method: 'POST',
-    headers: { ...json, authorization: authorization(app) },
+    headers: { ...json, authorization: await authorization(app) },
     body: JSON.stringify({ role: 'MEMBER' }),
   });
   const { token } = CreateInviteResponseSchema.parse(await created.json());
@@ -686,10 +696,13 @@ describe('invite refusals', () => {
     const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
     const app = stand.apps[0]!;
     const base = `${await app.getUrl()}/api`;
-    const create = (userId: string, inviteRole: string = role) =>
+    const create = async (userId: string, inviteRole: string = role) =>
       fetch(`${base}/workspaces/${workspace.slug}/invites`, {
         method: 'POST',
-        headers: { authorization: authorization(app, userId), 'content-type': 'application/json' },
+        headers: {
+          authorization: await authorization(app, userId),
+          'content-type': 'application/json',
+        },
         body: JSON.stringify({ role: inviteRole }),
       });
     const created = await create(DEFAULT_AUTHOR_ID);
@@ -698,7 +711,7 @@ describe('invite refusals', () => {
     const joiner = await stand.prisma.user.create({
       data: { name: 'Joiner', email: 'joiner@users.invalid', passwordHash: '!' },
     });
-    const headers = { authorization: authorization(app, joiner.id) };
+    const headers = { authorization: await authorization(app, joiner.id) };
     return {
       workspace,
       joiner,
@@ -783,7 +796,7 @@ async function createWorkspace(body: unknown, authenticated = true): Promise<Res
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      ...(authenticated ? { authorization: authorization(app!) } : {}),
+      ...(authenticated ? { authorization: await authorization(app!) } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -850,12 +863,12 @@ describe('GET /api/workspaces', () => {
     const app = stand.apps[0]!;
     const url = `${await app.getUrl()}/api/workspaces`;
 
-    const ownerList = await fetch(url, { headers: { authorization: authorization(app) } });
+    const ownerList = await fetch(url, { headers: { authorization: await authorization(app) } });
     expect(ownerList.status).toBe(200);
     expect(ListWorkspacesResponseSchema.parse(await ownerList.json())).toEqual([workspace]);
 
     const otherList = await fetch(url, {
-      headers: { authorization: authorization(app, otherUser.id) },
+      headers: { authorization: await authorization(app, otherUser.id) },
     });
     expect(otherList.status).toBe(200);
     expect(ListWorkspacesResponseSchema.parse(await otherList.json())).toEqual([]);
@@ -875,9 +888,9 @@ describe('GET /api/workspaces/:slug', () => {
     const app = stand.apps[0]!;
     const baseUrl = `${await app.getUrl()}/api/workspaces`;
     const url = `${baseUrl}/${workspace.slug}`;
-    const otherHeaders = { authorization: authorization(app, otherUser.id) };
+    const otherHeaders = { authorization: await authorization(app, otherUser.id) };
 
-    const owner = await fetch(url, { headers: { authorization: authorization(app) } });
+    const owner = await fetch(url, { headers: { authorization: await authorization(app) } });
     expect(owner.status).toBe(200);
     expect(await owner.json()).toEqual({
       ...workspace,

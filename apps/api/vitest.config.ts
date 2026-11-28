@@ -14,6 +14,8 @@ export default defineConfig({
       NODE_ENV: 'test',
       DATABASE_URL: 'postgresql://probe:probe@127.0.0.1:1/probe',
       REDIS_URL: 'redis://127.0.0.1:1',
+      JWT_ACCESS_SECRET: 'test-only-access-token-signing-secret',
+      JWT_REFRESH_SECRET: 'test-only-refresh-token-signing-secret',
     },
   },
 });

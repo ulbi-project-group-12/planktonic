@@ -52,6 +52,7 @@ describe('pnpm openapi:export', () => {
       'patch /api/users/me Users_updateMe',
       'patch /api/workspaces/{slug}/members/{userId}/role Workspace_changeMemberRole',
       'post /api/auth/login Auth_login',
+      'post /api/auth/refresh Auth_refresh',
       'post /api/auth/register Auth_register',
       'post /api/channels/{channelId}/messages Messages_create',
       'post /api/invites/{token}/accept Invite_accept',

@@ -5,6 +5,7 @@ import { createOpenApiDocument } from '../../../core/openapi/swagger.setup.js';
 import { AuthModule } from '../auth.module.js';
 import { AuthRepository } from '../auth.repository.js';
 import { RegisterRepository } from '../register/register.repository.js';
+import { SessionRepository } from '../session/session.repository.js';
 import { LoginRepository } from './login.repository.js';
 
 it('documents the login request and responses', async () => {
@@ -14,6 +15,8 @@ it('documents the login request and responses', async () => {
     .overrideProvider(LoginRepository)
     .useValue({})
     .overrideProvider(AuthRepository)
+    .useValue({})
+    .overrideProvider(SessionRepository)
     .useValue({})
     .compile();
   const app = moduleRef.createNestApplication({ logger: false });

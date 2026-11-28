@@ -19,7 +19,7 @@ async function patchMe(body: unknown, userId?: string): Promise<Response> {
     method: 'PATCH',
     headers: {
       'content-type': 'application/json',
-      ...(userId === undefined ? {} : { authorization: authorization(app, userId) }),
+      ...(userId === undefined ? {} : { authorization: await authorization(app, userId) }),
     },
     body: JSON.stringify(body),
   });
@@ -28,7 +28,7 @@ async function patchMe(body: unknown, userId?: string): Promise<Response> {
 async function getMe(userId: string): Promise<Response> {
   const app = stand.apps[0]!;
   return fetch(`${await app.getUrl()}/api/auth/me`, {
-    headers: { authorization: authorization(app, userId) },
+    headers: { authorization: await authorization(app, userId) },
   });
 }
 

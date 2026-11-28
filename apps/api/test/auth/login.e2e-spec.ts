@@ -12,8 +12,10 @@ import { LoginAttemptsConnection } from '../../src/modules/auth/login/login-atte
 import type { LoginAttemptsStore } from '../../src/modules/auth/login/login-attempts.store.js';
 import { LoginRepository } from '../../src/modules/auth/login/login.repository.js';
 import { RegisterRepository } from '../../src/modules/auth/register/register.repository.js';
+import { SessionRepository } from '../../src/modules/auth/session/session.repository.js';
 
-const secret = 'test-only-access-token-signing-secret';
+const accessSecret = 'test-only-access-token-signing-secret';
+const refreshSecret = 'test-only-refresh-token-signing-secret';
 const request = { email: 'ada@example.com', password: ' example-passphrase ' };
 const userId = '019a8f00-0000-7000-8000-000000000004';
 const findActiveByEmail = vi.fn<LoginRepository['findActiveByEmail']>();
@@ -22,6 +24,7 @@ const attempts = {
   begin: vi.fn<LoginAttemptsStore['begin']>(),
   finish: vi.fn<LoginAttemptsStore['finish']>(),
 };
+const createSession = vi.fn<() => Promise<{ id: string }>>();
 let app: INestApplication | undefined;
 let baseUrl: string;
 let passwordHash: string;
@@ -30,13 +33,18 @@ beforeAll(async () => {
   passwordHash = await hash(request.password);
   const moduleRef = await Test.createTestingModule({ imports: [AuthModule] })
     .overrideProvider(ConfigService)
-    .useValue({ get: () => secret })
+    .useValue({
+      get: (key: 'JWT_ACCESS_SECRET' | 'JWT_REFRESH_SECRET') =>
+        key === 'JWT_ACCESS_SECRET' ? accessSecret : refreshSecret,
+    })
     .overrideProvider(LoginAttemptsConnection)
     .useValue({
       run: (operation: (store: typeof attempts) => Promise<unknown>) => operation(attempts),
     })
     .overrideProvider(LoginRepository)
     .useValue({ findActiveByEmail })
+    .overrideProvider(SessionRepository)
+    .useValue({ create: createSession })
     .overrideProvider(RegisterRepository)
     .useValue({})
     .overrideProvider(AuthRepository)
@@ -49,6 +57,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   findActiveByEmail.mockReset();
+  createSession.mockReset().mockResolvedValue({ id: '019a8f00-0000-7000-8000-000000000005' });
   attempts.begin.mockReset().mockResolvedValue({ id: 'reservation' });
   attempts.finish.mockReset().mockResolvedValue(undefined);
 });
@@ -82,7 +91,7 @@ describe('POST /api/auth/login', () => {
     expect(attempts.finish).not.toHaveBeenCalled();
   });
 
-  it('returns a signed access token valid for 15 minutes', async () => {
+  it('returns a signed access token and an httpOnly refresh cookie', async () => {
     findActiveByEmail.mockResolvedValue({ id: userId, passwordHash });
 
     const response = await login({ ...request, email: ` ${request.email} ` });
@@ -92,13 +101,21 @@ describe('POST /api/auth/login', () => {
     const payload = LoginResponseSchema.parse(body);
     expect(body).toEqual(payload);
     const jwt = new JwtService();
-    const claims = jwt.verify<{ iat: number; exp: number }>(payload.accessToken, {
-      secret,
+    const claims = jwt.verify<{ iat: number; exp: number; sid: string }>(payload.accessToken, {
+      secret: accessSecret,
       algorithms: ['HS256'],
     });
     expect(claims).toMatchObject({ sub: userId });
+    expect(claims.sid).toBeTypeOf('string');
     expect(claims.exp - claims.iat).toBe(15 * 60);
     expect(findActiveByEmail).toHaveBeenCalledWith(request.email);
+
+    const setCookie = response.headers.get('set-cookie');
+    expect(setCookie).toBeTruthy();
+    expect(setCookie).toMatch(/refresh_token=/);
+    expect(setCookie).toMatch(/HttpOnly/);
+    expect(setCookie).toMatch(/SameSite=Strict/);
+    expect(setCookie).toMatch(/Path=\/api\/auth/);
   });
 
   it('uses the same 401 response for an unknown email and a wrong password', async () => {
