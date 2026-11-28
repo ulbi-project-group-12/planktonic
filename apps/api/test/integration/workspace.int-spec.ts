@@ -355,6 +355,157 @@ it('preserves existing roles and consumes an invite for only one concurrent join
   expect(await consumed.json()).toMatchObject({ code: 'invite_consumed' });
 });
 
+it('revokes workspace access immediately and removes only that workspace’s project memberships', async () => {
+  const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
+  const otherWorkspace = WorkspaceResponseSchema.parse(
+    await (await createWorkspace({ name: 'Other team', slug: 'other-team' })).json(),
+  );
+  const member = await stand.prisma.user.create({
+    data: { name: 'Member', email: 'removed-member@users.invalid', passwordHash: '!' },
+  });
+  await stand.prisma.workspaceMember.createMany({
+    data: [workspace.id, otherWorkspace.id].map((workspaceId) => ({
+      workspaceId,
+      userId: member.id,
+      role: WsRole.MEMBER,
+    })),
+  });
+  const createProject = (workspaceId: string) =>
+    stand.prisma.project.create({
+      data: {
+        workspaceId,
+        name: 'Website',
+        key: 'WEB',
+        members: { create: { userId: member.id, role: ProjectRole.MEMBER } },
+      },
+    });
+  const project = await createProject(workspace.id);
+  const otherProject = await createProject(otherWorkspace.id);
+
+  const app = stand.apps[0]!;
+  const base = `${await app.getUrl()}/api/workspaces`;
+  const memberHeaders = { authorization: authorization(app, member.id) };
+  const readWorkspace = (slug: string) => fetch(`${base}/${slug}`, { headers: memberHeaders });
+  expect((await readWorkspace(workspace.slug)).status).toBe(200);
+
+  const removal = await fetch(`${base}/${workspace.slug}/members/${member.id}`, {
+    method: 'DELETE',
+    headers: { authorization: authorization(app) },
+  });
+  expect(removal.status).toBe(204);
+  expect((await readWorkspace(workspace.slug)).status).toBe(404);
+  expect((await readWorkspace(otherWorkspace.slug)).status).toBe(200);
+  expect(await removal.text()).toBe('');
+
+  expect(await stand.prisma.workspaceMember.findMany({ where: { userId: member.id } })).toEqual([
+    { workspaceId: otherWorkspace.id, userId: member.id, role: WsRole.MEMBER },
+  ]);
+  expect(await stand.prisma.projectMember.findMany({ where: { userId: member.id } })).toEqual([
+    { projectId: otherProject.id, userId: member.id, role: ProjectRole.MEMBER },
+  ]);
+  expect(await stand.prisma.project.findUnique({ where: { id: project.id } })).not.toBeNull();
+});
+
+it('blocks project creation when the creator is removed after the permission check', async () => {
+  const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
+  const admin = await stand.prisma.user.create({
+    data: { name: 'Removed admin', email: 'removed-admin@users.invalid', passwordHash: '!' },
+  });
+  await stand.prisma.workspaceMember.create({
+    data: { workspaceId: workspace.id, userId: admin.id, role: WsRole.ADMIN },
+  });
+
+  const app = stand.apps[0]!;
+  const base = `${await app.getUrl()}/api/workspaces/${workspace.slug}`;
+  const repository = app.get(WorkspaceRepository);
+  const createProject = repository.createProjectWithAdmin.bind(repository);
+  const pendingCreate = vi
+    .spyOn(repository, 'createProjectWithAdmin')
+    .mockImplementationOnce(async (...args) => {
+      const removal = await fetch(`${base}/members/${admin.id}`, {
+        method: 'DELETE',
+        headers: { authorization: authorization(app) },
+      });
+      expect(removal.status).toBe(204);
+      return createProject(...args);
+    });
+
+  try {
+    const response = await fetch(`${base}/projects`, {
+      method: 'POST',
+      headers: { authorization: authorization(app, admin.id), 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Website', key: 'WEB' }),
+    });
+    expect(pendingCreate).toHaveBeenCalledOnce();
+    expect(response.status).toBe(404);
+    expect(await stand.prisma.project.count({ where: { workspaceId: workspace.id } })).toBe(0);
+    expect(await stand.prisma.projectMember.count({ where: { userId: admin.id } })).toBe(0);
+  } finally {
+    pendingCreate.mockRestore();
+  }
+});
+
+it('lets an admin remove a member and protects admins and the owner from that admin', async () => {
+  const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
+  const users = await stand.prisma.user.createManyAndReturn({
+    data: ['acting-admin', 'other-admin', 'regular-member'].map((name) => ({
+      name,
+      email: `${name}@users.invalid`,
+      passwordHash: '!',
+    })),
+  });
+  const actor = users.find(({ name }) => name === 'acting-admin')!;
+  const otherAdmin = users.find(({ name }) => name === 'other-admin')!;
+  const member = users.find(({ name }) => name === 'regular-member')!;
+  await stand.prisma.workspaceMember.createMany({
+    data: users.map(({ id, name }) => ({
+      workspaceId: workspace.id,
+      userId: id,
+      role: name === 'regular-member' ? WsRole.MEMBER : WsRole.ADMIN,
+    })),
+  });
+
+  const app = stand.apps[0]!;
+  const url = `${await app.getUrl()}/api/workspaces/${workspace.slug}/members`;
+  const remove = (targetId: string, actorId: string) =>
+    fetch(`${url}/${targetId}`, {
+      method: 'DELETE',
+      headers: { authorization: authorization(app, actorId) },
+    });
+
+  expect((await remove(otherAdmin.id, actor.id)).status).toBe(403);
+  expect((await remove(DEFAULT_AUTHOR_ID, actor.id)).status).toBe(403);
+  expect((await remove(DEFAULT_AUTHOR_ID, DEFAULT_AUTHOR_ID)).status).toBe(403);
+
+  const repository = app.get(WorkspaceRepository);
+  const removeMember = repository.removeMember.bind(repository);
+  const pendingRemoval = vi
+    .spyOn(repository, 'removeMember')
+    .mockImplementationOnce(async (...args) => {
+      const demotion = await fetch(`${url}/${otherAdmin.id}/role`, {
+        method: 'PATCH',
+        headers: { authorization: authorization(app), 'content-type': 'application/json' },
+        body: JSON.stringify({ role: WsRole.MEMBER }),
+      });
+      expect(demotion.status).toBe(200);
+      return removeMember(...args);
+    });
+  try {
+    expect((await remove(member.id, otherAdmin.id)).status).toBe(403);
+    expect(pendingRemoval).toHaveBeenCalledOnce();
+  } finally {
+    pendingRemoval.mockRestore();
+  }
+
+  expect((await remove(member.id, actor.id)).status).toBe(204);
+  const remaining = await stand.prisma.workspaceMember.findMany({
+    where: { workspaceId: workspace.id },
+  });
+  expect(remaining.map(({ userId }) => userId).sort()).toEqual(
+    [DEFAULT_AUTHOR_ID, actor.id, otherAdmin.id].sort(),
+  );
+});
+
 it('denies the next admin-only request after demotion with the same access token', async () => {
   const workspace = WorkspaceResponseSchema.parse(await (await createWorkspace(request)).json());
   const admin = await stand.prisma.user.create({

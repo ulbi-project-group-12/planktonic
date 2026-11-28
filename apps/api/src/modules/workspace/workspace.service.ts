@@ -101,6 +101,36 @@ export class WorkspaceService {
     );
   }
 
+  async removeMember(slug: string, actorId: string, targetUserId: string): Promise<void> {
+    const workspace = await this.repository.findBySlug(slug);
+    const actor = { id: actorId };
+    if (
+      !workspace ||
+      !(await this.access.can(actor, 'workspace.read', { workspaceId: workspace.id }))
+    ) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    const workspaceId = workspace.id;
+    const targetRole = await this.access.getWorkspaceRole({ id: targetUserId }, workspaceId);
+    if (!targetRole) throw new NotFoundException('Workspace member not found');
+    if (!(await this.access.can(actor, 'workspace.member.remove', { workspaceId, targetRole }))) {
+      throw new ForbiddenException('Member removal forbidden');
+    }
+
+    const outcome = await this.repository.removeMember(
+      workspaceId,
+      targetUserId,
+      targetRole,
+      actorId,
+      (actorRole) => this.access.canRemoveWorkspaceMember(actorRole, targetRole),
+    );
+    if (outcome === 'forbidden') throw new ForbiddenException('Member removal forbidden');
+    if (outcome === 'conflict') {
+      throw new ConflictException('Workspace membership changed concurrently');
+    }
+  }
+
   async changeMemberRole(
     slug: string,
     actorId: string,
@@ -189,6 +219,7 @@ export class WorkspaceService {
     }
 
     const project = await this.repository.createProjectWithAdmin(workspace.id, input, userId);
+    if (project === undefined) throw new NotFoundException('Workspace not found');
     if (!project) {
       const response: ProjectKeyConflictResponse = {
         statusCode: 409,

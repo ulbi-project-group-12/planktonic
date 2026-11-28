@@ -49,6 +49,42 @@ export class WorkspaceRepository {
     });
   }
 
+  removeMember(
+    workspaceId: string,
+    userId: string,
+    currentRole: WsRole,
+    actorId: string,
+    canRemove: (actorRole: WsRole | null) => boolean,
+  ): Promise<'removed' | 'forbidden' | 'conflict'> {
+    return this.prisma.$transaction(async (tx) => {
+      const memberships = await tx.$queryRaw<{ user_id: string; role: WsRole }[]>`
+        SELECT wm.user_id, wm.role FROM workspace_members wm
+        JOIN users u ON u.id = wm.user_id
+        WHERE wm.workspace_id = ${workspaceId}::uuid
+          AND wm.user_id IN (${actorId}::uuid, ${userId}::uuid)
+          AND u.deactivated_at IS NULL
+        ORDER BY wm.user_id
+        FOR UPDATE OF wm
+      `;
+      const actorRole =
+        memberships.find(({ user_id }) => user_id === actorId.toLowerCase())?.role ?? null;
+      if (!canRemove(actorRole)) return 'forbidden';
+      if (
+        memberships.find(({ user_id }) => user_id === userId.toLowerCase())?.role !== currentRole
+      ) {
+        return 'conflict';
+      }
+
+      const membership = await tx.workspaceMember.deleteMany({
+        where: { workspaceId, userId, role: currentRole },
+      });
+      if (membership.count === 0) return 'conflict';
+
+      await tx.projectMember.deleteMany({ where: { userId, project: { workspaceId } } });
+      return 'removed';
+    });
+  }
+
   async changeMemberRole(
     workspaceId: string,
     userId: string,
@@ -69,15 +105,24 @@ export class WorkspaceRepository {
     userId: string,
   ) {
     try {
-      return await this.prisma.project.create({
-        data: {
-          workspaceId,
-          name,
-          key,
-          description,
-          members: { create: { userId, role: ProjectRole.ADMIN } },
-        },
-        select: projectSelect,
+      return await this.prisma.$transaction(async (tx) => {
+        const membership = await tx.$queryRaw<{ user_id: string }[]>`
+          SELECT user_id FROM workspace_members
+          WHERE workspace_id = ${workspaceId}::uuid AND user_id = ${userId}::uuid
+          FOR UPDATE
+        `;
+        if (membership.length === 0) return undefined;
+
+        return tx.project.create({
+          data: {
+            workspaceId,
+            name,
+            key,
+            description,
+            members: { create: { userId, role: ProjectRole.ADMIN } },
+          },
+          select: projectSelect,
+        });
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
