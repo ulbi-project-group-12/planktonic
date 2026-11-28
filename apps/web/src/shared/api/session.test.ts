@@ -21,6 +21,7 @@ afterEach(() => {
   clearSignedOutFlag();
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 it('passes the token from login to the next API request', async () => {
@@ -367,9 +368,10 @@ it('refreshAccessToken shares one inflight promise across parallel callers', asy
   expect(sessionStore.getState().accessToken).toBe('refreshed-token');
 });
 
-it('does not overwrite a newer session with a stale refresh answer', async () => {
+it.each([200, 401])('orders a %i refresh response before a newer sign-in', async (status) => {
   let answerRefresh: (response: Response) => void = () => undefined;
-  vi.spyOn(globalThis, 'fetch')
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
     .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
     .mockReturnValueOnce(
       new Promise<Response>((resolve) => {
@@ -381,11 +383,19 @@ it('does not overwrite a newer session with a stale refresh answer', async () =>
   await signIn(credentials);
   sessionStore.setState({ restoreStatus: 'idle' });
   const late = restoreSession();
-  // A new sign-in replaces the session while the stale refresh is in flight.
-  await signIn({ email: 'new@example.com', password: 'new-password' });
-  answerRefresh(Response.json({ accessToken: 'stale-refreshed-token' }));
-  await late;
+  const signingIn = signIn({ email: 'new@example.com', password: 'new-password' });
+  expect(fetcher).toHaveBeenCalledTimes(2);
 
+  answerRefresh(
+    Response.json(
+      status === 200 ? { accessToken: 'stale-refreshed-token' } : { message: 'Unauthorized' },
+      { status },
+    ),
+  );
+  await late;
+  await signingIn;
+
+  expect(fetcher).toHaveBeenCalledTimes(3);
   expect(sessionStore.getState().accessToken).toBe('new-token');
 });
 
@@ -417,4 +427,18 @@ it('keeps a newer refresh promise when an older refresh finishes', async () => {
   await newRefresh;
 
   expect(sessionStore.getState().accessToken).toBe('new-refreshed-token');
+});
+
+it('uses the same cross-tab lock for signIn and refresh', async () => {
+  const request = vi.fn((_name: string, operation: () => Promise<unknown>) => operation());
+  vi.stubGlobal('navigator', { locks: { request } });
+  vi.spyOn(globalThis, 'fetch')
+    .mockResolvedValueOnce(Response.json({ accessToken: 'signed-in-token' }))
+    .mockResolvedValueOnce(Response.json({ accessToken: 'refreshed-token' }));
+
+  await signIn(credentials);
+  await refreshAccessToken();
+
+  expect(request).toHaveBeenCalledTimes(2);
+  expect(request.mock.calls[0]?.[0]).toBe(request.mock.calls[1]?.[0]);
 });

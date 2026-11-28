@@ -230,8 +230,10 @@ describe('refresh on 401', () => {
     await signIn(credentials);
     const request = apiFetch('/api/resource');
     await refreshStarted.promise;
-    await signIn(credentials);
+    const signingIn = signIn(credentials);
+    expect(fetcher).toHaveBeenCalledTimes(3);
     refresh.resolve(Response.json({ accessToken: 'stale-token' }));
+    await signingIn;
 
     await expect(request).rejects.toMatchObject({ status: 401 });
     expect(fetcher).toHaveBeenCalledTimes(4);

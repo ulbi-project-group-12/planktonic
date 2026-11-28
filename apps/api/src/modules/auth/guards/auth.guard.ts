@@ -12,6 +12,7 @@ import type { Env } from '../../../core/config/env.js';
 import { AuthRepository } from '../auth.repository.js';
 import type { AuthRequest } from '../auth.request.js';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
+import { SessionRepository } from '../session/session.repository.js';
 
 const accessTokenClaims = z.object({
   sub: z.uuid(),
@@ -25,6 +26,7 @@ export class AuthGuard implements CanActivate {
     private readonly jwt: JwtService,
     private readonly config: ConfigService<Env>,
     private readonly repository: AuthRepository,
+    private readonly sessionRepository: SessionRepository,
     private readonly reflector: Reflector,
   ) {}
 
@@ -53,6 +55,11 @@ export class AuthGuard implements CanActivate {
 
     const claims = accessTokenClaims.safeParse(payload);
     if (!claims.success) {
+      throw new UnauthorizedException();
+    }
+
+    const session = await this.sessionRepository.findActiveById(claims.data.sid);
+    if (session?.userId !== claims.data.sub) {
       throw new UnauthorizedException();
     }
 

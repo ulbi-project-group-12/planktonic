@@ -290,6 +290,7 @@ describe('refresh against PostgreSQL', () => {
     await register(request.email);
 
     const loginResponse = await login(request.email, 0);
+    const { accessToken } = LoginResponseSchema.parse(await loginResponse.json());
     const oldCookie = parseSetCookie(loginResponse)!;
 
     const firstRefresh = await refresh(0, oldCookie);
@@ -298,6 +299,11 @@ describe('refresh against PostgreSQL', () => {
 
     const replay = await refresh(1, oldCookie);
     expect(replay.status).toBe(401);
+
+    const protectedResponse = await fetch(`${await stand.apps[0]!.getUrl()}/api/auth/me`, {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    expect(protectedResponse.status).toBe(401);
 
     const afterRevocation = await refresh(0, newCookie);
     expect(afterRevocation.status).toBe(401);

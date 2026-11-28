@@ -32,6 +32,8 @@ export const sessionStore = createStore<SessionState>()(() => ({
 
 let refreshPromise: Promise<RefreshResult> | undefined;
 let refreshPromiseGeneration: number | undefined;
+let sessionQueue: Promise<void> | undefined;
+const SESSION_LOCK_NAME = `__${PRODUCT_SLUG}_session`;
 const LOGOUT_TIMEOUT_MS = 5_000;
 // Refresh answers that mean "there is no session to continue". 401: the refresh credentials are
 // missing, expired or revoked. 404 and 405: this api has no refresh endpoint at all, so nothing
@@ -65,6 +67,23 @@ export function clearSignedOutFlag(): void {
   }
 }
 
+function withSessionLock<T>(operation: () => Promise<T>): Promise<T> {
+  if (typeof navigator !== 'undefined' && 'locks' in navigator) {
+    return navigator.locks.request(SESSION_LOCK_NAME, operation);
+  }
+
+  const result = sessionQueue ? sessionQueue.then(operation, operation) : operation();
+  const tail = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  sessionQueue = tail;
+  void tail.then(() => {
+    if (sessionQueue === tail) sessionQueue = undefined;
+  });
+  return result;
+}
+
 export async function refreshAccessToken(): Promise<RefreshResult> {
   const { accessToken, restoreStatus } = sessionStore.getState();
   if (restoreStatus === 'done' && accessToken === undefined) return 'unavailable';
@@ -73,7 +92,7 @@ export async function refreshAccessToken(): Promise<RefreshResult> {
   if (refreshPromise && refreshPromiseGeneration === generation) return refreshPromise;
 
   refreshPromiseGeneration = generation;
-  refreshPromise = (async () => {
+  refreshPromise = withSessionLock(async () => {
     try {
       const { accessToken } = RefreshResponseSchema.parse(
         await apiFetch('/api/auth/refresh', { method: 'POST' }),
@@ -94,7 +113,7 @@ export async function refreshAccessToken(): Promise<RefreshResult> {
         refreshPromiseGeneration = undefined;
       }
     }
-  })();
+  });
 
   return refreshPromise;
 }
@@ -138,11 +157,13 @@ export function ensureSessionHandlers(): void {
 }
 
 export async function signIn(credentials: LoginRequest): Promise<void> {
-  const { accessToken } = LoginResponseSchema.parse(await authLogin(credentials));
-  ensureSessionHandlers();
   bumpSessionGeneration();
-  clearSignedOutFlag();
-  sessionStore.setState({ accessToken, signedOut: false, restoreStatus: 'done' });
+  await withSessionLock(async () => {
+    const { accessToken } = LoginResponseSchema.parse(await authLogin(credentials));
+    ensureSessionHandlers();
+    clearSignedOutFlag();
+    sessionStore.setState({ accessToken, signedOut: false, restoreStatus: 'done' });
+  });
 }
 
 /**
