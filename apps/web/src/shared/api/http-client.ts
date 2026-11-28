@@ -16,6 +16,7 @@ export type ApiRequestOptions = RequestInit;
 export type RefreshResult = 'refreshed' | 'rejected' | 'unavailable';
 
 const REFRESH_URL = '/api/auth/refresh';
+const LOGIN_URL = '/api/auth/login';
 
 let accessTokenProvider: (() => string | undefined) | undefined;
 let rejectedTokenHandler: ((token: string) => void) | undefined;
@@ -89,7 +90,7 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
     if (sentToken) headers.set('Authorization', `Bearer ${sentToken}`);
     const response = await fetch(url, { ...options, headers, credentials: 'same-origin' });
 
-    if (response.status === 401 && sentToken && url !== REFRESH_URL) {
+    if (response.status === 401 && sentToken && url !== REFRESH_URL && url !== LOGIN_URL) {
       if (getSessionGeneration() !== sentGeneration) {
         throw await unauthorizedError(response);
       }

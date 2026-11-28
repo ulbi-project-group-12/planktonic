@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import {
+  authLogin,
   getAuthRegisterMutationOptions,
   type useAuthRegister,
   type useHealthReady,
@@ -263,6 +264,22 @@ describe('refresh on 401', () => {
     });
 
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not refresh a rejected login', async () => {
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ message: 'Invalid credentials' }, { status: 401 }));
+    const refresh = vi.fn().mockResolvedValue('refreshed');
+    setAccessTokenProvider(() => 'old-token');
+    setRefreshHandler(refresh);
+
+    await expect(
+      authLogin({ email: 'ada@example.com', password: 'wrong-password' }),
+    ).rejects.toMatchObject({ status: 401 });
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(refresh).not.toHaveBeenCalled();
   });
 });
 

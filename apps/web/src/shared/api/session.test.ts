@@ -169,6 +169,26 @@ it('keeps the session empty when login is rejected', async () => {
   expect(sessionStore.getState().accessToken).toBeUndefined();
 });
 
+it('finishes restoring when a sign-in during refresh is rejected', async () => {
+  const refresh = Promise.withResolvers<Response>();
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockReturnValueOnce(refresh.promise)
+    .mockResolvedValueOnce(Response.json({ message: 'Invalid credentials' }, { status: 401 }));
+
+  const restoring = restoreSession();
+  const signingIn = signIn(credentials);
+  refresh.resolve(Response.json({ accessToken: 'stale-token' }));
+
+  await restoring;
+  await expect(signingIn).rejects.toMatchObject({ status: 401 });
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+  });
+});
+
 it('restoreSession saves the token on 200', async () => {
   vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
     Response.json({ accessToken: 'restored-token' }),
@@ -263,8 +283,9 @@ it('ignores a pending restore after sign-out and does not start another restore'
     .mockResolvedValueOnce(Response.json({}));
 
   const pendingRestore = restoreSession();
-  await signOut();
+  const signingOut = signOut();
   resolve(Response.json({ accessToken: 'old-session-token' }));
+  await signingOut;
   await pendingRestore;
   await restoreSession();
 
@@ -309,9 +330,69 @@ it('discards a refresh started during sign-out and stays signed out until sign-i
   expect(sessionStore.getState().accessToken).toBe('new-token');
 });
 
+it('cancels a queued sign-in when sign-out happens first', async () => {
+  const refresh = Promise.withResolvers<Response>();
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockReturnValueOnce(refresh.promise)
+    .mockResolvedValueOnce(Response.json({}));
+
+  const restoring = restoreSession();
+  const signingIn = signIn(credentials);
+  const signingOut = signOut();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+
+  refresh.resolve(Response.json({ accessToken: 'stale-token' }));
+  await restoring;
+  await signingIn;
+  await signingOut;
+
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(fetcher).toHaveBeenNthCalledWith(
+    2,
+    '/api/auth/logout',
+    expect.objectContaining({ method: 'POST' }),
+  );
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
+});
+
+it('logs out the session created by an in-flight sign-in when sign-out happens first', async () => {
+  const login = Promise.withResolvers<Response>();
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockReturnValueOnce(login.promise)
+    .mockResolvedValueOnce(Response.json({}));
+
+  const signingIn = signIn(credentials);
+  const signingOut = signOut();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+
+  login.resolve(Response.json({ accessToken: 'cancelled-login-token' }));
+  await signingIn;
+  await signingOut;
+
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(fetcher).toHaveBeenNthCalledWith(
+    2,
+    '/api/auth/logout',
+    expect.objectContaining({ method: 'POST' }),
+  );
+  expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).toBe('1');
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
+});
+
 it('keeps a new sign-in when an older logout completes', async () => {
   const logout = Promise.withResolvers<Response>();
-  vi.spyOn(globalThis, 'fetch')
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
     .mockResolvedValueOnce(Response.json({ accessToken: 'old-token' }))
     .mockReturnValueOnce(logout.promise)
     .mockResolvedValueOnce(Response.json({ accessToken: 'new-token' }));
@@ -319,9 +400,11 @@ it('keeps a new sign-in when an older logout completes', async () => {
   await signIn(credentials);
   const signingOut = signOut();
   expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).toBe('1');
-  await signIn(credentials);
+  const signingIn = signIn(credentials);
+  expect(fetcher).toHaveBeenCalledTimes(2);
   logout.resolve(Response.json({}));
   await signingOut;
+  await signingIn;
 
   expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).toBeNull();
   expect(sessionStore.getState()).toMatchObject({

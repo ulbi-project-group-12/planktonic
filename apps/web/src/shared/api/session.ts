@@ -157,12 +157,21 @@ export function ensureSessionHandlers(): void {
 }
 
 export async function signIn(credentials: LoginRequest): Promise<void> {
-  bumpSessionGeneration();
+  const generation = bumpSessionGeneration();
   await withSessionLock(async () => {
-    const { accessToken } = LoginResponseSchema.parse(await authLogin(credentials));
-    ensureSessionHandlers();
-    clearSignedOutFlag();
-    sessionStore.setState({ accessToken, signedOut: false, restoreStatus: 'done' });
+    if (getSessionGeneration() !== generation) return;
+    try {
+      const { accessToken } = LoginResponseSchema.parse(await authLogin(credentials));
+      if (getSessionGeneration() !== generation) return;
+      ensureSessionHandlers();
+      clearSignedOutFlag();
+      sessionStore.setState({ accessToken, signedOut: false, restoreStatus: 'done' });
+    } catch (error) {
+      if (getSessionGeneration() === generation) {
+        sessionStore.setState({ restoreStatus: 'done' });
+      }
+      throw error;
+    }
   });
 }
 
@@ -172,27 +181,31 @@ export async function signIn(credentials: LoginRequest): Promise<void> {
  * fails, so the user is not trapped on a broken network.
  */
 export async function signOut(): Promise<void> {
-  bumpSessionGeneration();
-  const generation = getSessionGeneration();
+  const generation = bumpSessionGeneration();
   // Mark the browser as explicitly signed out even before the server request, so a failed
   // revocation cannot be recovered by simply reloading the page.
   setSignedOutFlag();
-  const controller = new AbortController();
-  const timeout = setTimeout(() => {
-    controller.abort();
-  }, LOGOUT_TIMEOUT_MS);
   try {
-    // Logout uses the refresh cookie. A 401 here must not trigger a token refresh.
-    const response = await fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'same-origin',
-      signal: controller.signal,
+    await withSessionLock(async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => {
+        controller.abort();
+      }, LOGOUT_TIMEOUT_MS);
+      try {
+        // Logout uses the refresh cookie. A 401 here must not trigger a token refresh.
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'same-origin',
+          signal: controller.signal,
+        });
+        if (response.ok) LogoutResponseSchema.parse(await response.json());
+      } finally {
+        clearTimeout(timeout);
+      }
     });
-    if (response.ok) LogoutResponseSchema.parse(await response.json());
   } catch {
     // Best-effort: the server cookie may already be expired or the network may be down.
   } finally {
-    clearTimeout(timeout);
     if (getSessionGeneration() === generation) {
       // Discard refreshes that started while logout was in flight.
       bumpSessionGeneration();
