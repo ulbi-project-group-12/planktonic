@@ -73,6 +73,29 @@ function parseErrorBody(text: string | undefined): unknown {
   }
 }
 
+function tokenUserId(token: string): string | undefined {
+  const parts = token.split('.');
+  const encodedPayload = parts[1];
+  if (parts.length !== 3 || encodedPayload === undefined) return undefined;
+
+  try {
+    const base64 = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
+    const claims = JSON.parse(payload) as unknown;
+    if (typeof claims !== 'object' || claims === null || !('sub' in claims)) return undefined;
+    return typeof claims.sub === 'string' ? claims.sub : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function belongsToSameUser(sentToken: string, newToken: string): boolean {
+  const sentUserId = tokenUserId(sentToken);
+  // Opaque tokens remain supported; generation still guards their session changes.
+  if (sentUserId === undefined) return true;
+  return sentUserId === tokenUserId(newToken);
+}
+
 async function unauthorizedError(response: Response): Promise<ApiError> {
   const text = await response.text().catch(() => undefined);
   return new ApiError(response.status, parseErrorBody(text));
@@ -97,14 +120,25 @@ export async function apiFetch<T>(url: string, options: ApiRequestOptions = {}):
 
       if (!isRetry) {
         const currentToken = accessTokenProvider?.();
-        if (currentToken && currentToken !== sentToken) return send(true);
+        if (currentToken && currentToken !== sentToken) {
+          if (!belongsToSameUser(sentToken, currentToken)) {
+            throw await unauthorizedError(response);
+          }
+          return send(true);
+        }
 
         if (refreshHandler) {
           const result = await refreshHandler();
           if (getSessionGeneration() !== sentGeneration) {
             throw await unauthorizedError(response);
           }
-          if (result === 'refreshed') return send(true);
+          if (result === 'refreshed') {
+            const refreshedToken = accessTokenProvider?.();
+            if (refreshedToken && !belongsToSameUser(sentToken, refreshedToken)) {
+              throw await unauthorizedError(response);
+            }
+            return send(true);
+          }
           if (result === 'rejected') rejectedTokenHandler?.(sentToken);
           throw await unauthorizedError(response);
         }

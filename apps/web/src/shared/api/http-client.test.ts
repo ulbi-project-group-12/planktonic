@@ -99,6 +99,14 @@ it('preserves non-JSON upstream errors', async () => {
 describe('refresh on 401', () => {
   const credentials = { email: 'demo@example.com', password: 'demo-password' };
 
+  function tokenForUser(userId: string): string {
+    const payload = btoa(JSON.stringify({ sub: userId }))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    return `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${payload}.signature`;
+  }
+
   it('runs one refresh for five parallel 401 requests and retries them with the new token', async () => {
     let refreshCount = 0;
     const attempts = new Map<string, number>();
@@ -159,6 +167,44 @@ describe('refresh on 401', () => {
     expect(new Headers(fetcher.mock.calls[2]?.[1]?.headers).get('Authorization')).toBe(
       'Bearer new-token',
     );
+  });
+
+  it('retries with a refreshed JWT for the same user', async () => {
+    const oldToken = tokenForUser('user-1');
+    const newToken = tokenForUser('user-1');
+    let currentToken = oldToken;
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({ ok: true }));
+    setAccessTokenProvider(() => currentToken);
+    setRefreshHandler(() => {
+      currentToken = newToken;
+      return Promise.resolve('refreshed' as const);
+    });
+
+    await expect(apiFetch('/api/resource')).resolves.toEqual({ ok: true });
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(new Headers(fetcher.mock.calls[1]?.[1]?.headers).get('Authorization')).toBe(
+      `Bearer ${newToken}`,
+    );
+  });
+
+  it('does not retry with a refreshed JWT for another user', async () => {
+    let currentToken = tokenForUser('user-1');
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 401 }));
+    setAccessTokenProvider(() => currentToken);
+    setRefreshHandler(() => {
+      currentToken = tokenForUser('user-2');
+      return Promise.resolve('refreshed' as const);
+    });
+
+    await expect(apiFetch('/api/resource')).rejects.toMatchObject({ status: 401 });
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
   it('clears the session when refresh is rejected', async () => {

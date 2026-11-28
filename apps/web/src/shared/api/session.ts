@@ -179,10 +179,18 @@ export async function signIn(credentials: LoginRequest): Promise<void> {
   const signedOutFlag = getSignedOutFlag();
   const generation = bumpSessionGeneration();
   await withSessionLock(async () => {
-    if (getSessionGeneration() !== generation || hasNewerSignedOutFlag(signedOutFlag)) return;
+    if (getSessionGeneration() !== generation) return;
+    if (hasNewerSignedOutFlag(signedOutFlag)) {
+      sessionStore.setState({ accessToken: undefined, signedOut: true, restoreStatus: 'done' });
+      return;
+    }
     try {
       const { accessToken } = LoginResponseSchema.parse(await authLogin(credentials));
-      if (getSessionGeneration() !== generation || hasNewerSignedOutFlag(signedOutFlag)) return;
+      if (getSessionGeneration() !== generation) return;
+      if (hasNewerSignedOutFlag(signedOutFlag)) {
+        sessionStore.setState({ accessToken: undefined, signedOut: true, restoreStatus: 'done' });
+        return;
+      }
       ensureSessionHandlers();
       clearSignedOutFlagIfMatch(signedOutFlag);
       bumpSessionGeneration();

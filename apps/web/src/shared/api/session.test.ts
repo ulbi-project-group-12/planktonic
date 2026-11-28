@@ -446,7 +446,31 @@ it('keeps a newer cross-tab sign-out flag when an older login succeeds', async (
   await signingIn;
 
   expect(localStorage.getItem(SIGNED_OUT_FLAG_KEY)).toBe('another-tab-sign-out');
-  expect(sessionStore.getState().accessToken).toBeUndefined();
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
+});
+
+it('finishes a queued sign-in as signed out after a cross-tab sign-out', async () => {
+  const refresh = Promise.withResolvers<Response>();
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(refresh.promise);
+
+  const restoring = restoreSession();
+  const signingIn = signIn(credentials);
+  localStorage.setItem(SIGNED_OUT_FLAG_KEY, 'another-tab-sign-out');
+  refresh.resolve(Response.json({ accessToken: 'stale-token' }));
+
+  await restoring;
+  await signingIn;
+
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(sessionStore.getState()).toMatchObject({
+    accessToken: undefined,
+    restoreStatus: 'done',
+    signedOut: true,
+  });
 });
 
 it('clears an old session when login fails after a newer sign-out', async () => {
