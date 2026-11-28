@@ -7,7 +7,12 @@ export function parseRefreshCookie(cookieHeader?: string): string | undefined {
     const [name, ...rest] = part.trim().split('=');
     if (name === REFRESH_COOKIE_NAME) {
       const value = rest.join('=');
-      return value ? decodeURIComponent(value) : undefined;
+      if (!value) return undefined;
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return undefined;
+      }
     }
   }
   return undefined;

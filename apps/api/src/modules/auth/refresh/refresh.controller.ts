@@ -48,7 +48,7 @@ export class RefreshController {
     } catch (error) {
       if (error instanceof HttpException) {
         const status = error.getStatus();
-        if (status === 401 || status === 503) {
+        if (status === 401) {
           response.setHeader('Set-Cookie', clearRefreshCookie(secure));
         }
       }

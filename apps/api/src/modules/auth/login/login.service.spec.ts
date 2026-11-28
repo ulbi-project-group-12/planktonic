@@ -132,3 +132,29 @@ describe('LoginService.login', () => {
     expect(sessionCall.expiresAt.getTime()).toBeGreaterThan(Date.now());
   });
 });
+
+describe('LoginService browser detection', () => {
+  it.each([
+    ['Edge', 'Mozilla/5.0 Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0', 'Edge 131'],
+    ['Opera', 'Mozilla/5.0 Chrome/120.0.0.0 Safari/537.36 OPR/106.0.0.0', 'Opera 106'],
+    [
+      'Yandex Browser',
+      'Mozilla/5.0 Chrome/128.0.0.0 Safari/537.36 YaBrowser/24.10.0.0',
+      'YaBrowser 24',
+    ],
+    ['Chrome', 'Mozilla/5.0 Chrome/131.0.0.0 Safari/537.36', 'Chrome 131'],
+    ['Firefox', 'Mozilla/5.0 Firefox/133.0', 'Firefox 133'],
+    ['Safari', 'Mozilla/5.0 Safari/17.0', 'Safari 17'],
+  ])('records %s without falling back to Chrome', async (_name, userAgent, browser) => {
+    const { service, findActiveByEmail, createSession, signAsync } = await setup();
+    findActiveByEmail.mockResolvedValue({
+      id: '019a8f00-0000-7000-8000-000000000004',
+      passwordHash,
+    });
+    signAsync.mockResolvedValue('signed-token');
+
+    await service.login(request, '127.0.0.1', userAgent);
+
+    expect(createSession).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ browser }));
+  });
+});

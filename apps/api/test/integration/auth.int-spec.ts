@@ -295,7 +295,8 @@ describe('refresh against PostgreSQL', () => {
 
     const firstRefresh = await refresh(0, oldCookie);
     expect(firstRefresh.status).toBe(200);
-    const newCookie = parseSetCookie(firstRefresh)!;
+    const newCookie = parseSetCookie(firstRefresh);
+    if (!newCookie) throw new Error('Expected a rotated refresh cookie');
 
     const replay = await refresh(1, oldCookie);
     expect(replay.status).toBe(401);
@@ -333,8 +334,8 @@ describe('refresh against PostgreSQL', () => {
     const cookie = parseSetCookie(loginResponse)!;
 
     const [a, b] = await Promise.all([refresh(0, cookie), refresh(1, cookie)]);
-    const successes = [a, b].filter((r) => r.status === 200).length;
-    expect(successes).toBeLessThanOrEqual(1);
+    const statuses = [a.status, b.status].sort((left, right) => left - right);
+    expect(statuses).toEqual([200, 401]);
   });
 
   it('updates lastUsedAt only after a successful refresh', async () => {

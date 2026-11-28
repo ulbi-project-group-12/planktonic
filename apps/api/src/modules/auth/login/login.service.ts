@@ -104,9 +104,18 @@ export class LoginService {
   private parseUserAgent(userAgent?: string): { browser: string | null; os: string | null } {
     if (!userAgent) return { browser: null, os: null };
 
-    const browserMatch = /(Chrome|Firefox|Safari|Edge|Opera|YaBrowser)\/(\d+)/i.exec(userAgent);
+    const browserMatch =
+      /(Edg|OPR|YaBrowser)\/(\d+)/i.exec(userAgent) ??
+      /(Chrome|Firefox|Safari|Edge|Opera)\/(\d+)/i.exec(userAgent);
     const [, browserName = '', browserMajor = ''] = browserMatch ?? [];
-    const browser = browserName ? `${browserName} ${browserMajor}` : null;
+    const browserAliases: Record<string, string> = {
+      edg: 'Edge',
+      opr: 'Opera',
+      yabrowser: 'YaBrowser',
+    };
+    const browser = browserName
+      ? `${browserAliases[browserName.toLowerCase()] ?? browserName} ${browserMajor}`
+      : null;
 
     const osMatch =
       /Windows NT (\d+\.\d+)|Mac OS X (\d+[._]\d+)|Android (\d+)|iPhone OS (\d+[._]\d+)/i.exec(
