@@ -1,29 +1,35 @@
 #!/usr/bin/env node
-// The click-through walk of the phase 2 realtime prototype (UL-135): two browser windows side by
-// side on the local stand, each bound to its own api replica, record the scenario of the ticket.
+// The click-through walks: browser windows on the local stand, driven through a scenario and
+// recorded. `--walk` picks the scenario: `prototype` (the default) is the phase 2 realtime prototype
+// of UL-135, two windows side by side, each bound to its own api replica; `onboarding` goes from
+// the landing page to a workspace with two members (scenario-onboarding.mjs).
 //
 //   node tools/demo-walk/walk.mjs --out <dir>                 records <dir>/recording.mp4, .srt, poster
 //   node tools/demo-walk/walk.mjs --out <dir> --stills        the same walk, saving a still per beat and
 //                                                             before every click into <dir>/stills/
 //   node tools/demo-walk/walk.mjs --out <dir> --assemble      rebuilds the video from the last walk's frames
+//   --walk <name>                   the scenario: prototype (default) or onboarding
 //   --base http://127.0.0.1:58080   the stand's Traefik origin (DEMO_BASE; default TRAEFIK_PORT 58080)
 //   --test-log <file>               a captured integration run, shown as the closing card (optional)
 //
 // Needs Google Chrome (CHROME_PATH to override) and ffmpeg. No npm dependency: Chrome is driven over
 // the DevTools protocol with Node's own WebSocket (cdp.mjs).
 //
-// What the walk holds to:
+// What every walk holds to:
 // - ONLY THE APP IS RECORDED. Chrome runs headless with a throwaway profile; the frames come from
-//   Chrome's own screencast of the two app pages, never from the screen. No DevTools panel, no
+//   Chrome's own screencast of the app pages, never from the screen. No DevTools panel, no
 //   other tab, no desktop can be in a frame.
 // - LOCAL STAND ONLY. The base URL must be a loopback origin; the walk stops otherwise.
-// - TWO WINDOWS, TWO REPLICAS. A and B are separate browser contexts (separate cookie jars), so each
-//   gets its own `io_srv` sticky cookie. If both land on one replica, B's cookies are cleared and B
-//   reloads, up to 8 times; the walk stops if they still match.
+// - A and B are separate browser contexts (separate cookie jars): two different visitors.
+// - The walk checks what the viewer is told and stops on a mismatch.
+//
+// And the prototype walk:
+// - TWO WINDOWS, TWO REPLICAS. Each window gets its own `io_srv` sticky cookie. If both land on one
+//   replica, B's cookies are cleared and B reloads, up to 8 times; the walk stops if they still match.
 // - B GOES OFFLINE BY NETWORK EMULATION OF ITS OWN PAGE (`Network.emulateNetworkConditions`, what
 //   DevTools → Network → Offline does), never by stopping a container. A is never touched.
-// - The walk checks what the viewer is told: different instance ids, B's feed #1..#7 in order and
-//   once after the catch-up, and exactly one retried message in both windows. It stops otherwise.
+// - It checks: different instance ids, B's feed #1..#7 in order and once after the catch-up, and
+//   exactly one retried message in both windows.
 import { spawnSync } from 'node:child_process';
 import {
   appendFileSync,
@@ -40,7 +46,6 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { BEATS, CAPTIONS } from './beats.mjs';
 import { launchChrome } from './cdp.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -51,8 +56,13 @@ const { values: argv } = parseArgs({
     stills: { type: 'boolean', default: false },
     assemble: { type: 'boolean', default: false },
     'test-log': { type: 'string' },
+    walk: { type: 'string' },
   },
 });
+/**
+ * Which walk: `prototype` (UL-135, the default) has its script in beats.mjs and its scenario below;
+ * any other name reads beats-<name>.mjs and scenario-<name>.mjs next to this file.
+ */
 const OUT = resolve(argv.out ?? join(HERE, 'out'));
 const STILLS = argv.stills;
 const STILL_DIR = join(OUT, 'stills');
@@ -81,15 +91,47 @@ const FRAMES = (() => {
   }
   return mkdtempSync(FRAMES_PREFIX);
 })();
+/**
+ * `--assemble` rebuilds a recorded walk, so it reads the recording and takes the walk's name from
+ * it: the script (captions, card, poster) must be the one the frames were recorded with. A
+ * recording from before the name was saved is the prototype walk, the only one there was.
+ */
+const RECORDED = argv.assemble
+  ? JSON.parse(readFileSync(join(FRAMES, 'raw.json'), 'utf8'))
+  : undefined;
+const WALK = (() => {
+  const recorded = RECORDED ? (RECORDED.walk ?? 'prototype') : undefined;
+  if (recorded && argv.walk && argv.walk !== recorded)
+    throw new Error(`--walk ${argv.walk}: the recording in ${OUT} is the ${recorded} walk`);
+  return recorded ?? argv.walk ?? 'prototype';
+})();
+if (!/^[a-z][a-z0-9-]*$/.test(WALK)) throw new Error(`--walk ${WALK}: not a walk name`);
+const SCRIPT = await import(WALK === 'prototype' ? './beats.mjs' : `./beats-${WALK}.mjs`);
+const { BEATS, CAPTIONS } = SCRIPT;
 const BASE = (argv.base ?? process.env.DEMO_BASE ?? 'http://127.0.0.1:58080').replace(/\/$/, '');
 const PAGE_URL = `${BASE}/prototype`;
 const TEST_LOG = argv['test-log'] ? resolve(argv['test-log']) : undefined;
 
-/** The frame: 1920x1080, window labels on top, two 940x900 windows, a caption band below. */
+/**
+ * The frame: 1920x1080, window labels on top, the windows, a caption band below. Two layouts:
+ * `pair` is two 940x900 windows side by side (A and B), `solo` is window A alone at 1894x900,
+ * wide enough for the app's desktop layout. A walk switches with `setLayout`; every switch starts
+ * a new scene, and the scenes are assembled one by one and joined.
+ */
 const FRAME = { width: 1920, height: 1080 };
 const SCALE = 1.5; // large type: every CSS pixel is drawn as 1.5 frame pixels
 const PANE = { width: 940, height: 900, y: 60, xA: 13, xB: 967 };
 const VIEW = { width: Math.round(PANE.width / SCALE), height: Math.round(PANE.height / SCALE) };
+const LAYOUTS = {
+  pair: [
+    { win: 'a', x: PANE.xA, width: PANE.width },
+    { win: 'b', x: PANE.xB, width: PANE.width },
+  ],
+  solo: [{ win: 'a', x: PANE.xA, width: FRAME.width - 2 * PANE.xA }],
+};
+/** The CSS viewport of a pane's window. */
+const viewOf = (pane) => ({ width: Math.round(pane.width / SCALE), height: VIEW.height });
+const LABELS = { a: 'Окно A', b: 'Окно B', ...SCRIPT.LABELS };
 /** Headless Chrome keeps 87 CSS px of a window's height for its own frame. */
 const WINDOW_EXTRA_HEIGHT = 87;
 const FPS = 30;
@@ -174,18 +216,42 @@ const escapeHtml = (s) =>
   s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const FONT = `-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`;
 
-/** The frame behind the two windows: the window labels and the caption band (1280x720 CSS). */
-function backgroundHtml(caption) {
+/** The frame behind the windows of a layout: their labels and the caption band (1280x720 CSS). */
+function backgroundHtml(caption, layout) {
   const px = (v) => `${v / SCALE}px`;
-  const label = (side, x) =>
-    `<div style="position:absolute;top:0;left:${px(x)};width:${px(PANE.width)};height:${px(PANE.y)};display:flex;align-items:center;justify-content:center;font:700 18px/1 ${FONT};color:#e2e8f0;letter-spacing:.3px">Окно ${side}</div>`;
-  const pane = (x) =>
-    `<div style="position:absolute;top:${px(PANE.y - 1)};left:${px(x - 1)};width:${px(PANE.width)};height:${px(PANE.height)};border:1px solid #334155"></div>`;
+  const label = (p) =>
+    `<div style="position:absolute;top:0;left:${px(p.x)};width:${px(p.width)};height:${px(PANE.y)};display:flex;align-items:center;justify-content:center;font:700 18px/1 ${FONT};color:#e2e8f0;letter-spacing:.3px">${escapeHtml(LABELS[p.win])}</div>`;
+  const pane = (p) =>
+    `<div style="position:absolute;top:${px(PANE.y - 1)};left:${px(p.x - 1)};width:${px(p.width)};height:${px(PANE.height)};border:1px solid #334155"></div>`;
   const chip = caption
     ? `<div style="position:absolute;left:0;right:0;top:${px(PANE.y + PANE.height)};bottom:0;display:flex;align-items:center;justify-content:center"><div style="padding:9px 22px;border-radius:999px;background:#2563eb;color:#fff;white-space:nowrap;font:600 22px/1.2 ${FONT}">${escapeHtml(caption)}</div></div>`
     : '';
   return `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;width:1280px;height:720px;background:#0f172a;overflow:hidden}</style>
-${label('A', PANE.xA)}${label('B', PANE.xB)}${pane(PANE.xA)}${pane(PANE.xB)}${chip}`;
+${LAYOUTS[layout].map((p) => label(p) + pane(p)).join('')}${chip}`;
+}
+const bgKey = (layout, caption) => `${layout}:${caption ?? 'none'}`;
+
+/**
+ * A closing card of plain text (the script's `CARD`: a title, groups of lines, a footnote), for
+ * what a walk has no screen to show. Nothing on it is a recording.
+ */
+function listCardHtml(caption, card) {
+  const groups = card.groups
+    .map(
+      (g) =>
+        `<section><h2>${escapeHtml(g.title)}</h2><ul>${g.items.map((i) => `<li>${escapeHtml(i)}</li>`).join('')}</ul></section>`,
+    )
+    .join('');
+  return `<!doctype html><meta charset="utf-8"><style>
+html,body{margin:0;width:1280px;height:720px;background:#0f172a;overflow:hidden;font-family:${FONT};color:#e2e8f0}
+.band{position:absolute;left:0;right:0;top:${(PANE.y + PANE.height) / SCALE}px;bottom:0;display:flex;align-items:center;justify-content:center}
+.chip{padding:9px 22px;border-radius:999px;background:#2563eb;color:#fff;white-space:nowrap;font:600 22px/1.2 ${FONT}}
+.card{position:absolute;top:${PANE.y / SCALE}px;left:9px;right:9px;bottom:${720 - (PANE.y + PANE.height) / SCALE}px;background:#020617;border:1px solid #334155;border-radius:6px;padding:26px 56px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:24px}
+h1{margin:0 0 4px;font:700 36px/1.2 ${FONT};letter-spacing:-.3px}
+h2{margin:0 0 8px;font:700 22px/1.3 ${FONT};color:#93c5fd}
+ul{margin:0;padding-left:22px;font:400 21px/1.6 ${FONT}}
+.note{color:#94a3b8;font:400 18px/1.4 ${FONT}}
+</style><div class="band"><div class="chip">${escapeHtml(caption)}</div></div><div class="card"><h1>${escapeHtml(card.title)}</h1>${groups}${card.note ? `<div class="note">${escapeHtml(card.note)}</div>` : ''}</div>`;
 }
 
 /** The closing card: a captured integration run, as a terminal. */
@@ -271,6 +337,27 @@ class Win {
     );
   }
 
+  /** Opens an address of the stand and waits for the document; the caller waits for its content. */
+  async goto(path) {
+    await this.send('Page.navigate', { url: `${BASE}${path}` });
+    await this.waitFor(`document.readyState === 'complete'`, 'the page to load');
+  }
+
+  /** Resizes the window in place (no reload, so a session kept in the page's memory survives). */
+  async resize({ width, height }) {
+    const { windowId } = await this.cdp.send('Browser.getWindowForTarget', {
+      targetId: this.targetId,
+    });
+    await this.cdp.send('Browser.setWindowBounds', {
+      windowId,
+      bounds: { width, height: height + WINDOW_EXTRA_HEIGHT },
+    });
+    await this.waitFor(
+      `innerWidth === ${width} && innerHeight === ${height}`,
+      `a ${width}x${height} window`,
+    );
+  }
+
   async network({ offline, latency = 0 }) {
     await this.send('Network.emulateNetworkConditions', {
       offline,
@@ -316,8 +403,11 @@ async function openWindow(cdp, name, { width, height }) {
 
 /* ── the recording ─────────────────────────────────────────────────────────────────────────── */
 class Walk {
-  constructor(cdp, a, b, stage, bgFiles) {
-    Object.assign(this, { cdp, a, b, stage, bgFiles });
+  constructor(cdp, a, b, stage, bgFiles, layout) {
+    Object.assign(this, { cdp, a, b, stage, bgFiles, layout });
+    // What a scenario in its own file needs from this one.
+    Object.assign(this, { base: BASE, stillsRun: STILLS, log, sleep });
+    this.scenes = [];
     this.marks = [];
     this.gaps = [];
     this.captions = [];
@@ -337,21 +427,48 @@ class Walk {
         if (sid !== w.sessionId) return;
         const file = join(FRAMES, w.name, `${String(++n).padStart(6, '0')}.jpg`);
         writeFileSync(file, Buffer.from(data, 'base64'));
-        w.frames.push({ file, t: metadata.timestamp ?? now() });
+        // `w`: the CSS width of the window when the frame was taken (a walk may resize A).
+        w.frames.push({ file, t: metadata.timestamp ?? now(), w: metadata.deviceWidth });
         w.send('Page.screencastFrameAck', { sessionId }).catch(ignore);
       });
     }
     this.start = now();
+    this.scenes.push({ layout: this.layout, t: this.start });
     for (const w of [this.a, this.b]) {
       await w.send('Page.startScreencast', {
         format: 'jpeg',
         quality: 92,
-        maxWidth: PANE.width,
+        // A's frames are as wide as its widest layout; in `pair` its window is narrow anyway.
+        maxWidth: w === this.a ? LAYOUTS.solo[0].width : PANE.width,
         maxHeight: PANE.height,
       });
     }
-    // Nudge both pages so each sends a first frame at once.
-    for (const w of [this.a, this.b]) await w.eval('window.__walkHide?.(true)').catch(ignore);
+    // Nudge both pages so each sends a first frame at once (a page that never changes sends none).
+    for (const w of [this.a, this.b]) {
+      await w.eval('window.__walkHide?.(true)').catch(ignore);
+      await w
+        .eval(
+          `(() => { const s = document.documentElement.style; s.opacity = '0.999'; requestAnimationFrame(() => { s.opacity = ''; }); })()`,
+        )
+        .catch(ignore);
+    }
+  }
+
+  /**
+   * Switches the frame between `pair` and `solo`: A's window is resized in place and a new scene
+   * starts. The resize itself is cut out of the video.
+   */
+  async setLayout(layout) {
+    if (layout === this.layout) return;
+    const pane = LAYOUTS[layout].find((p) => p.win === 'a');
+    await this.skip(async () => {
+      await this.a.eval('window.__walkHide?.(true)').catch(ignore);
+      await this.a.resize(viewOf(pane));
+      await sleep(500);
+    });
+    this.layout = layout;
+    this.scenes.push({ layout, t: now() });
+    log(`layout ${layout}`);
   }
 
   /** Every beat of the script is marked once, in order, or the walk stops. */
@@ -374,26 +491,37 @@ class Walk {
     await sleep((b?.hold ?? 1) * 1000);
   }
 
-  /** --stills: both windows as the viewer sees them, in the frame, without the pointer. */
   /**
-   * `holds` (optional): checked right after B's screenshot; if it no longer holds, the still is
-   * not saved (returns false), so a still never carries a name its picture does not show.
+   * --stills: the windows of the current layout as the viewer sees them, in the frame, without
+   * the pointer.
+   * `holds` (optional): checked right after the first screenshot (B's in `pair`); if it no longer
+   * holds, the still is not saved (returns false), so a still never carries a name its picture
+   * does not show.
    */
   async still(tag, { holds, settle = 400 } = {}) {
     if (!STILLS) return false;
     const id = this.marks.at(-1)?.id ?? 'pre';
     await sleep(settle);
     const name = `${String(this.stills + 1).padStart(3, '0')}-${id}-${tag}`;
-    const pa = join(FRAMES, `${name}-A.png`);
-    const pb = join(FRAMES, `${name}-B.png`);
-    await this.b.screenshot(pb);
-    if (holds && !(await holds())) {
-      log(`still ${id}-${tag} skipped: the screen moved on during the capture`);
-      return false;
+    const panes = LAYOUTS[this.layout];
+    const shots = [];
+    // B first, as before: it is the window whose state a `holds` check is about.
+    for (const pane of [...panes].reverse()) {
+      const file = join(FRAMES, `${name}-${pane.win.toUpperCase()}.png`);
+      await this[pane.win].screenshot(file);
+      shots.unshift(file);
+      if (shots.length === 1 && holds && !(await holds())) {
+        log(`still ${id}-${tag} skipped: the screen moved on during the capture`);
+        return false;
+      }
     }
-    await this.a.screenshot(pa);
     this.stills += 1;
-    composeStill(this.bgFiles[this.caption ?? 'none'], pa, pb, join(STILL_DIR, `${name}.png`));
+    composeStill(
+      this.bgFiles[bgKey(this.layout, this.caption)],
+      panes,
+      shots,
+      join(STILL_DIR, `${name}.png`),
+    );
     return true;
   }
 
@@ -411,6 +539,19 @@ class Walk {
       `(() => { const el = ${selector}; if (!el) return null; const r = el.getBoundingClientRect(); return r.width ? { x: r.x, y: r.y, w: r.width, h: r.height } : null; })()`,
       `element ${selector}`,
     );
+    // A target outside the window (a long form in a short window) is scrolled to first.
+    const scrolled = await w.eval(
+      `(() => { const el = ${selector}; const r = el.getBoundingClientRect(); if (r.top >= 0 && r.bottom <= innerHeight) return null; el.scrollIntoView({ block: 'center', behavior: 'smooth' }); return true; })()`,
+    );
+    if (scrolled) {
+      await sleep(650);
+      Object.assign(
+        box,
+        await w.eval(
+          `(() => { const r = (${selector}).getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; })()`,
+        ),
+      );
+    }
     const x = Math.round(box.x + Math.min(box.w / 2, 48));
     const y = Math.round(box.y + box.h / 2);
     const other = w === this.a ? this.b : this.a;
@@ -452,6 +593,19 @@ class Walk {
     }
   }
 
+  /** A key with no text (Escape, Tab). */
+  async press(w, key, keyCode) {
+    for (const type of ['keyDown', 'keyUp']) {
+      await w.send('Input.dispatchKeyEvent', {
+        type,
+        key,
+        code: key,
+        windowsVirtualKeyCode: keyCode,
+      });
+    }
+    await sleep(250);
+  }
+
   async finish() {
     await sleep(600);
     this.end = now();
@@ -463,6 +617,7 @@ class Walk {
 
   raw() {
     return {
+      walk: WALK,
       start: this.start,
       end: this.end,
       marks: this.marks,
@@ -472,22 +627,28 @@ class Walk {
       b: this.b.frames,
       bgFiles: this.bgFiles,
       card: this.card,
-      instances: this.instances,
+      scenes: this.scenes,
+      meta: this.meta,
     };
   }
 }
 
-function composeStill(bg, pa, pb, out) {
+function composeStill(bg, panes, shots, out) {
+  const f = panes.map((p, i) => `[${i + 1}]scale=${p.width}:${PANE.height}[p${i}]`);
+  let last = '0';
+  panes.forEach((p, i) => {
+    f.push(`[${last}][p${i}]overlay=${p.x}:${PANE.y}[x${i}]`);
+    last = `x${i}`;
+  });
   ffmpeg(
     [
       '-i',
       bg,
-      '-i',
-      pa,
-      '-i',
-      pb,
+      ...shots.flatMap((s) => ['-i', s]),
       '-filter_complex',
-      `[1]scale=${PANE.width}:${PANE.height}[a];[2]scale=${PANE.width}:${PANE.height}[b];[0][a]overlay=${PANE.xA}:${PANE.y}[x];[x][b]overlay=${PANE.xB}:${PANE.y}`,
+      f.join(';'),
+      '-map',
+      `[${last}]`,
       '-frames:v',
       '1',
       out,
@@ -652,38 +813,57 @@ async function scenario(w) {
 }
 
 /* ── assembly: frames → one 30 fps video with the waits cut out ────────────────────────────── */
+// Every part is limited-range yuv420p and says so. The window frames are JPEG (full range) and the
+// backgrounds and the card are PNG: left as they come, the parts differ and the joined file changes
+// colour range where the card starts.
+const X264 = [
+  '-c:v',
+  'libx264',
+  '-crf',
+  '17',
+  '-preset',
+  'veryfast',
+  '-pix_fmt',
+  'yuv420p',
+  '-color_range',
+  'tv',
+];
+const TV_RANGE = 'in_range=pc:out_range=tv,format=yuv420p';
+/** The same tags on every part (BT.601 is what JPEG frames and swscale's RGB conversion use). */
+const TAGS = (() => {
+  // setparams has `chroma_location` only in newer ffmpeg; an older one stops on the unknown option
+  // after the whole walk is recorded. Without it the parts still carry the same range and matrix.
+  const help = spawnSync('ffmpeg', ['-hide_banner', '-h', 'filter=setparams'], {
+    encoding: 'utf8',
+  });
+  const chroma = /\bchroma_location\b/.test(`${help.stdout}${help.stderr}`);
+  return `setparams=range=tv:colorspace=bt470bg${chroma ? ':chroma_location=left' : ''}`;
+})();
+
 function assemble(raw) {
   const { start, end, gaps } = raw;
   const removedBefore = (t) => gaps.reduce((s, [a, b]) => s + Math.max(0, Math.min(t, b) - a), 0);
   const inGap = (t) => gaps.some(([a, b]) => t >= a && t < b);
   const master = (t) => Math.max(0, t - start - removedBefore(t));
   // With a closing card the windows end where the card's beat starts; the card follows as a still.
-  const cardMark = raw.card ? raw.marks.find((m) => m.id === 'test-run') : undefined;
+  const cardMark = raw.card ? raw.marks.find((m) => m.id === raw.card.beat) : undefined;
   const mainDuration = master(cardMark ? cardMark.t : end);
   const captions = raw.captions.filter((c) => !cardMark || c.t < cardMark.t);
 
-  const lists = {};
+  // Each window's frames on the master clock.
+  const kept = {};
   for (const side of ['a', 'b']) {
     const frames = raw[side];
-    if (!frames.length) throw new Error(`no frames from window ${side.toUpperCase()}`);
     // Chrome sends a frame only when the picture changes: keep the last frame of each wait, moved to
     // the wait's end, or the picture from before the wait would show after it.
-    const kept = frames.filter((f) => !inGap(f.t));
+    const list = frames.filter((f) => !inGap(f.t));
     for (const [a, b] of gaps) {
       const last = frames.filter((f) => f.t >= a && f.t < b).at(-1);
-      if (last) kept.push({ ...last, t: b });
+      if (last) list.push({ ...last, t: b });
     }
-    kept.sort((x, y) => x.t - y.t);
-    const entries = ['ffconcat version 1.0'];
-    for (let i = 0; i < kept.length; i++) {
-      const from = i === 0 ? 0 : master(kept[i].t);
-      const to = i + 1 < kept.length ? master(kept[i + 1].t) : mainDuration;
-      entries.push(`file '${kept[i].file}'`, `duration ${Math.max(0.001, to - from).toFixed(4)}`);
-    }
-    entries.push(`file '${kept.at(-1).file}'`);
-    lists[side] = join(FRAMES, `${side}.ffconcat`);
-    writeFileSync(lists[side], entries.join('\n'));
-    log(`window ${side.toUpperCase()}: ${frames.length} frames, ${kept.length} kept`);
+    list.sort((x, y) => x.t - y.t);
+    kept[side] = list.map((f) => ({ file: f.file, at: master(f.t), w: f.w }));
+    log(`window ${side.toUpperCase()}: ${frames.length} frames, ${list.length} kept`);
   }
 
   // Caption segments on the master clock.
@@ -692,44 +872,144 @@ function assemble(raw) {
     from: master(c.t),
     to: i + 1 < captions.length ? master(captions[i + 1].t) : mainDuration,
   }));
-  const bgKeys = [...new Set(segs.map((s) => s.key))];
-  const inputs = [
-    '-f',
-    'concat',
-    '-safe',
-    '0',
-    '-i',
-    lists.a,
-    '-f',
-    'concat',
-    '-safe',
-    '0',
-    '-i',
-    lists.b,
-    '-loop',
-    '1',
-    '-i',
-    raw.bgFiles.none,
-  ];
-  for (const k of bgKeys) inputs.push('-loop', '1', '-i', raw.bgFiles[k]);
-  const f = [
-    `[0]fps=${FPS},scale=${PANE.width}:${PANE.height},setpts=PTS-STARTPTS[a]`,
-    `[1]fps=${FPS},scale=${PANE.width}:${PANE.height},setpts=PTS-STARTPTS[b]`,
-    `[2]fps=${FPS},format=yuv420p[bg0]`,
-  ];
+
+  // One scene per layout switch (one scene for a walk that never switches).
+  const scenes = (raw.scenes ?? [{ layout: 'pair', t: start }])
+    .map((s, i, all) => ({
+      layout: s.layout,
+      from: i === 0 ? 0 : master(s.t),
+      to: i + 1 < all.length ? Math.min(master(all[i + 1].t), mainDuration) : mainDuration,
+    }))
+    .filter((s) => s.to - s.from > 0.05);
+  const parts = scenes.map((scene, n) => assembleScene(raw, scene, n, kept, segs));
+
+  let duration = mainDuration;
+  const marks = raw.marks.map((m) => ({ id: m.id, at: Math.round(master(m.t) * 1000) / 1000 }));
+  const mp4 = join(OUT, 'recording.mp4');
+  if (raw.card) {
+    const hold = BEATS.find((b) => b.id === raw.card.beat)?.hold ?? 4;
+    const tail = join(FRAMES, 'card.mp4');
+    ffmpeg(
+      [
+        '-loop',
+        '1',
+        '-i',
+        raw.card.file,
+        '-t',
+        String(hold),
+        '-r',
+        String(FPS),
+        '-vf',
+        `scale=out_range=tv,format=yuv420p,${TAGS}`,
+        ...X264,
+        tail,
+      ],
+      'render the closing card',
+    );
+    parts.push(tail);
+    const card = marks.find((m) => m.id === raw.card.beat);
+    if (card) card.at = Math.round(mainDuration * 1000) / 1000;
+    segs.push({ key: raw.card.key, from: mainDuration, to: mainDuration + hold });
+    duration += hold;
+  }
+  if (parts.length > 1) {
+    const cat = join(FRAMES, 'cat.txt');
+    writeFileSync(cat, parts.map((part) => `file '${part}'\n`).join(''));
+    ffmpeg(
+      ['-f', 'concat', '-safe', '0', '-i', cat, '-c', 'copy', '-movflags', '+faststart', mp4],
+      'join the scenes',
+    );
+  } else {
+    ffmpeg(['-i', parts[0], '-c', 'copy', '-movflags', '+faststart', mp4], 'write the video');
+  }
+
+  writeFileSync(join(OUT, 'captions.srt'), srt(segs));
+  const posterAt = marks.find((m) => m.id === (SCRIPT.POSTER ?? 'b-caught-up'))?.at ?? 1;
+  ffmpeg(
+    ['-ss', (posterAt + 1).toFixed(3), '-i', mp4, '-frames:v', '1', join(OUT, 'poster.png')],
+    'cut the poster',
+  );
+  writeFileSync(
+    join(OUT, 'timeline.json'),
+    JSON.stringify(
+      {
+        walk: WALK,
+        duration,
+        marks,
+        captions: segs,
+        scenes: scenes.map((sc) => ({ layout: sc.layout, from: sc.from, to: sc.to })),
+        ...raw.meta,
+      },
+      null,
+      1,
+    ),
+  );
+  log(`video ${duration.toFixed(1)} s -> ${mp4}`);
+}
+
+/** One scene: the windows of its layout over the background, with the captions of its time span. */
+function assembleScene(raw, scene, n, kept, segs) {
+  const panes = LAYOUTS[scene.layout];
+  const length = scene.to - scene.from;
+  const inputs = [];
+  panes.forEach((pane) => {
+    // Only frames taken at this layout's window size: around a switch A has frames of both.
+    const sized = kept[pane.win].filter(
+      (f) => f.w === undefined || Math.abs(f.w - viewOf(pane).width) < 2,
+    );
+    const inside = sized.filter((f) => f.at >= scene.from && f.at < scene.to);
+    const before = sized.filter((f) => f.at < scene.from).at(-1);
+    const list = [...(before ? [before] : []), ...inside];
+    if (!list.length)
+      throw new Error(`no frames from window ${pane.win.toUpperCase()} for scene ${n + 1}`);
+    const entries = ['ffconcat version 1.0'];
+    for (let k = 0; k < list.length; k++) {
+      const from = k === 0 ? scene.from : list[k].at;
+      const to = k + 1 < list.length ? list[k + 1].at : scene.to;
+      entries.push(`file '${list[k].file}'`, `duration ${Math.max(0.001, to - from).toFixed(4)}`);
+    }
+    entries.push(`file '${list.at(-1).file}'`);
+    const file = join(FRAMES, `scene${n}-${pane.win}.ffconcat`);
+    writeFileSync(file, entries.join('\n'));
+    inputs.push('-f', 'concat', '-safe', '0', '-i', file);
+  });
+  const own = segs
+    .map((s) => ({ key: s.key, from: Math.max(s.from, scene.from), to: Math.min(s.to, scene.to) }))
+    .filter((s) => s.to > s.from);
+  const bgKeys = [...new Set(own.map((s) => s.key))];
+  // A recording from before layouts keyed its backgrounds `none` and `<caption>`; it is all `pair`.
+  const bgFile = (caption) => {
+    const file =
+      raw.bgFiles[bgKey(scene.layout, caption)] ??
+      (raw.scenes ? undefined : raw.bgFiles[caption ?? 'none']);
+    if (!file)
+      throw new Error(
+        `no background for "${caption ?? 'none'}" (${scene.layout}) in this recording: record the walk again`,
+      );
+    return file;
+  };
+  inputs.push('-loop', '1', '-i', bgFile());
+  for (const k of bgKeys) inputs.push('-loop', '1', '-i', bgFile(k));
+  const bg = panes.length;
+  const f = panes.map(
+    (pane, i) =>
+      `[${i}]fps=${FPS},scale=${pane.width}:${PANE.height}:${TV_RANGE},setpts=PTS-STARTPTS[p${i}]`,
+  );
+  f.push(`[${bg}]fps=${FPS},scale=out_range=tv,format=yuv420p[bg0]`);
   let last = 'bg0';
-  segs.forEach((s, i) => {
-    const idx = 3 + bgKeys.indexOf(s.key);
+  own.forEach((s, i) => {
+    const idx = bg + 1 + bgKeys.indexOf(s.key);
     f.push(
-      `[${last}][${idx}]overlay=0:0:enable='between(t,${s.from.toFixed(3)},${s.to.toFixed(3)})'[c${i}]`,
+      `[${last}][${idx}]overlay=0:0:enable='between(t,${(s.from - scene.from).toFixed(3)},${(s.to - scene.from).toFixed(3)})'[c${i}]`,
     );
     last = `c${i}`;
   });
-  f.push(
-    `[${last}][a]overlay=${PANE.xA}:${PANE.y}:eof_action=repeat[xa]`,
-    `[xa][b]overlay=${PANE.xB}:${PANE.y}:eof_action=repeat,format=yuv420p[v]`,
-  );
-  const main = join(FRAMES, 'main.mp4');
+  panes.forEach((pane, i) => {
+    const out = i + 1 < panes.length ? `[x${i}]` : `,format=yuv420p,${TAGS}[v]`;
+    f.push(`[${last}][p${i}]overlay=${pane.x}:${PANE.y}:eof_action=repeat${out}`);
+    last = `x${i}`;
+  });
+  const file = join(FRAMES, `scene${n}.mp4`);
   ffmpeg(
     [
       ...inputs,
@@ -738,75 +1018,15 @@ function assemble(raw) {
       '-map',
       '[v]',
       '-t',
-      mainDuration.toFixed(3),
+      length.toFixed(3),
       '-r',
       String(FPS),
-      '-c:v',
-      'libx264',
-      '-crf',
-      '17',
-      '-preset',
-      'veryfast',
-      '-pix_fmt',
-      'yuv420p',
-      main,
+      ...X264,
+      file,
     ],
-    'assemble the two windows',
+    `assemble scene ${n + 1} (${scene.layout})`,
   );
-
-  let duration = mainDuration;
-  const marks = raw.marks.map((m) => ({ id: m.id, at: Math.round(master(m.t) * 1000) / 1000 }));
-  const mp4 = join(OUT, 'recording.mp4');
-  if (raw.card) {
-    const hold = BEATS.find((b) => b.id === 'test-run')?.hold ?? 4;
-    const tail = join(FRAMES, 'card.mp4');
-    ffmpeg(
-      [
-        '-loop',
-        '1',
-        '-i',
-        raw.card,
-        '-t',
-        String(hold),
-        '-r',
-        String(FPS),
-        '-vf',
-        'format=yuv420p',
-        '-c:v',
-        'libx264',
-        '-crf',
-        '17',
-        '-preset',
-        'veryfast',
-        tail,
-      ],
-      'render the closing card',
-    );
-    const cat = join(FRAMES, 'cat.txt');
-    writeFileSync(cat, `file '${main}'\nfile '${tail}'\n`);
-    ffmpeg(
-      ['-f', 'concat', '-safe', '0', '-i', cat, '-c', 'copy', '-movflags', '+faststart', mp4],
-      'join the closing card',
-    );
-    const card = marks.find((m) => m.id === 'test-run');
-    if (card) card.at = Math.round(mainDuration * 1000) / 1000;
-    segs.push({ key: 'tests', from: mainDuration, to: mainDuration + hold });
-    duration += hold;
-  } else {
-    ffmpeg(['-i', main, '-c', 'copy', '-movflags', '+faststart', mp4], 'write the video');
-  }
-
-  writeFileSync(join(OUT, 'captions.srt'), srt(segs));
-  const posterAt = marks.find((m) => m.id === 'b-caught-up')?.at ?? 1;
-  ffmpeg(
-    ['-ss', (posterAt + 1).toFixed(3), '-i', mp4, '-frames:v', '1', join(OUT, 'poster.png')],
-    'cut the poster',
-  );
-  writeFileSync(
-    join(OUT, 'timeline.json'),
-    JSON.stringify({ duration, marks, captions: segs, instances: raw.instances }, null, 1),
-  );
-  log(`video ${duration.toFixed(1)} s -> ${mp4}`);
+  return file;
 }
 
 function srt(segs) {
@@ -843,14 +1063,35 @@ async function bindToDifferentReplicas(a, b) {
   throw new Error('A and B stayed on one replica: is the second api replica up?');
 }
 
+/** The UL-135 walk: both windows on /prototype, on different api replicas, the channel empty. */
+const PROTOTYPE = {
+  layout: 'pair',
+  async prepare({ a, b }) {
+    const instances = await bindToDifferentReplicas(a, b);
+    log(`instances: A ${instances[0]}, B ${instances[1]}`);
+    const rows = [...(await a.rows()), ...(await b.rows())];
+    if (rows.length)
+      throw new Error(`the test channel is not empty (${rows.length} rows): reset the stand first`);
+    return { instances: { A: instances[0], B: instances[1] } };
+  },
+  scenario,
+};
+
 async function main() {
   if (argv.assemble) {
-    assemble(JSON.parse(readFileSync(join(FRAMES, 'raw.json'), 'utf8')));
+    assemble(RECORDED);
     return;
   }
   const host = new URL(BASE).hostname;
   if (!['127.0.0.1', 'localhost', '[::1]'].includes(host))
     throw new Error(`the walk runs on the local stand only, not ${host}`);
+  /**
+   * A walk in its own file exports `scenario(w)` and may export `layout` (the first one),
+   * `chromeEnv`, and `prepare({ cdp, a, b, base, log })`, which runs before the recording starts
+   * and returns what goes into timeline.json and stills.json.
+   */
+  const def = WALK === 'prototype' ? PROTOTYPE : await import(`./scenario-${WALK}.mjs`);
+  const firstLayout = def.layout ?? 'pair';
   rmSync(LOG, { force: true });
   if (STILLS) {
     rmSync(STILL_DIR, { recursive: true, force: true });
@@ -865,7 +1106,9 @@ async function main() {
     rmSync(prev.dir, { recursive: true, force: true });
   }
   writeFileSync(FRAMES_POINTER, `${JSON.stringify({ dir: FRAMES, created: FRAMES_CREATED })}\n`);
-  log(`walk ${new Date().toISOString()} on ${PAGE_URL}${STILLS ? ' (stills)' : ''}`);
+  log(
+    `walk ${WALK} ${new Date().toISOString()} on ${WALK === 'prototype' ? PAGE_URL : BASE}${STILLS ? ' (stills)' : ''}`,
+  );
 
   const chrome = await launchChrome({
     args: [
@@ -875,6 +1118,7 @@ async function main() {
       '--disable-backgrounding-occluded-windows',
       '--disable-background-timer-throttling',
     ],
+    env: def.chromeEnv,
   });
   log(`Chrome pid ${chrome.pid} (own headless profile)`);
   const stop = () => {
@@ -888,40 +1132,46 @@ async function main() {
       width: FRAME.width / SCALE,
       height: FRAME.height / SCALE,
     });
-    const bgFiles = { none: join(FRAMES, 'bg-none.png') };
-    await renderStage(stage, backgroundHtml(''), bgFiles.none);
-    for (const [key, text] of Object.entries(CAPTIONS)) {
-      bgFiles[key] = join(FRAMES, `bg-${key}.png`);
-      await renderStage(stage, backgroundHtml(text), bgFiles[key]);
+    const bgFiles = {};
+    for (const layout of Object.keys(LAYOUTS)) {
+      for (const [key, text] of [[undefined, ''], ...Object.entries(CAPTIONS)]) {
+        const file = join(FRAMES, `bg-${layout}-${key ?? 'none'}.png`);
+        bgFiles[bgKey(layout, key)] = file;
+        await renderStage(stage, backgroundHtml(text, layout), file);
+      }
     }
+    /** The closing card: `{ beat, key, file }`. A test log (UL-135) or the script's `CARD`. */
     let card;
     if (TEST_LOG) {
-      card = join(FRAMES, 'card.png');
-      await renderStage(stage, testCardHtml(CAPTIONS.tests, readFileSync(TEST_LOG, 'utf8')), card);
+      card = { beat: 'test-run', key: 'tests', file: join(FRAMES, 'card.png') };
+      await renderStage(
+        stage,
+        testCardHtml(CAPTIONS.tests, readFileSync(TEST_LOG, 'utf8')),
+        card.file,
+      );
+    } else if (SCRIPT.CARD) {
+      card = { beat: SCRIPT.CARD.beat, key: SCRIPT.CARD.caption, file: join(FRAMES, 'card.png') };
+      await renderStage(stage, listCardHtml(CAPTIONS[card.key], SCRIPT.CARD), card.file);
     }
 
-    const a = await openWindow(cdp, 'A', VIEW);
+    const a = await openWindow(cdp, 'A', viewOf(LAYOUTS[firstLayout][0]));
     const b = await openWindow(cdp, 'B', VIEW);
     for (const w of [a, b])
       await w.send('Page.addScriptToEvaluateOnNewDocument', { source: OVERLAY });
-    const instances = await bindToDifferentReplicas(a, b);
-    log(`instances: A ${instances[0]}, B ${instances[1]}`);
-    const rows = [...(await a.rows()), ...(await b.rows())];
-    if (rows.length)
-      throw new Error(`the test channel is not empty (${rows.length} rows): reset the stand first`);
+    const meta = (await def.prepare?.({ cdp, a, b, base: BASE, log })) ?? {};
 
-    const w = new Walk(cdp, a, b, stage, bgFiles);
-    w.instances = { A: instances[0], B: instances[1] };
+    const w = new Walk(cdp, a, b, stage, bgFiles, firstLayout);
+    w.meta = meta;
     w.card = card;
     await w.record();
     await sleep(500);
-    await scenario(w);
+    await def.scenario(w);
     if (card) {
-      await w.beat('test-run', { still: false });
+      await w.beat(card.beat, { still: false });
       if (STILLS)
         copyFileSync(
-          card,
-          join(STILL_DIR, `${String(++w.stills).padStart(3, '0')}-test-run-open.png`),
+          card.file,
+          join(STILL_DIR, `${String(++w.stills).padStart(3, '0')}-${card.beat}-open.png`),
         );
     }
     await w.finish();
@@ -930,7 +1180,7 @@ async function main() {
     else
       writeFileSync(
         join(OUT, 'stills.json'),
-        JSON.stringify({ instances: w.instances, beats: w.marks.map((m) => m.id) }, null, 1),
+        JSON.stringify({ walk: WALK, ...w.meta, beats: w.marks.map((m) => m.id) }, null, 1),
       );
   } finally {
     await chrome.close();

@@ -3,7 +3,8 @@
 # compose project and ports, so it never shares a database or a Traefik with another checkout.
 #
 #   tools/demo-walk/stand.sh up         build and start, migrate, seed
-#   tools/demo-walk/stand.sh reset      empty the seeded test channel (before every walk)
+#   tools/demo-walk/stand.sh reset      empty the seeded test channel and remove the accounts and
+#                                       workspaces a walk created (before every walk)
 #   tools/demo-walk/stand.sh test-log   run the phase 2 exit test against the stand's Postgres and
 #                                       Redis, output to $DEMO_OUT/test-run.log (the closing card)
 #   tools/demo-walk/stand.sh down       stop, remove the volumes and the stand's images
@@ -27,6 +28,7 @@ export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-app_dev_password}"
 export POSTGRES_DB="${POSTGRES_DB:-app}"
 DB_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_PORT}"
 CHANNEL='00000000-0000-7000-8000-000000000001'
+SEED_USER='00000000-0000-7000-8000-000000000002'
 
 case "${1:-}" in
   up)
@@ -45,7 +47,9 @@ case "${1:-}" in
     ;;
   reset)
     "${COMPOSE[@]}" exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
-      "DELETE FROM messages WHERE channel_id = '$CHANNEL'; UPDATE channels SET last_seq = 0 WHERE id = '$CHANNEL';"
+      "DELETE FROM messages WHERE channel_id = '$CHANNEL'; UPDATE channels SET last_seq = 0 WHERE id = '$CHANNEL';
+       TRUNCATE invites, project_members, projects, workspace_members, workspaces CASCADE;
+       DELETE FROM users WHERE id <> '$SEED_USER';"
     ;;
   test-log)
     : "${DEMO_OUT:?set DEMO_OUT to the output folder}"
