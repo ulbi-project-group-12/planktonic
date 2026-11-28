@@ -56,17 +56,13 @@ const { values: argv } = parseArgs({
     stills: { type: 'boolean', default: false },
     assemble: { type: 'boolean', default: false },
     'test-log': { type: 'string' },
-    walk: { type: 'string', default: 'prototype' },
+    walk: { type: 'string' },
   },
 });
 /**
  * Which walk: `prototype` (UL-135, the default) has its script in beats.mjs and its scenario below;
  * any other name reads beats-<name>.mjs and scenario-<name>.mjs next to this file.
  */
-const WALK = argv.walk;
-if (!/^[a-z][a-z0-9-]*$/.test(WALK)) throw new Error(`--walk ${WALK}: not a walk name`);
-const SCRIPT = await import(WALK === 'prototype' ? './beats.mjs' : `./beats-${WALK}.mjs`);
-const { BEATS, CAPTIONS } = SCRIPT;
 const OUT = resolve(argv.out ?? join(HERE, 'out'));
 const STILLS = argv.stills;
 const STILL_DIR = join(OUT, 'stills');
@@ -95,6 +91,23 @@ const FRAMES = (() => {
   }
   return mkdtempSync(FRAMES_PREFIX);
 })();
+/**
+ * `--assemble` rebuilds a recorded walk, so it reads the recording and takes the walk's name from
+ * it: the script (captions, card, poster) must be the one the frames were recorded with. A
+ * recording from before the name was saved is the prototype walk, the only one there was.
+ */
+const RECORDED = argv.assemble
+  ? JSON.parse(readFileSync(join(FRAMES, 'raw.json'), 'utf8'))
+  : undefined;
+const WALK = (() => {
+  const recorded = RECORDED ? (RECORDED.walk ?? 'prototype') : undefined;
+  if (recorded && argv.walk && argv.walk !== recorded)
+    throw new Error(`--walk ${argv.walk}: the recording in ${OUT} is the ${recorded} walk`);
+  return recorded ?? argv.walk ?? 'prototype';
+})();
+if (!/^[a-z][a-z0-9-]*$/.test(WALK)) throw new Error(`--walk ${WALK}: not a walk name`);
+const SCRIPT = await import(WALK === 'prototype' ? './beats.mjs' : `./beats-${WALK}.mjs`);
+const { BEATS, CAPTIONS } = SCRIPT;
 const BASE = (argv.base ?? process.env.DEMO_BASE ?? 'http://127.0.0.1:58080').replace(/\/$/, '');
 const PAGE_URL = `${BASE}/prototype`;
 const TEST_LOG = argv['test-log'] ? resolve(argv['test-log']) : undefined;
@@ -604,6 +617,7 @@ class Walk {
 
   raw() {
     return {
+      walk: WALK,
       start: this.start,
       end: this.end,
       marks: this.marks,
@@ -816,7 +830,15 @@ const X264 = [
 ];
 const TV_RANGE = 'in_range=pc:out_range=tv,format=yuv420p';
 /** The same tags on every part (BT.601 is what JPEG frames and swscale's RGB conversion use). */
-const TAGS = 'setparams=range=tv:colorspace=bt470bg:chroma_location=left';
+const TAGS = (() => {
+  // setparams has `chroma_location` only in newer ffmpeg; an older one stops on the unknown option
+  // after the whole walk is recorded. Without it the parts still carry the same range and matrix.
+  const help = spawnSync('ffmpeg', ['-hide_banner', '-h', 'filter=setparams'], {
+    encoding: 'utf8',
+  });
+  const chroma = /\bchroma_location\b/.test(`${help.stdout}${help.stderr}`);
+  return `setparams=range=tv:colorspace=bt470bg${chroma ? ':chroma_location=left' : ''}`;
+})();
 
 function assemble(raw) {
   const { start, end, gaps } = raw;
@@ -955,8 +977,19 @@ function assembleScene(raw, scene, n, kept, segs) {
     .map((s) => ({ key: s.key, from: Math.max(s.from, scene.from), to: Math.min(s.to, scene.to) }))
     .filter((s) => s.to > s.from);
   const bgKeys = [...new Set(own.map((s) => s.key))];
-  inputs.push('-loop', '1', '-i', raw.bgFiles[bgKey(scene.layout)]);
-  for (const k of bgKeys) inputs.push('-loop', '1', '-i', raw.bgFiles[bgKey(scene.layout, k)]);
+  // A recording from before layouts keyed its backgrounds `none` and `<caption>`; it is all `pair`.
+  const bgFile = (caption) => {
+    const file =
+      raw.bgFiles[bgKey(scene.layout, caption)] ??
+      (raw.scenes ? undefined : raw.bgFiles[caption ?? 'none']);
+    if (!file)
+      throw new Error(
+        `no background for "${caption ?? 'none'}" (${scene.layout}) in this recording: record the walk again`,
+      );
+    return file;
+  };
+  inputs.push('-loop', '1', '-i', bgFile());
+  for (const k of bgKeys) inputs.push('-loop', '1', '-i', bgFile(k));
   const bg = panes.length;
   const f = panes.map(
     (pane, i) =>
@@ -1046,7 +1079,7 @@ const PROTOTYPE = {
 
 async function main() {
   if (argv.assemble) {
-    assemble(JSON.parse(readFileSync(join(FRAMES, 'raw.json'), 'utf8')));
+    assemble(RECORDED);
     return;
   }
   const host = new URL(BASE).hostname;
