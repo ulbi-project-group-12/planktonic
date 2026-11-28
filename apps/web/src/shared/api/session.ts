@@ -1,6 +1,11 @@
 'use client';
 
-import { type LoginRequest, LoginResponseSchema, LogoutResponseSchema } from '@app/contracts';
+import {
+  type LoginRequest,
+  LoginResponseSchema,
+  LogoutResponseSchema,
+  RefreshResponseSchema,
+} from '@app/contracts';
 import { PRODUCT_SLUG } from '@app/config/product';
 import { createStore } from 'zustand/vanilla';
 import { authLogin } from './generated/api';
@@ -29,9 +34,9 @@ let refreshPromise: Promise<RefreshResult> | undefined;
 let refreshPromiseGeneration: number | undefined;
 const LOGOUT_TIMEOUT_MS = 5_000;
 // Refresh answers that mean "there is no session to continue". 401: the refresh credentials are
-// missing, expired or revoked. 404 and 405: this api has no refresh endpoint at all (it arrives
-// with UL-141), so nothing can be restored and waiting or retrying would only keep the visitor
-// away from the login screen. Anything else (network failure, 5xx) is temporary.
+// missing, expired or revoked. 404 and 405: this api has no refresh endpoint at all, so nothing
+// can be restored and waiting or retrying would only keep the visitor away from the login screen.
+// Anything else (network failure, 5xx, 503) is temporary.
 const NO_SESSION_STATUSES: ReadonlySet<number> = new Set([401, 404, 405]);
 export const SIGNED_OUT_FLAG_KEY = `__${PRODUCT_SLUG}_signed_out`;
 
@@ -70,7 +75,7 @@ export async function refreshAccessToken(): Promise<RefreshResult> {
   refreshPromiseGeneration = generation;
   refreshPromise = (async () => {
     try {
-      const { accessToken } = LoginResponseSchema.parse(
+      const { accessToken } = RefreshResponseSchema.parse(
         await apiFetch('/api/auth/refresh', { method: 'POST' }),
       );
       // signIn/signOut happened while the refresh was in flight: do not touch the new session.

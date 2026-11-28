@@ -142,6 +142,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379
       API_BEHIND_TRAEFIK: 'true'
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET}
       # S3_* (endpoint http://seaweedfs:8333) join here with the files feature in Phase 7.
     depends_on:
       postgres:

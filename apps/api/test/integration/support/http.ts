@@ -10,7 +10,9 @@ import { DEFAULT_AUTHOR_ID } from '../../../src/modules/messages/default-author.
 /** Authenticate as an active fixture user, defaulting to the one seeded by resetData. */
 export function authorization(app: INestApplication, userId = DEFAULT_AUTHOR_ID): string {
   const secret = app.get(ConfigService<Env, true>).get('JWT_ACCESS_SECRET', { infer: true });
-  const token = app.get(JwtService).sign({ sub: userId }, { secret, expiresIn: '15m' });
+  const token = app
+    .get(JwtService)
+    .sign({ sub: userId, sid: randomUUID() }, { secret, expiresIn: '15m' });
   return `Bearer ${token}`;
 }
 

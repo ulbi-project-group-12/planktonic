@@ -1,0 +1,56 @@
+import { Test } from '@nestjs/testing';
+import { expect, it } from 'vitest';
+import { API_PREFIX } from '../../../app.setup.js';
+import { createOpenApiDocument } from '../../../core/openapi/swagger.setup.js';
+import { AuthModule } from '../auth.module.js';
+import { AuthRepository } from '../auth.repository.js';
+import { LoginRepository } from '../login/login.repository.js';
+import { RegisterRepository } from '../register/register.repository.js';
+import { SessionRepository } from '../session/session.repository.js';
+
+it('documents the refresh request and responses', async () => {
+  const moduleRef = await Test.createTestingModule({ imports: [AuthModule] })
+    .overrideProvider(RegisterRepository)
+    .useValue({})
+    .overrideProvider(LoginRepository)
+    .useValue({})
+    .overrideProvider(AuthRepository)
+    .useValue({})
+    .overrideProvider(SessionRepository)
+    .useValue({})
+    .compile();
+  const app = moduleRef.createNestApplication({ logger: false });
+  try {
+    app.setGlobalPrefix(API_PREFIX);
+    const refresh = createOpenApiDocument(app).paths['/api/auth/refresh']?.post;
+
+    expect(refresh).toMatchObject({
+      operationId: 'Auth_refresh',
+      responses: {
+        200: {
+          content: {
+            'application/json': {
+              schema: {
+                required: ['accessToken'],
+                properties: { accessToken: { type: 'string' } },
+              },
+            },
+          },
+        },
+        401: {
+          content: {
+            'application/json': { schema: { required: ['statusCode', 'message', 'error'] } },
+          },
+        },
+        503: {
+          content: {
+            'application/json': { schema: { required: ['statusCode', 'message', 'error'] } },
+          },
+        },
+      },
+    });
+    expect(Object.keys(refresh?.responses ?? {}).sort()).toEqual(['200', '401', '503']);
+  } finally {
+    await app.close();
+  }
+});

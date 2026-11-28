@@ -18,6 +18,9 @@ import type {
   AuthLoginBody,
   AuthMe200,
   AuthMe401,
+  AuthRefresh200,
+  AuthRefresh401,
+  AuthRefresh503,
   AuthRegister201,
   AuthRegister400,
   AuthRegister409,
@@ -218,6 +221,38 @@ export const getAuthMeResponseMock401 = (
 ): AuthMe401 => ({
   statusCode: faker.helpers.arrayElement([401] as const),
   message: faker.helpers.arrayElement(['Unauthorized'] as const),
+  ...overrideResponse,
+});
+
+export const getAuthRefreshResponseMock = (
+  overrideResponse: Partial<Extract<AuthRefresh200, object>> = {},
+): AuthRefresh200 => ({
+  accessToken: faker.string.alpha({ length: { min: 1, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getAuthRefreshResponseMock200 = (
+  overrideResponse: Partial<Extract<AuthRefresh200, object>> = {},
+): AuthRefresh200 => ({
+  accessToken: faker.string.alpha({ length: { min: 1, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getAuthRefreshResponseMock401 = (
+  overrideResponse: Partial<Extract<AuthRefresh401, object>> = {},
+): AuthRefresh401 => ({
+  statusCode: faker.helpers.arrayElement([401] as const),
+  message: faker.helpers.arrayElement(['Unauthorized'] as const),
+  error: faker.helpers.arrayElement(['Unauthorized'] as const),
+  ...overrideResponse,
+});
+
+export const getAuthRefreshResponseMock503 = (
+  overrideResponse: Partial<Extract<AuthRefresh503, object>> = {},
+): AuthRefresh503 => ({
+  statusCode: faker.helpers.arrayElement([503] as const),
+  message: faker.helpers.arrayElement(['Refresh is unavailable'] as const),
+  error: faker.helpers.arrayElement(['Service Unavailable'] as const),
   ...overrideResponse,
 });
 
@@ -1424,6 +1459,94 @@ export const getAuthMeMockHandler401 = (
             : overrideResponse
           : getAuthMeResponseMock401(),
         { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthRefreshMockHandler = (
+  overrideResponse?:
+    | AuthRefresh200
+    | ((info: Parameters<HttpResponseResolver>[0]) => Promise<AuthRefresh200> | AuthRefresh200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    '*/api/auth/refresh',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthRefreshResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthRefreshMockHandler200 = (
+  overrideResponse?:
+    | AuthRefresh200
+    | ((info: Parameters<HttpResponseResolver>[0]) => Promise<AuthRefresh200> | AuthRefresh200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    '*/api/auth/refresh',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthRefreshResponseMock200(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthRefreshMockHandler401 = (
+  overrideResponse?:
+    | AuthRefresh401
+    | ((info: Parameters<HttpResponseResolver>[0]) => Promise<AuthRefresh401> | AuthRefresh401),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    '*/api/auth/refresh',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthRefreshResponseMock401(),
+        { status: 401 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAuthRefreshMockHandler503 = (
+  overrideResponse?:
+    | AuthRefresh503
+    | ((info: Parameters<HttpResponseResolver>[0]) => Promise<AuthRefresh503> | AuthRefresh503),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    '*/api/auth/refresh',
+    async (info: Parameters<HttpResponseResolver>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === 'function'
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAuthRefreshResponseMock503(),
+        { status: 503 },
       );
     },
     options,
@@ -3345,6 +3468,7 @@ export const getApiMock = () => [
   getAuthRegisterMockHandler(),
   getAuthLoginMockHandler(),
   getAuthMeMockHandler(),
+  getAuthRefreshMockHandler(),
   getHealthLiveMockHandler(),
   getHealthReadyMockHandler(),
   getMessagesCreateMockHandler(),

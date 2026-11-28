@@ -106,6 +106,12 @@ export {
   LoginResponseSchema,
   LoginRateLimitResponseSchema,
 } from './auth/login.js';
+export {
+  type RefreshResponse,
+  RefreshResponseSchema,
+  RefreshUnauthorizedResponseSchema,
+  RefreshUnavailableResponseSchema,
+} from './auth/refresh.js';
 export { type MeResponse, MeResponseSchema } from './auth/me.js';
 export { type LogoutResponse, LogoutResponseSchema } from './auth/logout.js';
 export {

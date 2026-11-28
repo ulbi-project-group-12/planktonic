@@ -12,6 +12,7 @@ model User {
   workspaceMemberships WorkspaceMember[]
   createdInvites       Invite[]
   projectMemberships   ProjectMember[]
+  sessions             Session[]
 
   @@map("users")
 }

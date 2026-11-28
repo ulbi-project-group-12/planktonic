@@ -71,7 +71,10 @@ describe('AuthGuard.canActivate', () => {
   it('attaches the active account profile for a valid token', async () => {
     const { guard, jwt, findActiveById } = await setup();
     findActiveById.mockResolvedValue(profile);
-    const token = jwt.sign({ sub: userId }, { expiresIn: '15m' });
+    const token = jwt.sign(
+      { sub: userId, sid: '019a8f00-0000-7000-8000-000000000005' },
+      { expiresIn: '15m' },
+    );
 
     const context = requestWithToken(token);
     await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -82,7 +85,10 @@ describe('AuthGuard.canActivate', () => {
   it('rejects the token when no active account matches', async () => {
     const { guard, jwt, findActiveById } = await setup();
     findActiveById.mockResolvedValue(null);
-    const token = jwt.sign({ sub: userId }, { expiresIn: '15m' });
+    const token = jwt.sign(
+      { sub: userId, sid: '019a8f00-0000-7000-8000-000000000005' },
+      { expiresIn: '15m' },
+    );
 
     const context = requestWithToken(token);
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(UnauthorizedException);

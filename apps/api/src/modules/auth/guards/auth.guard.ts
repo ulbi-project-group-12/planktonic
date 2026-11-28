@@ -15,6 +15,7 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 
 const accessTokenClaims = z.object({
   sub: z.uuid(),
+  sid: z.uuid(),
   exp: z.int().positive(),
 });
 

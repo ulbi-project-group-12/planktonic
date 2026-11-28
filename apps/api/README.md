@@ -103,6 +103,8 @@ variable and the rule, never the value, and the process exits 1.
 | `API_BEHIND_TRAEFIK` | `true` or `false`: trust one proxy's `X-Forwarded-For` | `false`       |
 | `DATABASE_URL`       | `postgres://` or `postgresql://` URL                   | required      |
 | `REDIS_URL`          | Redis connection URL (`redis://` or `rediss://`)       | required      |
+| `JWT_ACCESS_SECRET`  | at least 32 characters, signs access tokens            | required      |
+| `JWT_REFRESH_SECRET` | at least 32 characters, signs refresh tokens           | required      |
 | `REALTIME_DEBUG`     | `true` or `false`: diagnostic room and ping endpoint   | `false`       |
 
 An empty value counts as unset. In development the api reads the repo-root `.env` only, found from
